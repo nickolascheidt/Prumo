@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="BiomePampa.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:BiomePampa"
+    xmlns:views="clr-namespace:BiomePampa.Views"
+    Title="BiomePampa">
+
+    <TabBar>
+        <!-- Products Tab -->
+        <ShellContent
+            Title="Produtos"
+            Icon="package.png"
+            ContentTemplate="{DataTemplate views:ProductListPage}"
+            Route="products" />
+
+        <!-- Batches Tab -->
+        <ShellContent
+            Title="Lotes"
+            Icon="box.png"
+            ContentTemplate="{DataTemplate views:BatchListPage}"
+            Route="batches" />
+
+        <!-- Customers Tab -->
+        <ShellContent
+            Title="Clientes"
+            Icon="person.png"
+            ContentTemplate="{DataTemplate views:CustomerListPage}"
+            Route="customers" />
+
+        <!-- Database Info Tab -->
+        <ShellContent
+            Title="Banco"
+            Icon="database.png"
+            ContentTemplate="{DataTemplate views:DatabaseInfoPage}"
+            Route="database" />
+    </TabBar>
+
+</Shell>

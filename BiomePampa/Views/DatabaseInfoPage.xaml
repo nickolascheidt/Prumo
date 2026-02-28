@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:BiomePampa.ViewModels"
+             x:Class="BiomePampa.Views.DatabaseInfoPage"
+             x:DataType="vm:DatabaseInfoViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView Padding="20">
+        <VerticalStackLayout Spacing="15">
+
+            <!-- Database Path -->
+            <Frame BorderColor="LightGray" CornerRadius="8" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Caminho do Banco de Dados" 
+                           FontAttributes="Bold" 
+                           FontSize="16" />
+                    
+                    <Label Text="{Binding DatabasePath}" 
+                           FontSize="12" 
+                           TextColor="Gray"
+                           LineBreakMode="WordWrap" />
+                    
+                    <Button Text="Copiar Caminho"
+                            Command="{Binding CopyPathCommand}"
+                            HorizontalOptions="Start"
+                            Margin="0,10,0,0" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Database Info -->
+            <Frame BorderColor="LightGray" CornerRadius="8" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Informações do Banco" 
+                           FontAttributes="Bold" 
+                           FontSize="16" />
+                    
+                    <Label Text="{Binding DatabaseInfo}" 
+                           FontSize="14"
+                           FontFamily="monospace"
+                           LineBreakMode="WordWrap" />
+                    
+                    <Button Text="Atualizar Informações"
+                            Command="{Binding LoadInfoCommand}"
+                            HorizontalOptions="Start"
+                            Margin="0,10,0,0" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Actions -->
+            <Frame BorderColor="LightGray" CornerRadius="8" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Ações" 
+                           FontAttributes="Bold" 
+                           FontSize="16" />
+                    
+                    <Button Text="Inicializar Banco de Dados"
+                            Command="{Binding InitializeDatabaseCommand}"
+                            BackgroundColor="Green" />
+                    
+                    <Button Text="Excluir Banco de Dados"
+                            Command="{Binding DeleteDatabaseCommand}"
+                            BackgroundColor="Red" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- How to Access -->
+            <Frame BorderColor="Orange" CornerRadius="8" Padding="15" BackgroundColor="#FFF9E6">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="ℹ️ Como Acessar o Banco" 
+                           FontAttributes="Bold" 
+                           FontSize="16"
+                           TextColor="DarkOrange" />
+                    
+                    <Label FontSize="12" LineBreakMode="WordWrap">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="1. Baixe o DB Browser for SQLite:" FontAttributes="Bold" />
+                                <Span Text="&#10;   https://sqlitebrowser.org/&#10;&#10;" />
+                                <Span Text="2. Copie o caminho do banco acima&#10;&#10;" />
+                                <Span Text="3. No Android, use o Android Device Monitor ou adb pull:&#10;" />
+                                <Span Text="   adb pull " FontFamily="monospace" />
+                                <Span Text="/data/data/com.companyname.biomepampa/files/biomepampa.db" FontFamily="monospace" />
+                                <Span Text="&#10;&#10;" />
+                                <Span Text="4. Abra o arquivo .db no DB Browser for SQLite" />
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                              IsVisible="{Binding IsBusy}"
+                              HorizontalOptions="Center"
+                              Margin="0,20,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

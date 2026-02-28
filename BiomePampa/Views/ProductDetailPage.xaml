@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:BiomePampa.ViewModels"
+             x:Class="BiomePampa.Views.ProductDetailPage"
+             x:DataType="vm:ProductDetailViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+
+            <!-- Name -->
+            <Label Text="Nome *" FontAttributes="Bold" />
+            <Entry Text="{Binding ProductName}" Placeholder="Nome do produto" />
+
+            <!-- Description -->
+            <Label Text="Descrição" FontAttributes="Bold" />
+            <Editor Text="{Binding ProductDescription}" 
+                    Placeholder="Descrição do produto"
+                    HeightRequest="100" />
+
+            <!-- SKU -->
+            <Label Text="SKU *" FontAttributes="Bold" />
+            <Entry Text="{Binding ProductSKU}" Placeholder="Código SKU" />
+
+            <!-- Olive Oil Type -->
+            <Label Text="Tipo de Azeite *" FontAttributes="Bold" />
+            <Picker SelectedItem="{Binding ProductOliveOilType}"
+                    Title="Selecione o tipo">
+                <Picker.ItemsSource>
+                    <x:Array Type="{x:Type x:String}">
+                        <x:String>ExtraVirgin</x:String>
+                        <x:String>Virgin</x:String>
+                        <x:String>Refined</x:String>
+                        <x:String>Pure</x:String>
+                        <x:String>Lampante</x:String>
+                    </x:Array>
+                </Picker.ItemsSource>
+            </Picker>
+
+            <!-- Volume -->
+            <Label Text="Volume (ml) *" FontAttributes="Bold" />
+            <Entry Text="{Binding ProductVolume}" 
+                   Placeholder="Volume em ml"
+                   Keyboard="Numeric" />
+
+            <!-- Barcode -->
+            <Label Text="Código de Barras" FontAttributes="Bold" />
+            <Entry Text="{Binding ProductBarcode}" 
+                   Placeholder="Código de barras"
+                   Keyboard="Numeric" />
+
+            <!-- Stock Section -->
+            <Label Text="Estoque" 
+                   FontSize="20" 
+                   FontAttributes="Bold" 
+                   Margin="0,20,0,10" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <!-- Minimum Stock -->
+                <VerticalStackLayout Grid.Column="0">
+                    <Label Text="Estoque Mínimo *" FontAttributes="Bold" />
+                    <Entry Text="{Binding ProductMinimumStock}" 
+                           Placeholder="Min"
+                           Keyboard="Numeric" />
+                </VerticalStackLayout>
+
+                <!-- Maximum Stock -->
+                <VerticalStackLayout Grid.Column="1">
+                    <Label Text="Estoque Máximo *" FontAttributes="Bold" />
+                    <Entry Text="{Binding ProductMaximumStock}" 
+                           Placeholder="Max"
+                           Keyboard="Numeric" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Unit Price -->
+            <Label Text="Preço Unitário (R$) *" FontAttributes="Bold" />
+            <Entry Text="{Binding ProductUnitPrice}" 
+                   Placeholder="0,00"
+                   Keyboard="Numeric" />
+
+            <!-- Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,20,0,0">
+                <Button Grid.Column="0"
+                        Text="Cancelar"
+                        Command="{Binding CancelCommand}"
+                        BackgroundColor="Gray" />
+                
+                <Button Grid.Column="1"
+                        Text="Salvar"
+                        Command="{Binding SaveCommand}"
+                        BackgroundColor="#512BD4" />
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
