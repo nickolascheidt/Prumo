@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BiomePampa.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260228230534_AddAuth")]
-    partial class AddAuth
+    [Migration("20260303000600_AddIdentityAuth")]
+    partial class AddIdentityAuth
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -62,8 +62,8 @@ namespace BiomePampa.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a1111111-1111-1111-1111-111111111111"),
-                            ConcurrencyStamp = "c2dfe17e-98b4-4dc0-bfe2-88b8c32b3c29",
-                            CreatedAt = new DateTime(2026, 2, 28, 23, 5, 34, 394, DateTimeKind.Utc).AddTicks(588),
+                            ConcurrencyStamp = "a1111111-1111-1111-1111-111111111111",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Acesso total ao sistema",
                             Name = "Administrador",
                             NormalizedName = "ADMINISTRADOR"
@@ -71,8 +71,8 @@ namespace BiomePampa.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("a2222222-2222-2222-2222-222222222222"),
-                            ConcurrencyStamp = "dc7b682f-ea01-4322-b792-1c1ff987dcec",
-                            CreatedAt = new DateTime(2026, 2, 28, 23, 5, 34, 394, DateTimeKind.Utc).AddTicks(734),
+                            ConcurrencyStamp = "a2222222-2222-2222-2222-222222222222",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Acesso limitado ao sistema",
                             Name = "Usuario",
                             NormalizedName = "USUARIO"

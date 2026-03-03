@@ -4,6 +4,7 @@ using BiomePampa.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BiomePampa.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260303002853_SeedAdminUser")]
+    partial class SeedAdminUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -152,6 +155,27 @@ namespace BiomePampa.Infrastructure.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("a3333333-3333-3333-3333-333333333333"),
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "a3333333-3333-3333-3333-333333333333",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "admin@biomepampa.com",
+                            EmailConfirmed = true,
+                            FullName = "Administrador do Sistema",
+                            IsActive = true,
+                            LockoutEnabled = true,
+                            NormalizedEmail = "ADMIN@BIOMEPAMPA.COM",
+                            NormalizedUserName = "ADMIN@BIOMEPAMPA.COM",
+                            PasswordHash = "AQAAAAIAAYagAAAAEJ3yzvSKF7fH8PZxNqE0PvBfKDMq0p3L1F5VzJXJ0bH8F3kxqPJZGQxJ9pZqVJKvxQ==",
+                            PhoneNumberConfirmed = false,
+                            SecurityStamp = "a4444444-4444-4444-4444-444444444444",
+                            TwoFactorEnabled = false,
+                            UserName = "admin@biomepampa.com"
+                        });
                 });
 
             modelBuilder.Entity("BiomePampa.Domain.Entities.Batch", b =>
@@ -585,6 +609,13 @@ namespace BiomePampa.Infrastructure.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("AspNetUserRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("a3333333-3333-3333-3333-333333333333"),
+                            RoleId = new Guid("a1111111-1111-1111-1111-111111111111")
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>

@@ -27,6 +27,7 @@ namespace BiomePampa.Infrastructure.Data
             // Seed Roles
             var adminRoleId = Guid.Parse("a1111111-1111-1111-1111-111111111111");
             var userRoleId = Guid.Parse("a2222222-2222-2222-2222-222222222222");
+            var seedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
             modelBuilder.Entity<ApplicationRole>().HasData(
                 new ApplicationRole
@@ -35,7 +36,8 @@ namespace BiomePampa.Infrastructure.Data
                     Name = "Administrador",
                     NormalizedName = "ADMINISTRADOR",
                     Description = "Acesso total ao sistema",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = seedDate,
+                    ConcurrencyStamp = "a1111111-1111-1111-1111-111111111111"
                 },
                 new ApplicationRole
                 {
@@ -43,7 +45,8 @@ namespace BiomePampa.Infrastructure.Data
                     Name = "Usuario",
                     NormalizedName = "USUARIO",
                     Description = "Acesso limitado ao sistema",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = seedDate,
+                    ConcurrencyStamp = "a2222222-2222-2222-2222-222222222222"
                 }
             );
         }

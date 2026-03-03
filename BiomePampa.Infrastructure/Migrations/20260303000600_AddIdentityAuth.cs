@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BiomePampa.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAuth : Migration
+    public partial class AddIdentityAuth : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -169,8 +169,8 @@ namespace BiomePampa.Infrastructure.Migrations
                 columns: new[] { "Id", "ConcurrencyStamp", "CreatedAt", "Description", "Name", "NormalizedName" },
                 values: new object[,]
                 {
-                    { new Guid("a1111111-1111-1111-1111-111111111111"), "c2dfe17e-98b4-4dc0-bfe2-88b8c32b3c29", new DateTime(2026, 2, 28, 23, 5, 34, 394, DateTimeKind.Utc).AddTicks(588), "Acesso total ao sistema", "Administrador", "ADMINISTRADOR" },
-                    { new Guid("a2222222-2222-2222-2222-222222222222"), "dc7b682f-ea01-4322-b792-1c1ff987dcec", new DateTime(2026, 2, 28, 23, 5, 34, 394, DateTimeKind.Utc).AddTicks(734), "Acesso limitado ao sistema", "Usuario", "USUARIO" }
+                    { new Guid("a1111111-1111-1111-1111-111111111111"), "a1111111-1111-1111-1111-111111111111", new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Acesso total ao sistema", "Administrador", "ADMINISTRADOR" },
+                    { new Guid("a2222222-2222-2222-2222-222222222222"), "a2222222-2222-2222-2222-222222222222", new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Acesso limitado ao sistema", "Usuario", "USUARIO" }
                 });
 
             migrationBuilder.CreateIndex(
