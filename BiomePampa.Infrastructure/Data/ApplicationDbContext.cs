@@ -17,6 +17,10 @@ namespace BiomePampa.Infrastructure.Data
         public DbSet<StockMovement> StockMovements => Set<StockMovement>();
         public DbSet<Supplier> Suppliers => Set<Supplier>();
         public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<Employee> Employees => Set<Employee>();
+        public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
+        public DbSet<PaymentPeriod> PaymentPeriods => Set<PaymentPeriod>();
+        public DbSet<Payment> Payments => Set<Payment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -74,6 +74,10 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBatchService, BatchService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IWorkLogService, WorkLogService>();
+builder.Services.AddScoped<IPaymentPeriodService, PaymentPeriodService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
