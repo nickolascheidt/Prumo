@@ -10,5 +10,6 @@ namespace BiomePampa.Application.Services
         Task<WorkLogDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
         Task<IEnumerable<WorkLogDto>> GetByEmployeeIdAsync(Guid employeeId, DateTime? startDate = null, DateTime? endDate = null, CancellationToken cancellationToken = default);
         Task<IEnumerable<WorkLogDto>> GetUnassignedAsync(Guid employeeId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<WorkLogDto>> GetCurrentMonthAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     }
 }

@@ -81,6 +81,20 @@ namespace BiomePampa.Application.Services
             return true;
         }
 
+        public async Task<IEnumerable<WorkLogDto>> GetCurrentMonthAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var workLogs = await _context.WorkLogs
+                .Include(w => w.Employee)
+                .Where(w => w.WorkDate >= startDate.Date && w.WorkDate <= endDate.Date)
+                .ToListAsync(cancellationToken);
+            var workLogDtos = new List<WorkLogDto>();
+            foreach (var log in workLogs)
+            {
+                workLogDtos.Add(await MapToDtoAsync(log, cancellationToken));
+            }
+            return workLogDtos;
+        }
+
         public async Task<WorkLogDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var workLog = await _context.WorkLogs

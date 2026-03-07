@@ -18,6 +18,20 @@ namespace BiomePampa.Api.Controllers
         }
 
         /// <summary>
+        /// Obter registro de horas do mês atual
+        /// </summary>
+        [HttpGet()]
+        [ProducesResponseType(typeof(IEnumerable<WorkLogDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<WorkLogDto>>> GetCurrentMonth(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            CancellationToken cancellationToken)
+        {
+            var workLogs = await _workLogService.GetCurrentMonthAsync(startDate, endDate, cancellationToken);
+            return Ok(workLogs);
+        }
+
+        /// <summary>
         /// Obter registro de horas por ID
         /// </summary>
         [HttpGet("{id}")]
