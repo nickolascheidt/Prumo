@@ -1,5 +1,6 @@
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Application.Services;
+using BiomePampa.Domain.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +22,7 @@ namespace BiomePampa.Api.Controllers
         /// Listar todos os funcionários
         /// </summary>
         [HttpGet]
+        [Authorize(Policy = Permissions.Employees.View)]
         [ProducesResponseType(typeof(IEnumerable<EmployeeDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
         {
@@ -73,7 +75,7 @@ namespace BiomePampa.Api.Controllers
         /// Cadastrar novo funcionário
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Policy = Permissions.Employees.Create)]
         [ProducesResponseType(typeof(EmployeeDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<EmployeeDto>> Create([FromBody] CreateEmployeeDto dto, CancellationToken cancellationToken)
@@ -93,7 +95,7 @@ namespace BiomePampa.Api.Controllers
         /// Atualizar dados do funcionário
         /// </summary>
         [HttpPut("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Policy = Permissions.Employees.Edit)]
         [ProducesResponseType(typeof(EmployeeDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -114,7 +116,7 @@ namespace BiomePampa.Api.Controllers
         /// Desativar funcionário
         /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Policy = Permissions.Employees.Delete)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)

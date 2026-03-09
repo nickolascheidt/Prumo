@@ -1,5 +1,7 @@
 using BiomePampa.Application.DTOs.Auth;
 using BiomePampa.Application.Services;
+using BiomePampa.Domain.Authorization;
+using BiomePampa.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,10 +13,12 @@ namespace BiomePampa.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IPermissionService _permissionService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IPermissionService permissionService)
         {
             _authService = authService;
+            _permissionService = permissionService;
         }
 
         /// <summary>
@@ -82,9 +86,9 @@ namespace BiomePampa.Api.Controllers
         /// </summary>
         [HttpGet("me")]
         [Authorize]
-        [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken)
+        public async Task<ActionResult> GetCurrentUser(CancellationToken cancellationToken)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -94,7 +98,18 @@ namespace BiomePampa.Api.Controllers
             if (user == null)
                 return NotFound();
 
-            return Ok(user);
+            var permissions = await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
+
+            return Ok(new
+            {
+                userId = user.Id,
+                username = user.Email,
+                fullName = user.FullName,
+                roles = user.Roles,
+                permissions = permissions.OrderBy(p => p).ToList(),
+                createdAt = user.CreatedAt,
+                lastLoginAt = user.LastLoginAt
+            });
         }
 
         /// <summary>
@@ -130,6 +145,90 @@ namespace BiomePampa.Api.Controllers
                 return BadRequest(new { message = "Não foi possível alterar a senha. Verifique a senha atual." });
 
             return Ok(new { message = "Senha alterada com sucesso" });
+        }
+
+        /// <summary>
+        /// Atribuir role a um usuário (requer autenticação como Admin)
+        /// </summary>
+        [HttpPost("users/{userId}/roles")]
+        [Authorize(Roles = "Administrador")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> AssignRoleToUser(
+            Guid userId,
+            [FromBody] AssignRoleDto request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _authService.AssignRoleToUserAsync(userId, request.RoleName, cancellationToken);
+                return Ok(new { message = $"Role '{request.RoleName}' atribuída ao usuário com sucesso" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Remover role de um usuário (requer autenticação como Admin)
+        /// </summary>
+        [HttpDelete("users/{userId}/roles/{roleName}")]
+        [Authorize(Roles = "Administrador")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> RemoveRoleFromUser(
+            Guid userId,
+            string roleName,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _authService.RemoveRoleFromUserAsync(userId, roleName, cancellationToken);
+                return Ok(new { message = $"Role '{roleName}' removida do usuário com sucesso" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Obter roles de um usuário específico (requer autenticação como Admin)
+        /// </summary>
+        [HttpGet("users/{userId}/roles")]
+        [Authorize(Roles = "Administrador")]
+        [ProducesResponseType(typeof(UserRolesDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<UserRolesDto>> GetUserRoles(
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var userRoles = await _authService.GetUserRolesAsync(userId, cancellationToken);
+                return Ok(userRoles);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
         }
     }
 }

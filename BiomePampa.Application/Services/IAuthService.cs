@@ -9,5 +9,8 @@ namespace BiomePampa.Application.Services
         Task<UserDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<IEnumerable<UserDto>> GetAllUsersAsync(CancellationToken cancellationToken = default);
         Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDto request, CancellationToken cancellationToken = default);
+        Task AssignRoleToUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
+        Task RemoveRoleFromUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
+        Task<UserRolesDto> GetUserRolesAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }

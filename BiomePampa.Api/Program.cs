@@ -1,12 +1,17 @@
+using BiomePampa.Api.Authorization;
 using BiomePampa.Application.Services;
+using BiomePampa.Domain.Authorization;
 using BiomePampa.Domain.Entities;
+using BiomePampa.Infrastructure.Authorization;
 using BiomePampa.Infrastructure.Data;
 using BiomePampa.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,11 +65,25 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidAudience = builder.Configuration["Jwt:Audience"],
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.Name
     };
 });
 
-builder.Services.AddAuthorization();
+// Configure Authorization with Policies
+builder.Services.AddAuthorization(options =>
+{
+    // Adicionar policies para cada permissão
+    foreach (var permission in Permissions.GetAllPermissions())
+    {
+        options.AddPolicy(permission, policy =>
+            policy.Requirements.Add(new PermissionRequirement(permission)));
+    }
+});
+
+// Register Authorization Handler
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 // Register Repositories
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -78,6 +97,7 @@ builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IWorkLogService, WorkLogService>();
 builder.Services.AddScoped<IPaymentPeriodService, PaymentPeriodService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
