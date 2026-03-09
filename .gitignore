@@ -9,6 +9,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+*.md
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -361,12 +362,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/AUTH-GUIDE.md
 /BiomePampa-Postman-Collection.json
 /manage-migrations.ps1
-/MIGRATIONS-GUIDE.md
-/POSTMAN-TESTING-GUIDE.md
 /quick-start.ps1
-/README-SQLSERVER-MIGRATION.md
-/SETUP_ADMIN.md
-/API_GUIDE.md
