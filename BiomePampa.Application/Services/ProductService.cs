@@ -1,16 +1,24 @@
 using BiomePampa.Application.DTOs.Products;
 using BiomePampa.Domain.Entities;
 using BiomePampa.Infrastructure.Repositories;
+using FluentValidation;
 
 namespace BiomePampa.Application.Services
 {
     public class ProductService : IProductService
     {
         private readonly IRepository<Product> _repository;
+        private readonly IValidator<CreateProductDto> _createValidator;
+        private readonly IValidator<UpdateProductDto> _updateValidator;
 
-        public ProductService(IRepository<Product> repository)
+        public ProductService(
+            IRepository<Product> repository,
+            IValidator<CreateProductDto> createValidator,
+            IValidator<UpdateProductDto> updateValidator)
         {
             _repository = repository;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
         }
 
         public async Task<IEnumerable<ProductDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -27,6 +35,9 @@ namespace BiomePampa.Application.Services
 
         public async Task<ProductDto> CreateAsync(CreateProductDto dto, CancellationToken cancellationToken = default)
         {
+            // Validar DTO
+            await _createValidator.ValidateAndThrowAsync(dto, cancellationToken);
+
             var product = new Product
             {
                 Name = dto.Name,
@@ -46,6 +57,9 @@ namespace BiomePampa.Application.Services
 
         public async Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto dto, CancellationToken cancellationToken = default)
         {
+            // Validar DTO
+            await _updateValidator.ValidateAndThrowAsync(dto, cancellationToken);
+
             var product = await _repository.GetByIdAsync(id, cancellationToken);
             if (product == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");

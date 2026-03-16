@@ -1,29 +1,39 @@
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Domain.Entities;
-using BiomePampa.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using BiomePampa.Infrastructure.Repositories;
+using FluentValidation;
 
 namespace BiomePampa.Application.Services
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IValidator<CreateEmployeeDto> _createValidator;
+        private readonly IValidator<UpdateEmployeeDto> _updateValidator;
 
-        public EmployeeService(ApplicationDbContext context)
+        public EmployeeService(
+            IUnitOfWork unitOfWork,
+            IValidator<CreateEmployeeDto> createValidator,
+            IValidator<UpdateEmployeeDto> updateValidator)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
         }
 
         public async Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto, CancellationToken cancellationToken = default)
         {
-            // Verificar se CPF já existe
-            var existingEmployee = await _context.Employees
-                .FirstOrDefaultAsync(e => e.CPF == dto.CPF, cancellationToken);
+            // Validar DTO
+            await _createValidator.ValidateAndThrowAsync(dto, cancellationToken);
 
-            if (existingEmployee != null)
+            // Verificar se CPF já existe
+            var existingEmployees = await _unitOfWork.Repository<Employee>()
+                .FindAsync(e => e.CPF == dto.CPF, cancellationToken);
+
+            if (existingEmployees.Any())
                 throw new InvalidOperationException("Já existe um funcionário cadastrado com este CPF.");
 
-            var employee = new Domain.Entities.Employee
+            var employee = new Employee
             {
                 FullName = dto.FullName,
                 CPF = dto.CPF,
@@ -40,19 +50,20 @@ namespace BiomePampa.Application.Services
                 BankAgency = dto.BankAgency,
                 HasSignedContract = dto.HasSignedContract,
                 ContractSignedDate = dto.HasSignedContract ? DateTime.UtcNow : null,
-                ApplicationUserId = dto.ApplicationUserId,
-                CreatedAt = DateTime.UtcNow
+                ApplicationUserId = dto.ApplicationUserId
             };
 
-            _context.Employees.Add(employee);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.Repository<Employee>().AddAsync(employee, cancellationToken);
 
             return MapToDto(employee);
         }
 
         public async Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeDto dto, CancellationToken cancellationToken = default)
         {
-            var employee = await _context.Employees.FindAsync(new object[] { id }, cancellationToken);
+            // Validar DTO
+            await _updateValidator.ValidateAndThrowAsync(dto, cancellationToken);
+
+            var employee = await _unitOfWork.Repository<Employee>().GetByIdAsync(id, cancellationToken);
             if (employee == null)
                 throw new KeyNotFoundException("Funcionário não encontrado.");
 
@@ -69,66 +80,51 @@ namespace BiomePampa.Application.Services
             employee.BankAgency = dto.BankAgency;
             employee.HasSignedContract = dto.HasSignedContract;
             employee.TerminationDate = dto.TerminationDate;
-            employee.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.Repository<Employee>().UpdateAsync(employee, cancellationToken);
 
             return MapToDto(employee);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var employee = await _context.Employees.FindAsync(new object[] { id }, cancellationToken);
-            if (employee == null)
-                return false;
-
-            // Soft delete - apenas marcar como inativo
-            employee.IsActive = false;
-            employee.TerminationDate = DateTime.UtcNow;
-            employee.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.Repository<Employee>().DeleteAsync(id, cancellationToken);
             return true;
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var employee = await _context.Employees
-                .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
-
+            var employee = await _unitOfWork.Repository<Employee>().GetByIdAsync(id, cancellationToken);
             return employee == null ? null : MapToDto(employee);
         }
 
         public async Task<EmployeeDto?> GetByCPFAsync(string cpf, CancellationToken cancellationToken = default)
         {
-            var employee = await _context.Employees
-                .FirstOrDefaultAsync(e => e.CPF == cpf, cancellationToken);
+            var employees = await _unitOfWork.Repository<Employee>()
+                .FindAsync(e => e.CPF == cpf, cancellationToken);
 
+            var employee = employees.FirstOrDefault();
             return employee == null ? null : MapToDto(employee);
         }
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
         {
-            var query = _context.Employees.AsQueryable();
+            var employees = await _unitOfWork.Repository<Employee>().GetAllAsync(cancellationToken);
 
             if (!includeInactive)
-                query = query.Where(e => e.IsActive);
+                employees = employees.Where(e => e.IsActive).ToList();
 
-            var employees = await query
-                .OrderBy(e => e.FullName)
-                .ToListAsync(cancellationToken);
-
-            return employees.Select(MapToDto);
+            return employees.OrderBy(e => e.FullName).Select(MapToDto);
         }
 
         public async Task<IEnumerable<EmployeeSummaryDto>> GetSummariesAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
         {
-            var query = _context.Employees.AsQueryable();
+            var employees = await _unitOfWork.Repository<Employee>().GetAllAsync(cancellationToken);
 
             if (!includeInactive)
-                query = query.Where(e => e.IsActive);
+                employees = employees.Where(e => e.IsActive).ToList();
 
-            var employees = await query
+            return employees
                 .OrderBy(e => e.FullName)
                 .Select(e => new EmployeeSummaryDto(
                     e.Id,
@@ -137,13 +133,10 @@ namespace BiomePampa.Application.Services
                     e.IsActive,
                     e.ContractType,
                     e.HourlyRate
-                ))
-                .ToListAsync(cancellationToken);
-
-            return employees;
+                ));
         }
 
-        private static EmployeeDto MapToDto(Domain.Entities.Employee employee)
+        private static EmployeeDto MapToDto(Employee employee)
         {
             return new EmployeeDto(
                 employee.Id,

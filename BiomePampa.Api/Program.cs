@@ -1,16 +1,19 @@
 using BiomePampa.Api.Authorization;
+using BiomePampa.Api.Middleware;
 using BiomePampa.Application.Services;
 using BiomePampa.Domain.Authorization;
 using BiomePampa.Domain.Entities;
 using BiomePampa.Infrastructure.Authorization;
 using BiomePampa.Infrastructure.Data;
 using BiomePampa.Infrastructure.Repositories;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 

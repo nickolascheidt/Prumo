@@ -52,15 +52,8 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto, CancellationToken cancellationToken)
         {
-            try
-            {
-                var product = await _productService.CreateAsync(dto, cancellationToken);
-                return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var product = await _productService.CreateAsync(dto, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
         }
 
         /// <summary>
