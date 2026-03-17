@@ -4,6 +4,7 @@ using BiomePampa.Domain.Authorization;
 using BiomePampa.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace BiomePampa.Api.Controllers
@@ -25,8 +26,10 @@ namespace BiomePampa.Api.Controllers
         /// Login de usuário
         /// </summary>
         [HttpPost("login")]
+        [EnableRateLimiting("public")]
         [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
         {
             try
@@ -44,8 +47,10 @@ namespace BiomePampa.Api.Controllers
         /// Registrar novo usuário (role: Usuario)
         /// </summary>
         [HttpPost("register")]
+        [EnableRateLimiting("public")]
         [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<LoginResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
             try
@@ -86,8 +91,10 @@ namespace BiomePampa.Api.Controllers
         /// </summary>
         [HttpGet("me")]
         [Authorize]
+        [EnableRateLimiting("authenticated")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult> GetCurrentUser(CancellationToken cancellationToken)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
