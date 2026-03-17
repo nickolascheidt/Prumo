@@ -3,7 +3,4 @@
   <Project Path="BiomePampa.Application/BiomePampa.Application.csproj" />
   <Project Path="BiomePampa.Domain/BiomePampa.Domain.csproj" />
   <Project Path="BiomePampa.Infrastructure/BiomePampa.Infrastructure.csproj" />
-  <Project Path="BiomePampa/BiomePampa.Maui.csproj">
-    <Deploy Solution="Debug|*" />
-  </Project>
 </Solution>

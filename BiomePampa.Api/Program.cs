@@ -90,6 +90,10 @@ builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHand
 
 // Register Repositories
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Register FluentValidation Validators
+builder.Services.AddValidatorsFromAssembly(Assembly.Load("BiomePampa.Application"));
 
 // Register Services
 builder.Services.AddScoped<IProductService, ProductService>();
