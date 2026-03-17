@@ -133,10 +133,7 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Register Services
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IBatchService, BatchService>();
-builder.Services.AddScoped<ICustomerService, CustomerService>();
+// Register Services - Foco em Gestão de Funcionários para Safra
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IWorkLogService, WorkLogService>();
