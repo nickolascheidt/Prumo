@@ -54,6 +54,7 @@ namespace BiomePampa.Application.Services
             };
 
             await _unitOfWork.Repository<Employee>().AddAsync(employee, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return MapToDto(employee);
         }
@@ -81,15 +82,20 @@ namespace BiomePampa.Application.Services
             employee.HasSignedContract = dto.HasSignedContract;
             employee.TerminationDate = dto.TerminationDate;
 
-            await _unitOfWork.Repository<Employee>().UpdateAsync(employee, cancellationToken);
+            _unitOfWork.Repository<Employee>().Update(employee);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return MapToDto(employee);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            await _unitOfWork.Repository<Employee>().DeleteAsync(id, cancellationToken);
-            return true;
+            var result = await _unitOfWork.Repository<Employee>().DeleteAsync(id, cancellationToken);
+            if (result)
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            return result;
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

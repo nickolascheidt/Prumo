@@ -28,8 +28,4 @@
     <ProjectReference Include="..\BiomePampa.Domain\BiomePampa.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Controllers\Examples\" />
-  </ItemGroup>
-
 </Project>

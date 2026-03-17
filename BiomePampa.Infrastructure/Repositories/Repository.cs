@@ -34,24 +34,28 @@ namespace BiomePampa.Infrastructure.Repositories
         public virtual async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
         {
             await _dbSet.AddAsync(entity, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
             return entity;
         }
 
-        public virtual async Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
+        public virtual void Update(T entity)
         {
             _dbSet.Update(entity);
-            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public virtual async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        public virtual void Delete(T entity)
+        {
+            entity.IsActive = false;
+            _dbSet.Update(entity);
+        }
+
+        public virtual async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var entity = await GetByIdAsync(id, cancellationToken);
-            if (entity != null)
-            {
-                entity.IsActive = false;
-                await UpdateAsync(entity, cancellationToken);
-            }
+            if (entity == null)
+                return false;
+
+            Delete(entity);
+            return true;
         }
 
         public virtual async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)

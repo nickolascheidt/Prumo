@@ -1,36 +1,46 @@
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Domain.Entities;
 using BiomePampa.Domain.Enums;
-using BiomePampa.Infrastructure.Data;
+using BiomePampa.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace BiomePampa.Application.Services
 {
     public class PaymentService : IPaymentService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public PaymentService(ApplicationDbContext context)
+        public PaymentService(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<PaymentDto> CreateAsync(CreatePaymentDto dto, Guid paidByUserId, CancellationToken cancellationToken = default)
         {
-            var paymentPeriod = await _context.PaymentPeriods
-                .Include(p => p.Employee)
-                .Include(p => p.Payment)
-                .FirstOrDefaultAsync(p => p.Id == dto.PaymentPeriodId, cancellationToken);
+            // Buscar período de pagamento
+            var paymentPeriods = await _unitOfWork.Repository<PaymentPeriod>()
+                .FindAsync(p => p.Id == dto.PaymentPeriodId, cancellationToken);
 
+            var paymentPeriod = paymentPeriods.FirstOrDefault();
             if (paymentPeriod == null)
                 throw new KeyNotFoundException("Período de pagamento não encontrado.");
 
-            if (paymentPeriod.Payment != null)
+            // Verificar se já existe pagamento para este período
+            var existingPayments = await _unitOfWork.Repository<Payment>()
+                .FindAsync(p => p.PaymentPeriodId == dto.PaymentPeriodId, cancellationToken);
+
+            if (existingPayments.Any())
                 throw new InvalidOperationException("Este período já possui um pagamento registrado.");
 
-            var user = await _context.Users.FindAsync(new object[] { paidByUserId }, cancellationToken);
+            // Buscar usuário (ApplicationUser não herda de EntityBase)
+            var user = await _unitOfWork.Context.Users.FindAsync(new object[] { paidByUserId }, cancellationToken);
             if (user == null)
                 throw new KeyNotFoundException("Usuário não encontrado.");
+
+            // Buscar funcionário
+            var employee = await _unitOfWork.Repository<Employee>().GetByIdAsync(paymentPeriod.EmployeeId, cancellationToken);
+            if (employee == null)
+                throw new KeyNotFoundException("Funcionário não encontrado.");
 
             var payment = new Payment
             {
@@ -45,16 +55,18 @@ namespace BiomePampa.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Payments.Add(payment);
+            await _unitOfWork.Repository<Payment>().AddAsync(payment, cancellationToken);
 
             // Atualizar status do período
             paymentPeriod.Status = PaymentStatus.Pago;
             paymentPeriod.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Repository<PaymentPeriod>().Update(paymentPeriod);
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            // Carregar entidades para retorno
             payment.PaidByUser = user;
-            payment.Employee = paymentPeriod.Employee;
+            payment.Employee = employee;
             payment.PaymentPeriod = paymentPeriod;
 
             return MapToDto(payment);
@@ -62,25 +74,29 @@ namespace BiomePampa.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var payment = await _context.Payments
-                .Include(p => p.PaymentPeriod)
-                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-
+            var payment = await _unitOfWork.Repository<Payment>().GetByIdAsync(id, cancellationToken);
             if (payment == null)
                 return false;
 
-            // Reverter status do período
-            payment.PaymentPeriod.Status = PaymentStatus.Pendente;
-            payment.PaymentPeriod.UpdatedAt = DateTime.UtcNow;
+            // Buscar período de pagamento
+            var paymentPeriod = await _unitOfWork.Repository<PaymentPeriod>().GetByIdAsync(payment.PaymentPeriodId, cancellationToken);
+            if (paymentPeriod != null)
+            {
+                // Reverter status do período
+                paymentPeriod.Status = PaymentStatus.Pendente;
+                paymentPeriod.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<PaymentPeriod>().Update(paymentPeriod);
+            }
 
-            _context.Payments.Remove(payment);
-            await _context.SaveChangesAsync(cancellationToken);
+            _unitOfWork.Repository<Payment>().Delete(payment);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             return true;
         }
 
         public async Task<PaymentDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var payment = await _context.Payments
+            var payment = await _unitOfWork.Context.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
                 .Include(p => p.PaymentPeriod)
@@ -91,7 +107,7 @@ namespace BiomePampa.Application.Services
 
         public async Task<IEnumerable<PaymentDto>> GetByEmployeeIdAsync(Guid employeeId, CancellationToken cancellationToken = default)
         {
-            var payments = await _context.Payments
+            var payments = await _unitOfWork.Context.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
                 .Include(p => p.PaymentPeriod)
@@ -104,7 +120,7 @@ namespace BiomePampa.Application.Services
 
         public async Task<IEnumerable<PaymentDto>> GetByPeriodAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
-            var payments = await _context.Payments
+            var payments = await _unitOfWork.Context.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
                 .Include(p => p.PaymentPeriod)
@@ -117,7 +133,7 @@ namespace BiomePampa.Application.Services
 
         public async Task<IEnumerable<PaymentSummaryDto>> GetRecentPaymentsAsync(int count = 10, CancellationToken cancellationToken = default)
         {
-            var payments = await _context.Payments
+            var payments = await _unitOfWork.Context.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
                 .OrderByDescending(p => p.PaymentDate)

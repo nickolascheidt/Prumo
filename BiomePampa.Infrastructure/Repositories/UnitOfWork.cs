@@ -10,6 +10,8 @@ namespace BiomePampa.Infrastructure.Repositories
         private readonly Dictionary<Type, object> _repositories;
         private IDbContextTransaction? _transaction;
 
+        public ApplicationDbContext Context => _context;
+
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;

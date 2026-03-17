@@ -1,18 +1,18 @@
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Domain.Entities;
 using BiomePampa.Domain.Enums;
-using BiomePampa.Infrastructure.Data;
+using BiomePampa.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace BiomePampa.Application.Services
 {
     public class PaymentPeriodService : IPaymentPeriodService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public PaymentPeriodService(ApplicationDbContext context)
+        public PaymentPeriodService(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<PaymentPeriodDto> CreateAsync(CreatePaymentPeriodDto dto, CancellationToken cancellationToken = default)
@@ -22,19 +22,19 @@ namespace BiomePampa.Application.Services
 
         public async Task<PaymentPeriodDto> GenerateForEmployeeAsync(Guid employeeId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
-            var employee = await _context.Employees.FindAsync(new object[] { employeeId }, cancellationToken);
+            var employee = await _unitOfWork.Repository<Employee>().GetByIdAsync(employeeId, cancellationToken);
             if (employee == null)
                 throw new KeyNotFoundException("Funcionário não encontrado.");
 
             // Verificar se já existe período para estas datas
-            var existingPeriod = await _context.PaymentPeriods
-                .FirstOrDefaultAsync(p => p.EmployeeId == employeeId && p.StartDate == startDate.Date && p.EndDate == endDate.Date, cancellationToken);
+            var existingPeriods = await _unitOfWork.Repository<PaymentPeriod>()
+                .FindAsync(p => p.EmployeeId == employeeId && p.StartDate == startDate.Date && p.EndDate == endDate.Date, cancellationToken);
 
-            if (existingPeriod != null)
+            if (existingPeriods.Any())
                 throw new InvalidOperationException("Já existe um período de pagamento para estas datas.");
 
             // Buscar trabalhos não atribuídos no período
-            var workLogs = await _context.WorkLogs
+            var workLogs = await _unitOfWork.Context.WorkLogs
                 .Where(w => w.EmployeeId == employeeId 
                     && w.WorkDate >= startDate.Date 
                     && w.WorkDate <= endDate.Date
@@ -58,49 +58,53 @@ namespace BiomePampa.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.PaymentPeriods.Add(paymentPeriod);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.Repository<PaymentPeriod>().AddAsync(paymentPeriod, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             // Associar os work logs ao período
             foreach (var workLog in workLogs)
             {
                 workLog.PaymentPeriodId = paymentPeriod.Id;
+                _unitOfWork.Repository<WorkLog>().Update(workLog);
             }
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return await MapToDtoAsync(paymentPeriod, cancellationToken);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var paymentPeriod = await _context.PaymentPeriods
-                .Include(p => p.Payment)
-                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-
+            var paymentPeriod = await _unitOfWork.Repository<PaymentPeriod>().GetByIdAsync(id, cancellationToken);
             if (paymentPeriod == null)
                 return false;
 
-            if (paymentPeriod.Payment != null)
+            // Verificar se há pagamento
+            var payments = await _unitOfWork.Repository<Payment>()
+                .FindAsync(p => p.PaymentPeriodId == id, cancellationToken);
+
+            if (payments.Any())
                 throw new InvalidOperationException("Não é possível excluir um período que já possui pagamento registrado.");
 
             // Desassociar work logs
-            var workLogs = await _context.WorkLogs
+            var workLogs = await _unitOfWork.Context.WorkLogs
                 .Where(w => w.PaymentPeriodId == id)
                 .ToListAsync(cancellationToken);
 
             foreach (var workLog in workLogs)
             {
                 workLog.PaymentPeriodId = null;
+                _unitOfWork.Repository<WorkLog>().Update(workLog);
             }
 
-            _context.PaymentPeriods.Remove(paymentPeriod);
-            await _context.SaveChangesAsync(cancellationToken);
+            _unitOfWork.Repository<PaymentPeriod>().Delete(paymentPeriod);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             return true;
         }
 
         public async Task<PaymentPeriodDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var paymentPeriod = await _context.PaymentPeriods
+            var paymentPeriod = await _unitOfWork.Context.PaymentPeriods
                 .Include(p => p.Employee)
                 .Include(p => p.WorkLogs)
                 .Include(p => p.Payment)
@@ -112,7 +116,7 @@ namespace BiomePampa.Application.Services
 
         public async Task<IEnumerable<PaymentPeriodDto>> GetByEmployeeIdAsync(Guid employeeId, CancellationToken cancellationToken = default)
         {
-            var paymentPeriods = await _context.PaymentPeriods
+            var paymentPeriods = await _unitOfWork.Context.PaymentPeriods
                 .Include(p => p.Employee)
                 .Include(p => p.WorkLogs)
                 .Include(p => p.Payment)
@@ -132,7 +136,7 @@ namespace BiomePampa.Application.Services
 
         public async Task<IEnumerable<PaymentPeriodSummaryDto>> GetByStatusAsync(PaymentStatus status, CancellationToken cancellationToken = default)
         {
-            var paymentPeriods = await _context.PaymentPeriods
+            var paymentPeriods = await _unitOfWork.Context.PaymentPeriods
                 .Include(p => p.Employee)
                 .Where(p => p.Status == status)
                 .OrderBy(p => p.StartDate)
@@ -152,14 +156,15 @@ namespace BiomePampa.Application.Services
 
         public async Task<PaymentPeriodDto> UpdateStatusAsync(Guid id, PaymentStatus status, CancellationToken cancellationToken = default)
         {
-            var paymentPeriod = await _context.PaymentPeriods.FindAsync(new object[] { id }, cancellationToken);
+            var paymentPeriod = await _unitOfWork.Repository<PaymentPeriod>().GetByIdAsync(id, cancellationToken);
             if (paymentPeriod == null)
                 throw new KeyNotFoundException("Período de pagamento não encontrado.");
 
             paymentPeriod.Status = status;
             paymentPeriod.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync(cancellationToken);
+            _unitOfWork.Repository<PaymentPeriod>().Update(paymentPeriod);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return await MapToDtoAsync(paymentPeriod, cancellationToken);
         }
@@ -168,13 +173,13 @@ namespace BiomePampa.Application.Services
         {
             if (paymentPeriod.Employee == null)
             {
-                var employee = await _context.Employees.FindAsync(new object[] { paymentPeriod.EmployeeId }, cancellationToken);
+                var employee = await _unitOfWork.Repository<Employee>().GetByIdAsync(paymentPeriod.EmployeeId, cancellationToken);
                 paymentPeriod.Employee = employee!;
             }
 
             if (paymentPeriod.WorkLogs == null || !paymentPeriod.WorkLogs.Any())
             {
-                paymentPeriod.WorkLogs = await _context.WorkLogs
+                paymentPeriod.WorkLogs = await _unitOfWork.Context.WorkLogs
                     .Where(w => w.PaymentPeriodId == paymentPeriod.Id)
                     .ToListAsync(cancellationToken);
             }
@@ -197,7 +202,7 @@ namespace BiomePampa.Application.Services
             {
                 if (paymentPeriod.Payment.PaidByUser == null)
                 {
-                    var user = await _context.Users.FindAsync(new object[] { paymentPeriod.Payment.PaidByUserId }, cancellationToken);
+                    var user = await _unitOfWork.Context.Users.FindAsync(new object[] { paymentPeriod.Payment.PaidByUserId }, cancellationToken);
                     paymentPeriod.Payment.PaidByUser = user!;
                 }
 
