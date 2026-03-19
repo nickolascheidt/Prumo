@@ -1,5 +1,6 @@
 using BiomePampa.Domain.Authorization;
 using BiomePampa.Domain.Entities;
+using BiomePampa.Infrastructure.Data.Seeders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -137,6 +138,11 @@ namespace BiomePampa.Infrastructure.Data
 
                 await context.SaveChangesAsync();
                 logger.LogInformation($"✓ Permissões atribuídas às roles com sucesso!");
+
+                // Seed de recursos e permissões granulares
+                logger.LogInformation("Inicializando recursos e permissões de UI...");
+                await ResourceSeeder.SeedResourcesAndPermissionsAsync(serviceProvider);
+                logger.LogInformation("✓ Recursos e permissões de UI inicializados!");
 
                 // Verificar se já existe o admin
                 var adminUser = await userManager.FindByEmailAsync("admin@biomepampa.com");

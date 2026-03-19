@@ -22,6 +22,10 @@ namespace BiomePampa.Infrastructure.Data
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
         public DbSet<PermissionAuditLog> PermissionAuditLogs => Set<PermissionAuditLog>();
 
+        // DbSets para Controle de Acesso Baseado em Recursos
+        public DbSet<Resource> Resources => Set<Resource>();
+        public DbSet<ResourcePermission> ResourcePermissions => Set<ResourcePermission>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
