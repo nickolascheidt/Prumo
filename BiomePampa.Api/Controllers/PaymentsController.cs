@@ -1,5 +1,7 @@
+using BiomePampa.Api.Attributes;
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Application.Services;
+using BiomePampa.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -8,7 +10,7 @@ namespace BiomePampa.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize]
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
@@ -22,6 +24,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter pagamento por ID
         /// </summary>
         [HttpGet("{id}")]
+        [RequireResourceAccess("payments", PermissionLevel.Read)]
         [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<PaymentDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -37,6 +40,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter pagamentos por funcionário
         /// </summary>
         [HttpGet("employee/{employeeId}")]
+        [RequireResourceAccess("payments", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PaymentDto>>> GetByEmployeeId(Guid employeeId, CancellationToken cancellationToken)
         {
@@ -48,6 +52,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter pagamentos por período
         /// </summary>
         [HttpGet("period")]
+        [RequireResourceAccess("payments", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PaymentDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PaymentDto>>> GetByPeriod(
             [FromQuery] DateTime startDate,
@@ -62,6 +67,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter pagamentos recentes
         /// </summary>
         [HttpGet("recent")]
+        [RequireResourceAccess("payments", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PaymentSummaryDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PaymentSummaryDto>>> GetRecent([FromQuery] int count = 10, CancellationToken cancellationToken = default)
         {
@@ -73,6 +79,7 @@ namespace BiomePampa.Api.Controllers
         /// Registrar pagamento
         /// </summary>
         [HttpPost]
+        [RequireResourceAccess("payments", PermissionLevel.Write)]
         [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -102,6 +109,7 @@ namespace BiomePampa.Api.Controllers
         /// Excluir pagamento
         /// </summary>
         [HttpDelete("{id}")]
+        [RequireResourceAccess("payments", PermissionLevel.Full)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)

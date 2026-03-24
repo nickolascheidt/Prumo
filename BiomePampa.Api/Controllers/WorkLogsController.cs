@@ -1,5 +1,7 @@
+using BiomePampa.Api.Attributes;
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Application.Services;
+using BiomePampa.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +23,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter registro de horas do mês atual
         /// </summary>
         [HttpGet()]
+        [RequireResourceAccess("work-logs", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<WorkLogDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<WorkLogDto>>> GetCurrentMonth(
             [FromQuery] DateTime startDate,
@@ -35,6 +38,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter registro de horas por ID
         /// </summary>
         [HttpGet("{id}")]
+        [RequireResourceAccess("work-logs", PermissionLevel.Read)]
         [ProducesResponseType(typeof(WorkLogDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<WorkLogDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -50,6 +54,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter registros de horas por funcionário
         /// </summary>
         [HttpGet("employee/{employeeId}")]
+        [RequireResourceAccess("work-logs", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<WorkLogDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<WorkLogDto>>> GetByEmployeeId(
             Guid employeeId,
@@ -65,6 +70,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter registros de horas não atribuídos a períodos
         /// </summary>
         [HttpGet("employee/{employeeId}/unassigned")]
+        [RequireResourceAccess("work-logs", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<WorkLogDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<WorkLogDto>>> GetUnassigned(Guid employeeId, CancellationToken cancellationToken)
         {
@@ -76,6 +82,7 @@ namespace BiomePampa.Api.Controllers
         /// Registrar horas trabalhadas
         /// </summary>
         [HttpPost]
+        [RequireResourceAccess("work-logs", PermissionLevel.Write)]
         [ProducesResponseType(typeof(WorkLogDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -100,6 +107,7 @@ namespace BiomePampa.Api.Controllers
         /// Atualizar registro de horas
         /// </summary>
         [HttpPut("{id}")]
+        [RequireResourceAccess("work-logs", PermissionLevel.Write)]
         [ProducesResponseType(typeof(WorkLogDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -124,7 +132,7 @@ namespace BiomePampa.Api.Controllers
         /// Excluir registro de horas
         /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [RequireResourceAccess("work-logs", PermissionLevel.Full)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

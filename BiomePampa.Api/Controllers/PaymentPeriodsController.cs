@@ -1,3 +1,4 @@
+using BiomePampa.Api.Attributes;
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Application.Services;
 using BiomePampa.Domain.Enums;
@@ -22,6 +23,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter período de pagamento por ID
         /// </summary>
         [HttpGet("{id}")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Read)]
         [ProducesResponseType(typeof(PaymentPeriodDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<PaymentPeriodDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -37,6 +39,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter períodos de pagamento por funcionário
         /// </summary>
         [HttpGet("employee/{employeeId}")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PaymentPeriodDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PaymentPeriodDto>>> GetByEmployeeId(Guid employeeId, CancellationToken cancellationToken)
         {
@@ -48,6 +51,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter períodos de pagamento por status
         /// </summary>
         [HttpGet("status/{status}")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PaymentPeriodSummaryDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PaymentPeriodSummaryDto>>> GetByStatus(PaymentStatus status, CancellationToken cancellationToken)
         {
@@ -59,7 +63,7 @@ namespace BiomePampa.Api.Controllers
         /// Criar período de pagamento
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Administrador")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Write)]
         [ProducesResponseType(typeof(PaymentPeriodDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -84,7 +88,7 @@ namespace BiomePampa.Api.Controllers
         /// Gerar período de pagamento automaticamente para um funcionário
         /// </summary>
         [HttpPost("generate")]
-        [Authorize(Roles = "Administrador")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Write)]
         [ProducesResponseType(typeof(PaymentPeriodDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -113,7 +117,7 @@ namespace BiomePampa.Api.Controllers
         /// Atualizar status do período
         /// </summary>
         [HttpPatch("{id}/status")]
-        [Authorize(Roles = "Administrador")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Write)]
         [ProducesResponseType(typeof(PaymentPeriodDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<PaymentPeriodDto>> UpdateStatus(Guid id, [FromBody] PaymentStatus status, CancellationToken cancellationToken)
@@ -133,7 +137,7 @@ namespace BiomePampa.Api.Controllers
         /// Excluir período de pagamento
         /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [RequireResourceAccess("payment-periods", PermissionLevel.Full)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

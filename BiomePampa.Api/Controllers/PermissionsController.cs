@@ -1,5 +1,7 @@
+using BiomePampa.Api.Attributes;
 using BiomePampa.Domain.Authorization;
 using BiomePampa.Domain.DTOs;
+using BiomePampa.Domain.Enums;
 using BiomePampa.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +11,7 @@ namespace BiomePampa.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize]
     public class PermissionsController : ControllerBase
     {
         private readonly IPermissionService _permissionService;
@@ -23,6 +25,7 @@ namespace BiomePampa.Api.Controllers
         /// Listar todas as permissões disponíveis no sistema
         /// </summary>
         [HttpGet]
+        [RequireResourceAccess("permissions", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PermissionDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PermissionDto>>> GetAllPermissions(CancellationToken cancellationToken)
         {
@@ -42,6 +45,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter permissões de uma role específica
         /// </summary>
         [HttpGet("roles/{roleName}")]
+        [RequireResourceAccess("permissions", PermissionLevel.Read)]
         [ProducesResponseType(typeof(RolePermissionsDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<RolePermissionsDto>> GetRolePermissions(
@@ -63,6 +67,7 @@ namespace BiomePampa.Api.Controllers
         /// Conceder permissão a uma role
         /// </summary>
         [HttpPost("roles/{roleName}/grant")]
+        [RequireResourceAccess("permissions", PermissionLevel.Full)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -99,6 +104,7 @@ namespace BiomePampa.Api.Controllers
         /// Revogar permissão de uma role
         /// </summary>
         [HttpDelete("roles/{roleName}/revoke/{permissionName}")]
+        [RequireResourceAccess("permissions", PermissionLevel.Full)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -136,6 +142,7 @@ namespace BiomePampa.Api.Controllers
         /// Obter histórico de auditoria de mudanças em permissões
         /// </summary>
         [HttpGet("audit")]
+        [RequireResourceAccess("permissions", PermissionLevel.Read)]
         [ProducesResponseType(typeof(IEnumerable<PermissionAuditDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PermissionAuditDto>>> GetAuditLogs(
             [FromQuery] string? roleName = null,
