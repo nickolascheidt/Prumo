@@ -15,10 +15,14 @@ namespace BiomePampa.Api.Controllers
     public class PermissionsController : ControllerBase
     {
         private readonly IPermissionService _permissionService;
+        private readonly ILogger<PermissionsController> _logger;
 
-        public PermissionsController(IPermissionService permissionService)
+        public PermissionsController(
+            IPermissionService permissionService,
+            ILogger<PermissionsController> logger)
         {
             _permissionService = permissionService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -29,14 +33,18 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<PermissionDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<PermissionDto>>> GetAllPermissions(CancellationToken cancellationToken)
         {
+            _logger.LogInformation("Buscando todas as permissões disponíveis");
+
             var permissions = await _permissionService.GetAllPermissionsAsync(cancellationToken);
-            
+
             var permissionDtos = permissions.Select(p => new PermissionDto
             {
                 Id = p.Id,
                 Name = p.Name,
                 Description = p.Description
             });
+
+            _logger.LogInformation("Retornadas {Count} permissões", permissionDtos.Count());
 
             return Ok(permissionDtos);
         }
@@ -52,13 +60,19 @@ namespace BiomePampa.Api.Controllers
             string roleName, 
             CancellationToken cancellationToken)
         {
+            _logger.LogInformation("Buscando permissões da role: {RoleName}", roleName);
+
             try
             {
                 var result = await _permissionService.GetRolePermissionsDetailedAsync(roleName, cancellationToken);
+
+                _logger.LogInformation("Permissões da role {RoleName} retornadas com sucesso", roleName);
+
                 return Ok(result);
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning(ex, "Role não encontrada: {RoleName}", roleName);
                 return NotFound(new { message = ex.Message });
             }
         }
@@ -80,7 +94,14 @@ namespace BiomePampa.Api.Controllers
             var userEmail = GetCurrentUserEmail();
 
             if (userId == Guid.Empty || string.IsNullOrEmpty(userEmail))
+            {
+                _logger.LogWarning("Tentativa de concessão de permissão sem usuário autenticado");
                 return Unauthorized();
+            }
+
+            _logger.LogInformation(
+                "Usuário {UserEmail} concedendo permissão {PermissionName} à role {RoleName}. Razão: {Reason}",
+                userEmail, request.PermissionName, roleName, request.Reason);
 
             try
             {
@@ -92,10 +113,18 @@ namespace BiomePampa.Api.Controllers
                     request.Reason,
                     cancellationToken);
 
+                _logger.LogInformation(
+                    "Permissão {PermissionName} concedida à role {RoleName} por {UserEmail}",
+                    request.PermissionName, roleName, userEmail);
+
                 return Ok(new { message = $"Permissão '{request.PermissionName}' concedida à role '{roleName}' com sucesso" });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogError(ex, 
+                    "Erro ao conceder permissão {PermissionName} à role {RoleName}",
+                    request.PermissionName, roleName);
+
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -118,7 +147,14 @@ namespace BiomePampa.Api.Controllers
             var userEmail = GetCurrentUserEmail();
 
             if (userId == Guid.Empty || string.IsNullOrEmpty(userEmail))
+            {
+                _logger.LogWarning("Tentativa de revogação de permissão sem usuário autenticado");
                 return Unauthorized();
+            }
+
+            _logger.LogInformation(
+                "Usuário {UserEmail} revogando permissão {PermissionName} da role {RoleName}. Razão: {Reason}",
+                userEmail, permissionName, roleName, reason);
 
             try
             {
@@ -130,10 +166,18 @@ namespace BiomePampa.Api.Controllers
                     reason,
                     cancellationToken);
 
+                _logger.LogInformation(
+                    "Permissão {PermissionName} revogada da role {RoleName} por {UserEmail}",
+                    permissionName, roleName, userEmail);
+
                 return Ok(new { message = $"Permissão '{permissionName}' revogada da role '{roleName}' com sucesso" });
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogError(ex,
+                    "Erro ao revogar permissão {PermissionName} da role {RoleName}",
+                    permissionName, roleName);
+
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -149,7 +193,12 @@ namespace BiomePampa.Api.Controllers
             [FromQuery] int take = 100,
             CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation(
+                "Buscando logs de auditoria. RoleName: {RoleName}, Take: {Take}",
+                roleName ?? "Todas", take);
+
             var logs = await _permissionService.GetAuditLogsAsync(roleName, take, cancellationToken);
+
             return Ok(logs);
         }
 
