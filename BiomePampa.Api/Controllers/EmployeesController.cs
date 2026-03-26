@@ -2,6 +2,7 @@ using BiomePampa.Api.Attributes;
 using BiomePampa.Application.DTOs.Employee;
 using BiomePampa.Application.Services;
 using BiomePampa.Domain.Enums;
+using BiomePampa.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,10 +14,15 @@ namespace BiomePampa.Api.Controllers
     public class EmployeesController : ControllerBase
     {
         private readonly IEmployeeService _employeeService;
+        private readonly ICacheService _cacheService;
+        private const string CacheKeyPrefix = "employees";
+        private const string CacheKeyAll = "employees_all";
+        private const string CacheKeySummaries = "employees_summaries";
 
-        public EmployeesController(IEmployeeService employeeService)
+        public EmployeesController(IEmployeeService employeeService, ICacheService cacheService)
         {
             _employeeService = employeeService;
+            _cacheService = cacheService;
         }
 
         /// <summary>
@@ -27,7 +33,14 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<EmployeeDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
         {
-            var employees = await _employeeService.GetAllAsync(includeInactive, cancellationToken);
+            var cacheKey = $"{CacheKeyAll}_{includeInactive}";
+
+            var employees = await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () => await _employeeService.GetAllAsync(includeInactive, cancellationToken),
+                TimeSpan.FromMinutes(5)
+            );
+
             return Ok(employees);
         }
 
@@ -39,7 +52,14 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<EmployeeSummaryDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<EmployeeSummaryDto>>> GetSummaries([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
         {
-            var summaries = await _employeeService.GetSummariesAsync(includeInactive, cancellationToken);
+            var cacheKey = $"{CacheKeySummaries}_{includeInactive}";
+
+            var summaries = await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () => await _employeeService.GetSummariesAsync(includeInactive, cancellationToken),
+                TimeSpan.FromMinutes(5)
+            );
+
             return Ok(summaries);
         }
 
@@ -52,7 +72,14 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<EmployeeDto>> GetById(Guid id, CancellationToken cancellationToken)
         {
-            var employee = await _employeeService.GetByIdAsync(id, cancellationToken);
+            var cacheKey = $"{CacheKeyPrefix}_{id}";
+
+            var employee = await _cacheService.GetOrSetAsync(
+                cacheKey,
+                async () => await _employeeService.GetByIdAsync(id, cancellationToken),
+                TimeSpan.FromMinutes(10)
+            );
+
             if (employee == null)
                 return NotFound();
 
@@ -108,6 +135,9 @@ namespace BiomePampa.Api.Controllers
             try
             {
                 var employee = await _employeeService.UpdateAsync(id, dto, cancellationToken);
+
+                await InvalidateEmployeesCacheAsync(id);
+
                 return Ok(employee);
             }
             catch (KeyNotFoundException)
@@ -129,7 +159,22 @@ namespace BiomePampa.Api.Controllers
             if (!result)
                 return NotFound();
 
+            await InvalidateEmployeesCacheAsync(id);
+
             return NoContent();
+        }
+
+        private async Task InvalidateEmployeesCacheAsync(Guid? employeeId = null)
+        {
+            await _cacheService.RemoveAsync($"{CacheKeyAll}_false");
+            await _cacheService.RemoveAsync($"{CacheKeyAll}_true");
+            await _cacheService.RemoveAsync($"{CacheKeySummaries}_false");
+            await _cacheService.RemoveAsync($"{CacheKeySummaries}_true");
+
+            if (employeeId.HasValue)
+            {
+                await _cacheService.RemoveAsync($"{CacheKeyPrefix}_{employeeId.Value}");
+            }
         }
     }
 }
