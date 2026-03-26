@@ -19,8 +19,4 @@
     <ProjectReference Include="..\BiomePampa.Infrastructure\BiomePampa.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Authorization\" />
-  </ItemGroup>
-
 </Project>
