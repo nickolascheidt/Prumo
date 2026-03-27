@@ -39,7 +39,7 @@ namespace BiomePampa.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new { message = ex.Message }); //
             }
         }
 
