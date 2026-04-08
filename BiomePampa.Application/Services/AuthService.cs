@@ -29,15 +29,23 @@ namespace BiomePampa.Application.Services
             _permissionService = permissionService;
         }
 
+        private int TokenExpirationHours =>
+            int.TryParse(_configuration["Jwt:TokenExpirationHours"], out var hours) ? hours : 8;
+
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null || !user.IsActive)
                 throw new UnauthorizedAccessException("Credenciais inválidas");
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
             if (!result.Succeeded)
+            {
+                if (result.IsLockedOut)
+                    throw new UnauthorizedAccessException("Conta bloqueada temporariamente. Tente novamente mais tarde.");
+
                 throw new UnauthorizedAccessException("Credenciais inválidas");
+            }
 
             // Update last login
             user.LastLoginAt = DateTime.UtcNow;
@@ -48,7 +56,7 @@ namespace BiomePampa.Application.Services
 
             return new LoginResponseDto(
                 token,
-                DateTime.UtcNow.AddHours(8),
+                DateTime.UtcNow.AddHours(TokenExpirationHours),
                 userDto
             );
         }
@@ -84,7 +92,7 @@ namespace BiomePampa.Application.Services
 
             return new LoginResponseDto(
                 token,
-                DateTime.UtcNow.AddHours(8),
+                DateTime.UtcNow.AddHours(TokenExpirationHours),
                 userDto
             );
         }
@@ -201,7 +209,7 @@ namespace BiomePampa.Application.Services
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(8),
+                expires: DateTime.UtcNow.AddHours(TokenExpirationHours),
                 signingCredentials: creds
             );
 

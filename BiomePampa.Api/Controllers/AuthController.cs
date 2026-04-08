@@ -32,15 +32,8 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
         {
-            try
-            {
-                var response = await _authService.LoginAsync(request, cancellationToken);
-                return Ok(response);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
+            var response = await _authService.LoginAsync(request, cancellationToken);
+            return Ok(response);
         }
 
         /// <summary>
@@ -53,15 +46,8 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<LoginResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
-            try
-            {
-                var response = await _authService.RegisterAsync(request, "Usuario", cancellationToken);
-                return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var response = await _authService.RegisterAsync(request, "Usuario", cancellationToken);
+            return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
         }
 
         /// <summary>
@@ -75,15 +61,8 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<LoginResponseDto>> RegisterAdmin([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
-            try
-            {
-                var response = await _authService.RegisterAsync(request, "Administrador", cancellationToken);
-                return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var response = await _authService.RegisterAsync(request, "Administrador", cancellationToken);
+            return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
         }
 
         /// <summary>
@@ -92,10 +71,10 @@ namespace BiomePampa.Api.Controllers
         [HttpGet("me")]
         [Authorize]
         [EnableRateLimiting("authenticated")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CurrentUserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-        public async Task<ActionResult> GetCurrentUser(CancellationToken cancellationToken)
+        public async Task<ActionResult<CurrentUserDto>> GetCurrentUser(CancellationToken cancellationToken)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -107,16 +86,15 @@ namespace BiomePampa.Api.Controllers
 
             var permissions = await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
 
-            return Ok(new
-            {
-                userId = user.Id,
-                username = user.Email,
-                fullName = user.FullName,
-                roles = user.Roles,
-                permissions = permissions.OrderBy(p => p).ToList(),
-                createdAt = user.CreatedAt,
-                lastLoginAt = user.LastLoginAt
-            });
+            return Ok(new CurrentUserDto(
+                user.Id,
+                user.Email,
+                user.FullName,
+                user.Roles,
+                permissions.OrderBy(p => p).ToList(),
+                user.CreatedAt,
+                user.LastLoginAt
+            ));
         }
 
         /// <summary>
@@ -169,19 +147,8 @@ namespace BiomePampa.Api.Controllers
             [FromBody] AssignRoleDto request,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                await _authService.AssignRoleToUserAsync(userId, request.RoleName, cancellationToken);
-                return Ok(new { message = $"Role '{request.RoleName}' atribuída ao usuário com sucesso" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            await _authService.AssignRoleToUserAsync(userId, request.RoleName, cancellationToken);
+            return Ok(new { message = $"Role '{request.RoleName}' atribuída ao usuário com sucesso" });
         }
 
         /// <summary>
@@ -199,19 +166,8 @@ namespace BiomePampa.Api.Controllers
             string roleName,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                await _authService.RemoveRoleFromUserAsync(userId, roleName, cancellationToken);
-                return Ok(new { message = $"Role '{roleName}' removida do usuário com sucesso" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            await _authService.RemoveRoleFromUserAsync(userId, roleName, cancellationToken);
+            return Ok(new { message = $"Role '{roleName}' removida do usuário com sucesso" });
         }
 
         /// <summary>
@@ -227,15 +183,8 @@ namespace BiomePampa.Api.Controllers
             Guid userId,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                var userRoles = await _authService.GetUserRolesAsync(userId, cancellationToken);
-                return Ok(userRoles);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
+            var userRoles = await _authService.GetUserRolesAsync(userId, cancellationToken);
+            return Ok(userRoles);
         }
     }
 }

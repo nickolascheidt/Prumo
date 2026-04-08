@@ -81,6 +81,16 @@ namespace BiomePampa.Infrastructure.Repositories
         {
             _transaction?.Dispose();
             _context.Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_transaction != null)
+                await _transaction.DisposeAsync();
+
+            await _context.DisposeAsync();
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -32,4 +32,14 @@ namespace BiomePampa.Application.DTOs.Auth
         string CurrentPassword,
         string NewPassword
     );
+
+    public record CurrentUserDto(
+        Guid UserId,
+        string Email,
+        string? FullName,
+        IEnumerable<string> Roles,
+        IReadOnlyList<string> Permissions,
+        DateTime CreatedAt,
+        DateTime? LastLoginAt
+    );
 }

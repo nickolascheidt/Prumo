@@ -4,7 +4,6 @@ using BiomePampa.Infrastructure.Data;
 using BiomePampa.Infrastructure.Repositories;
 using BiomePampa.Infrastructure.Services;
 using FluentValidation;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using System.Reflection;
 
 namespace BiomePampa.Api.Configuration;
@@ -25,12 +24,6 @@ public static class DependencyInjectionConfiguration
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IResourcePermissionService, ResourcePermissionService>();
-
-        // Register Cache Service
-        services.AddStackExchangeRedisCache(options =>
-        {
-            options.Configuration = "localhost:6379"; // Update with your Redis configuration
-        });
 
         // Register FluentValidation Validators
         services.AddValidatorsFromAssembly(Assembly.Load("BiomePampa.Application"));
