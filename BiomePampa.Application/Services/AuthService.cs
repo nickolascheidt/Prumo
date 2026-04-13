@@ -181,6 +181,24 @@ namespace BiomePampa.Application.Services
             );
         }
 
+        public async Task<bool> DeleteUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null)
+                return false;
+
+            user.IsActive = false;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Erro ao desativar usuário: {errors}");
+            }
+
+            return true;
+        }
+
         private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);

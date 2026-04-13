@@ -7,7 +7,7 @@ public static class MiddlewareConfiguration
 {
     public static WebApplication ConfigureMiddleware(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
+        if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Demo"))
         {
             app.MapOpenApi();
             app.MapScalarApiReference(options =>

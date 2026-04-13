@@ -264,6 +264,9 @@ namespace BiomePampa.Application.Services
             var userRoles = await _userManager.GetRolesAsync(user);
             if (!userRoles.Any()) return PermissionLevel.None;
 
+            if (userRoles.Contains("Administrador"))
+                return PermissionLevel.Full;
+
             var roleIds = await _context.Roles
                 .Where(r => userRoles.Contains(r.Name!))
                 .Select(r => r.Id)
@@ -290,6 +293,38 @@ namespace BiomePampa.Application.Services
         private async Task<UserPermissionsDto> BuildUserPermissionsDto(ApplicationUser user)
         {
             var userRoles = await _userManager.GetRolesAsync(user);
+
+            if (userRoles.Contains("Administrador"))
+            {
+                var allResources = await _context.Resources
+                    .Where(r => r.IsActive)
+                    .OrderBy(r => r.Module)
+                    .ThenBy(r => r.DisplayOrder)
+                    .ToListAsync();
+
+                var adminAllowed = allResources.Select(r => new ResourceDto
+                {
+                    Id = r.Id,
+                    Code = r.Code,
+                    Name = r.Name,
+                    Description = r.Description,
+                    Module = r.Module,
+                    FrontendRoute = r.FrontendRoute,
+                    Icon = r.Icon,
+                    DisplayOrder = r.DisplayOrder,
+                    UserPermissionLevel = PermissionLevel.Full
+                }).ToList();
+
+                return new UserPermissionsDto
+                {
+                    UserId = user.Id,
+                    Email = user.Email ?? "",
+                    FullName = user.FullName,
+                    Roles = userRoles.ToList(),
+                    AllowedResources = adminAllowed,
+                    ResourcePermissions = adminAllowed.ToDictionary(r => r.Code, _ => PermissionLevel.Full)
+                };
+            }
 
             var roleIds = await _context.Roles
                 .Where(r => userRoles.Contains(r.Name!))

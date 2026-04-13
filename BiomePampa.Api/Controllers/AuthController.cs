@@ -186,5 +186,28 @@ namespace BiomePampa.Api.Controllers
             var userRoles = await _authService.GetUserRolesAsync(userId, cancellationToken);
             return Ok(userRoles);
         }
+
+        /// <summary>
+        /// Desativar usuário (requer autenticação como Admin)
+        /// </summary>
+        [HttpDelete("users/{userId}")]
+        [Authorize(Roles = "Administrador")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> DeleteUser(Guid userId, CancellationToken cancellationToken)
+        {
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(currentUserIdClaim, out var currentUserId) && currentUserId == userId)
+                return BadRequest(new { message = "Não é possível desativar o próprio usuário" });
+
+            var result = await _authService.DeleteUserAsync(userId, cancellationToken);
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
     }
 }

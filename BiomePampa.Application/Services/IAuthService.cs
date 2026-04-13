@@ -12,5 +12,6 @@ namespace BiomePampa.Application.Services
         Task AssignRoleToUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
         Task RemoveRoleFromUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
         Task<UserRolesDto> GetUserRolesAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<bool> DeleteUserAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }

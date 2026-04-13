@@ -1,3 +1,4 @@
+using BiomePampa.Infrastructure.Services;
 using StackExchange.Redis;
 
 namespace BiomePampa.Api.Configuration;
@@ -26,6 +27,8 @@ public static class CacheConfiguration
             services.AddSingleton<IConnectionMultiplexer>(sp =>
                 ConnectionMultiplexer.Connect(redisConnection));
         }
+
+        services.AddScoped<ICacheService, CacheService>();
 
         return services;
     }
