@@ -44,26 +44,39 @@ docker compose -f "$COMPOSE_FILE" up -d
 
 echo -e "${YELLOW}  Aguardando SQL Server ficar pronto...${NC}"
 RETRIES=30
-until docker exec biomepampa-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-    -S localhost -U sa -P "BiomePampa@Demo2025" \
-    -Q "SELECT 1" -b -o /dev/null -C 2>/dev/null; do
-    RETRIES=$((RETRIES - 1))
-    if [ $RETRIES -le 0 ]; then
-        echo -e "${RED}  ✗ SQL Server não iniciou a tempo.${NC}"
-        echo -e "${YELLOW}  Tentando com mssql-tools (versão antiga)...${NC}"
-        # Tenta versão sem 18
-        until docker exec biomepampa-sqlserver /opt/mssql-tools/bin/sqlcmd \
-            -S localhost -U sa -P "BiomePampa@Demo2025" \
-            -Q "SELECT 1" -b -o /dev/null 2>/dev/null; do
-            sleep 2
-        done
+SQLCMD_BIN=""
+until [ $RETRIES -le 0 ]; do
+    if docker exec biomepampa-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+        -S localhost -U sa -P "BiomePampa@Demo2025" \
+        -Q "SELECT 1" -b -o /dev/null -C 2>/dev/null; then
+        SQLCMD_BIN="/opt/mssql-tools18/bin/sqlcmd -C"
+        break
+    elif docker exec biomepampa-sqlserver /opt/mssql-tools/bin/sqlcmd \
+        -S localhost -U sa -P "BiomePampa@Demo2025" \
+        -Q "SELECT 1" -b -o /dev/null 2>/dev/null; then
+        SQLCMD_BIN="/opt/mssql-tools/bin/sqlcmd"
         break
     fi
+    RETRIES=$((RETRIES - 1))
     sleep 2
     echo -e "  Aguardando... ($RETRIES tentativas restantes)"
 done
 
+if [ $RETRIES -le 0 ]; then
+    echo -e "${RED}  ✗ SQL Server não respondeu a tempo. Abortando.${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}  ✓ SQL Server pronto${NC}"
+
+# Pré-criar o banco para evitar falha do Serilog na inicialização da API
+echo -e "${YELLOW}  Criando banco BiomePampaDb (se não existir)...${NC}"
+docker exec biomepampa-sqlserver $SQLCMD_BIN \
+    -S localhost -U sa -P "BiomePampa@Demo2025" \
+    -Q "IF DB_ID('BiomePampaDb') IS NULL CREATE DATABASE BiomePampaDb" -b \
+    && echo -e "${GREEN}  ✓ Banco BiomePampaDb pronto${NC}" \
+    || echo -e "${YELLOW}  Aviso: não foi possível pré-criar o banco (a API tentará criar automaticamente)${NC}"
+
 echo -e "${GREEN}  ✓ Redis pronto${NC}"
 
 # ----------------------------------------------------------
