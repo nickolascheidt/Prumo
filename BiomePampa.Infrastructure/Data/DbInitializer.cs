@@ -24,8 +24,8 @@ namespace BiomePampa.Infrastructure.Data
 
                 logger.LogInformation("=== Iniciando inicialização do banco de dados ===");
 
-                // Garantir que o banco existe
-                await context.Database.EnsureCreatedAsync();
+                // Aplicar migrations pendentes (cria o banco e schema se necessário)
+                await context.Database.MigrateAsync();
                 logger.LogInformation("Banco de dados verificado/criado com sucesso");
 
                 // Criar roles se não existirem

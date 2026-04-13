@@ -68,15 +68,6 @@ if [ $RETRIES -le 0 ]; then
 fi
 
 echo -e "${GREEN}  ✓ SQL Server pronto${NC}"
-
-# Pré-criar o banco para evitar falha do Serilog na inicialização da API
-echo -e "${YELLOW}  Criando banco BiomePampaDb (se não existir)...${NC}"
-docker exec biomepampa-sqlserver $SQLCMD_BIN \
-    -S localhost -U sa -P "BiomePampa@Demo2025" \
-    -Q "IF DB_ID('BiomePampaDb') IS NULL CREATE DATABASE BiomePampaDb" -b \
-    && echo -e "${GREEN}  ✓ Banco BiomePampaDb pronto${NC}" \
-    || echo -e "${YELLOW}  Aviso: não foi possível pré-criar o banco (a API tentará criar automaticamente)${NC}"
-
 echo -e "${GREEN}  ✓ Redis pronto${NC}"
 
 # ----------------------------------------------------------
