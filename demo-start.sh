@@ -92,4 +92,4 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${YELLOW}  Pressione Ctrl+C para encerrar${NC}\n"
 
 cd "$API_DIR"
-ASPNETCORE_ENVIRONMENT=Demo dotnet run --no-build -c Release --urls "http://0.0.0.0:5201"
+ASPNETCORE_ENVIRONMENT=Demo dotnet run --no-build --no-launch-profile -c Release --urls "http://0.0.0.0:5201"
