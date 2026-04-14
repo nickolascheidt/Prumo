@@ -114,6 +114,7 @@ namespace BiomePampa.Api.Controllers
             try
             {
                 var employee = await _employeeService.CreateAsync(dto, cancellationToken);
+                await InvalidateEmployeesCacheAsync();
                 return CreatedAtAction(nameof(GetById), new { id = employee.Id }, employee);
             }
             catch (InvalidOperationException ex)
