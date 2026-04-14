@@ -16,7 +16,12 @@ public static class MiddlewareConfiguration
             });
         }
 
-        app.UseHttpsRedirection();
+        app.UseCors("AppCorsPolicy");
+
+        if (!app.Environment.IsEnvironment("Demo"))
+        {
+            app.UseHttpsRedirection();
+        }
 
         app.UseSerilogRequestLogging(options =>
         {
@@ -26,8 +31,6 @@ public static class MiddlewareConfiguration
                 diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString());
             };
         });
-
-        app.UseCors("AppCorsPolicy");
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
