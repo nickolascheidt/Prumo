@@ -33,7 +33,7 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<EmployeeDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<EmployeeDto>>> GetAll([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
         {
-            var cacheKey = $"{CacheKeyAll}_{includeInactive}";
+            var cacheKey = $"{CacheKeyAll}_{includeInactive.ToString().ToLower()}";
 
             var employees = await _cacheService.GetOrSetAsync(
                 cacheKey,
@@ -52,7 +52,7 @@ namespace BiomePampa.Api.Controllers
         [ProducesResponseType(typeof(IEnumerable<EmployeeSummaryDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<EmployeeSummaryDto>>> GetSummaries([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
         {
-            var cacheKey = $"{CacheKeySummaries}_{includeInactive}";
+            var cacheKey = $"{CacheKeySummaries}_{includeInactive.ToString().ToLower()}";
 
             var summaries = await _cacheService.GetOrSetAsync(
                 cacheKey,
