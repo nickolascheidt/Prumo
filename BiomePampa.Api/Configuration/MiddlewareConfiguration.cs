@@ -1,3 +1,4 @@
+using BiomePampa.Api.Middleware;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -7,6 +8,8 @@ public static class MiddlewareConfiguration
 {
     public static WebApplication ConfigureMiddleware(this WebApplication app)
     {
+        app.UseMiddleware<ExceptionHandlingMiddleware>();
+
         if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Demo"))
         {
             app.MapOpenApi();
