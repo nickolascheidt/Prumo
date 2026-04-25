@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SaaS_BasePlatform.Api/SaaS_BasePlatform.Api.csproj" />
+  <Project Path="SaaS_BasePlatform.Application/SaaS_BasePlatform.Application.csproj" />
+  <Project Path="SaaS_BasePlatform.Domain/SaaS_BasePlatform.Domain.csproj" />
+  <Project Path="SaaS_BasePlatform.Infrastructure/SaaS_BasePlatform.Infrastructure.csproj" />
+  <Project Path="SaaS_BasePlatform.Tests/SaaS_BasePlatform.Tests.csproj" />
+</Solution>

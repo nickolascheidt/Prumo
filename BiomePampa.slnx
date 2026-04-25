@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="BiomePampa.Api/BiomePampa.Api.csproj" />
-  <Project Path="BiomePampa.Application/BiomePampa.Application.csproj" />
-  <Project Path="BiomePampa.Domain/BiomePampa.Domain.csproj" />
-  <Project Path="BiomePampa.Infrastructure/BiomePampa.Infrastructure.csproj" />
-  <Project Path="BiomePampa.Tests/BiomePampa.Tests.csproj" />
-</Solution>
