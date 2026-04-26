@@ -1,6 +1,7 @@
+using NpgsqlTypes;
 using Serilog;
 using Serilog.Events;
-using Serilog.Sinks.MSSqlServer;
+using Serilog.Sinks.PostgreSQL;
 
 namespace SaaS_BasePlatform.Api.Configuration;
 
@@ -32,26 +33,24 @@ public static class LoggingConfiguration
 
             if (!string.IsNullOrEmpty(connectionString) && !context.HostingEnvironment.IsEnvironment("Demo"))
             {
-                var sinkOpts = new MSSqlServerSinkOptions
+                var columnWriters = new Dictionary<string, ColumnWriterBase>
                 {
-                    TableName = "Logs",
-                    SchemaName = "dbo",
-                    AutoCreateSqlTable = true
+                    { "message", new RenderedMessageColumnWriter(NpgsqlDbType.Text) },
+                    { "message_template", new MessageTemplateColumnWriter(NpgsqlDbType.Text) },
+                    { "level", new LevelColumnWriter(true, NpgsqlDbType.Varchar) },
+                    { "raise_date", new TimestampColumnWriter(NpgsqlDbType.TimestampTz) },
+                    { "exception", new ExceptionColumnWriter(NpgsqlDbType.Text) },
+                    { "properties", new LogEventSerializedColumnWriter(NpgsqlDbType.Jsonb) },
+                    { "props_test", new PropertiesColumnWriter(NpgsqlDbType.Jsonb) },
+                    { "user_name", new SinglePropertyColumnWriter("UserName", PropertyWriteMethod.ToString, NpgsqlDbType.Varchar, "l") },
+                    { "client_ip", new SinglePropertyColumnWriter("ClientIp", PropertyWriteMethod.ToString, NpgsqlDbType.Varchar, "l") }
                 };
 
-                var columnOpts = new ColumnOptions();
-                columnOpts.Store.Remove(StandardColumn.Properties);
-                columnOpts.Store.Add(StandardColumn.LogEvent);
-                columnOpts.AdditionalColumns = new[]
-                {
-                    new SqlColumn { ColumnName = "UserName", DataType = System.Data.SqlDbType.NVarChar, DataLength = 256, AllowNull = true },
-                    new SqlColumn { ColumnName = "ClientIp", DataType = System.Data.SqlDbType.NVarChar, DataLength = 50, AllowNull = true }
-                };
-
-                configuration.WriteTo.MSSqlServer(
+                configuration.WriteTo.PostgreSQL(
                     connectionString: connectionString,
-                    sinkOptions: sinkOpts,
-                    columnOptions: columnOpts,
+                    tableName: "logs",
+                    columnOptions: columnWriters,
+                    needAutoCreateTable: true,
                     restrictedToMinimumLevel: LogEventLevel.Information);
             }
         });

@@ -1,63 +1,36 @@
 services:
-  # SQL Server Database
-  db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: biomepampa-db
-    environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=Safra@2025!Strong
-      - MSSQL_PID=Developer
-    ports:
-      - "1433:1433"
-    volumes:
-      - sqlserver-data:/var/opt/mssql
-    networks:
-      - biomepampa-network
-    healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Safra@2025!Strong" -Q "SELECT 1" -C || exit 1
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-
-  # BiomePampa API
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: biomepampa-api
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Server=db;Database=BiomePampaDb;User Id=sa;Password=Safra@2025!Strong;TrustServerCertificate=True;
-      - Jwt__Key=${JWT_KEY:-super-secret-key-change-in-production-minimum-32-characters-required}
-      - Jwt__Issuer=BiomePampa
-      - Jwt__Audience=BiomePampaUsers
-      - Jwt__DurationInMinutes=60
-      - RateLimiting__PermitLimit=100
-      - RateLimiting__Window=60
-      - RateLimiting__QueueLimit=10
-      - Cors__AllowedOrigins__0=http://localhost:4200
-      - Cors__AllowedOrigins__1=https://yourdomain.com
-    ports:
-      - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - biomepampa-network
+  postgres:
+    image: postgres:17-alpine
+    container_name: saasbase-postgres
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: SaaSBasePlatformDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: curl --fail http://localhost:8080/health/ready || exit 1
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 40s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: saasbase-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  sqlserver-data:
-    driver: local
-
-networks:
-  biomepampa-network:
-    driver: bridge
+  postgres-data:
+  redis-data:

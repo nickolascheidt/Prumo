@@ -145,7 +145,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 logger.LogInformation("✓ Recursos e permissões de UI inicializados!");
 
                 // Verificar se já existe o admin
-                var adminUser = await userManager.FindByEmailAsync("admin@SaaS_BasePlatform.com");
+                var adminUser = await userManager.FindByEmailAsync("admin@SBP.com");
                 if (adminUser != null)
                 {
                     logger.LogInformation("✓ Usuário admin já existe.");
@@ -166,8 +166,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 logger.LogInformation("Criando usuário administrador...");
                 adminUser = new ApplicationUser
                 {
-                    UserName = "admin@SaaS_BasePlatform.com",
-                    Email = "admin@SaaS_BasePlatform.com",
+                    UserName = "admin@SBP.com",
+                    Email = "admin@SBP.com",
                     EmailConfirmed = true,
                     FullName = "Administrador do Sistema",
                     IsActive = true,
@@ -181,7 +181,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                     await userManager.AddToRoleAsync(adminUser, "Administrador");
                     logger.LogInformation("✓✓✓ Usuário admin criado com sucesso! ✓✓✓");
                     logger.LogInformation("═══════════════════════════════════════");
-                    logger.LogInformation("  Email: admin@SaaS_BasePlatform.com");
+                    logger.LogInformation("  Email: admin@SBP.com");
                     logger.LogInformation("  Senha: Admin@123");
                     logger.LogInformation("═══════════════════════════════════════");
                 }

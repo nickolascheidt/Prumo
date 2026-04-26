@@ -10,8 +10,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         {
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
 
-            // Usar connection string padrão para migrations
-            optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=SaaSBasePlatform;Trusted_Connection=True;MultipleActiveResultSets=true");
+            // Connection string padrão para migrations (design-time)
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=SaaSBasePlatform;Username=postgres;Password=postgres");
 
             return new ApplicationDbContext(optionsBuilder.Options);
         }
