@@ -16,17 +16,20 @@ namespace SaaS_BasePlatform.Application.Services
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly IPermissionService _permissionService;
+        private readonly ITenantService _tenantService;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration,
-            IPermissionService permissionService)
+            IPermissionService permissionService,
+            ITenantService tenantService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _permissionService = permissionService;
+            _tenantService = tenantService;
         }
 
         private int TokenExpirationHours =>
@@ -51,13 +54,47 @@ namespace SaaS_BasePlatform.Application.Services
             user.LastLoginAt = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
-            var token = await GenerateJwtToken(user);
+            Guid? tenantId = null;
+            if (!string.IsNullOrWhiteSpace(request.TenantSlug))
+            {
+                var tenant = await _tenantService.GetBySlugAsync(request.TenantSlug, cancellationToken);
+                if (tenant == null)
+                    throw new UnauthorizedAccessException("Tenant não encontrado");
+
+                if (!await _tenantService.IsMemberAsync(tenant.Id, user.Id, cancellationToken))
+                    throw new UnauthorizedAccessException("Usuário não pertence a este tenant");
+
+                tenantId = tenant.Id;
+            }
+
+            var token = await GenerateJwtToken(user, tenantId);
             var userDto = await MapToUserDto(user);
 
             return new LoginResponseDto(
                 token,
                 DateTime.UtcNow.AddHours(TokenExpirationHours),
-                userDto
+                userDto,
+                tenantId
+            );
+        }
+
+        public async Task<LoginResponseDto> SelectTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null || !user.IsActive)
+                throw new UnauthorizedAccessException("Usuário inválido");
+
+            if (!await _tenantService.IsMemberAsync(tenantId, userId, cancellationToken))
+                throw new UnauthorizedAccessException("Usuário não pertence a este tenant");
+
+            var token = await GenerateJwtToken(user, tenantId);
+            var userDto = await MapToUserDto(user);
+
+            return new LoginResponseDto(
+                token,
+                DateTime.UtcNow.AddHours(TokenExpirationHours),
+                userDto,
+                tenantId
             );
         }
 
@@ -87,7 +124,7 @@ namespace SaaS_BasePlatform.Application.Services
             // Add role
             await _userManager.AddToRoleAsync(user, roleName);
 
-            var token = await GenerateJwtToken(user);
+            var token = await GenerateJwtToken(user, null);
             var userDto = await MapToUserDto(user);
 
             return new LoginResponseDto(
@@ -199,7 +236,7 @@ namespace SaaS_BasePlatform.Application.Services
             return true;
         }
 
-        private async Task<string> GenerateJwtToken(ApplicationUser user)
+        private async Task<string> GenerateJwtToken(ApplicationUser user, Guid? tenantId)
         {
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -210,6 +247,11 @@ namespace SaaS_BasePlatform.Application.Services
                 new Claim(ClaimTypes.Email, user.Email!),
                 new Claim("FullName", user.FullName ?? string.Empty)
             };
+
+            if (tenantId.HasValue)
+            {
+                claims.Add(new Claim("tenant_id", tenantId.Value.ToString()));
+            }
 
             // Adicionar claims de roles
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));

@@ -1,6 +1,8 @@
+using SaaS_BasePlatform.Api.Authentication;
 using SaaS_BasePlatform.Api.Authorization;
 using SaaS_BasePlatform.Domain.Authorization;
 using SaaS_BasePlatform.Infrastructure.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +23,8 @@ public static class AuthenticationConfiguration
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         })
+        .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+            ApiKeyAuthenticationOptions.DefaultScheme, _ => { })
         .AddJwtBearer(options =>
         {
             options.RequireHttpsMetadata = false;
@@ -47,10 +51,21 @@ public static class AuthenticationConfiguration
     {
         services.AddAuthorization(options =>
         {
+            options.DefaultPolicy = new AuthorizationPolicyBuilder(
+                    JwtBearerDefaults.AuthenticationScheme,
+                    ApiKeyAuthenticationOptions.DefaultScheme)
+                .RequireAuthenticatedUser()
+                .Build();
+
             foreach (var permission in Permissions.GetAllPermissions())
             {
                 options.AddPolicy(permission, policy =>
-                    policy.Requirements.Add(new PermissionRequirement(permission)));
+                {
+                    policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                    policy.AuthenticationSchemes.Add(ApiKeyAuthenticationOptions.DefaultScheme);
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(new PermissionRequirement(permission));
+                });
             }
         });
 

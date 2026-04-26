@@ -1,6 +1,8 @@
 using SaaS_BasePlatform.Application.Services;
+using SaaS_BasePlatform.Domain.Common;
 using SaaS_BasePlatform.Infrastructure.Authorization;
 using SaaS_BasePlatform.Infrastructure.Data;
+using SaaS_BasePlatform.Infrastructure.Multitenancy;
 using SaaS_BasePlatform.Infrastructure.Repositories;
 using SaaS_BasePlatform.Infrastructure.Services;
 using FluentValidation;
@@ -20,6 +22,11 @@ public static class DependencyInjectionConfiguration
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IResourcePermissionService, ResourcePermissionService>();
+
+        // Multi-tenancy
+        services.AddScoped<ITenantContext, TenantContext>();
+        services.AddScoped<ITenantService, TenantService>();
+        services.AddScoped<IApiKeyService, ApiKeyService>();
 
         // Register FluentValidation Validators
         services.AddValidatorsFromAssembly(Assembly.Load("SaaS_BasePlatform.Application"));

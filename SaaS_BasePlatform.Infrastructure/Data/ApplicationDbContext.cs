@@ -1,5 +1,5 @@
+using SaaS_BasePlatform.Domain.Common;
 using SaaS_BasePlatform.Domain.Entities;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,8 +7,16 @@ namespace SaaS_BasePlatform.Infrastructure.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
     {
+        private readonly ITenantContext? _tenantContext;
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
+        }
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ITenantContext tenantContext)
+            : base(options)
+        {
+            _tenantContext = tenantContext;
         }
 
         // DbSets para Controle de Acesso e Permissões
@@ -20,21 +28,60 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         public DbSet<Resource> Resources => Set<Resource>();
         public DbSet<ResourcePermission> ResourcePermissions => Set<ResourcePermission>();
 
+        // Multi-tenancy
+        public DbSet<Tenant> Tenants => Set<Tenant>();
+        public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
+        public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
+            ApplyTenantQueryFilters(modelBuilder);
+        }
+
+        private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
+        {
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                if (!typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
+                    continue;
+
+                var method = typeof(ApplicationDbContext)
+                    .GetMethod(nameof(SetTenantQueryFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                    .MakeGenericMethod(entityType.ClrType);
+                method.Invoke(this, new object[] { modelBuilder });
+            }
+        }
+
+        private void SetTenantQueryFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantScoped
+        {
+            modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
+                _tenantContext == null
+                || !_tenantContext.HasTenant
+                || e.TenantId == _tenantContext.TenantId);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            foreach (var entry in ChangeTracker.Entries<Domain.Common.EntityBase>())
+            foreach (var entry in ChangeTracker.Entries<EntityBase>())
             {
                 if (entry.State == EntityState.Modified)
                 {
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            if (_tenantContext != null && _tenantContext.HasTenant)
+            {
+                foreach (var entry in ChangeTracker.Entries<ITenantScoped>())
+                {
+                    if (entry.State == EntityState.Added && entry.Entity.TenantId == Guid.Empty)
+                    {
+                        entry.Entity.TenantId = _tenantContext.TenantId!.Value;
+                    }
                 }
             }
 

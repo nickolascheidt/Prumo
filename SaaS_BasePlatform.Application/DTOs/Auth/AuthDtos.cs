@@ -2,8 +2,11 @@ namespace SaaS_BasePlatform.Application.DTOs.Auth
 {
     public record LoginRequestDto(
         string Email,
-        string Password
+        string Password,
+        string? TenantSlug = null
     );
+
+    public record SelectTenantRequestDto(Guid TenantId);
 
     public record RegisterRequestDto(
         string Email,
@@ -15,7 +18,8 @@ namespace SaaS_BasePlatform.Application.DTOs.Auth
     public record LoginResponseDto(
         string Token,
         DateTime ExpiresAt,
-        UserDto User
+        UserDto User,
+        Guid? TenantId = null
     );
 
     public record UserDto(

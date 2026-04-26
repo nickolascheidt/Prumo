@@ -36,6 +36,7 @@ public static class MiddlewareConfiguration
         });
         app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseMiddleware<TenantResolutionMiddleware>();
         app.UseAuthorization();
 
         app.MapHealthCheckEndpoints();
