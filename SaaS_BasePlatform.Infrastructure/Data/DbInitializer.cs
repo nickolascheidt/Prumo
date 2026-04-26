@@ -93,56 +93,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                     }
                 }
 
-                // Atribuir permissões às roles
-                logger.LogInformation("Atribuindo permissões às roles...");
-
-                var rolePermissionsConfig = new Dictionary<string, IReadOnlyCollection<string>>
-                {
-                    { "Administrador", Permissions.DefaultRolePermissions.Admin },
-                    { "Funcionario", Permissions.DefaultRolePermissions.Funcionario },
-                    { "Cliente", Permissions.DefaultRolePermissions.Cliente }
-                };
-
-                foreach (var (roleName, permissions) in rolePermissionsConfig)
-                {
-                    var role = await roleManager.FindByNameAsync(roleName);
-                    if (role == null)
-                    {
-                        logger.LogWarning($"Role '{roleName}' não encontrada. Pulando atribuição de permissões.");
-                        continue;
-                    }
-
-                    foreach (var permissionName in permissions)
-                    {
-                        if (!permissionMap.TryGetValue(permissionName, out var permission))
-                        {
-                            logger.LogWarning($"Permissão '{permissionName}' não encontrada no mapa. Pulando.");
-                            continue;
-                        }
-
-                        var existingRolePermission = await context.RolePermissions
-                            .FirstOrDefaultAsync(rp => rp.RoleId == role.Id && rp.PermissionId == permission.Id);
-
-                        if (existingRolePermission == null)
-                        {
-                            var rolePermission = new RolePermission
-                            {
-                                RoleId = role.Id,
-                                PermissionId = permission.Id,
-                                GrantedAt = DateTime.UtcNow
-                            };
-                            context.RolePermissions.Add(rolePermission);
-                        }
-                    }
-                }
-
-                await context.SaveChangesAsync();
-                logger.LogInformation($"✓ Permissões atribuídas às roles com sucesso!");
-
-                // Seed de recursos e permissões granulares
-                logger.LogInformation("Inicializando recursos e permissões de UI...");
-                await ResourceSeeder.SeedResourcesAndPermissionsAsync(serviceProvider);
-                logger.LogInformation("✓ Recursos e permissões de UI inicializados!");
+                // Tenant-scoped role permissions and resources are now seeded per-tenant
+                // via TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
 
                 // Verificar se já existe o admin
                 var adminUser = await userManager.FindByEmailAsync("admin@SBP.com");
@@ -157,6 +109,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                         await userManager.AddToRoleAsync(adminUser, "Administrador");
                         logger.LogInformation("✓ Role Administrador adicionada ao usuário admin");
                     }
+
+                    await EnsureDefaultTenantAsync(context, adminUser, logger);
 
                     logger.LogInformation("=== Inicialização concluída ===");
                     return;
@@ -179,6 +133,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Administrador");
+                    await EnsureDefaultTenantAsync(context, adminUser, logger);
                     logger.LogInformation("✓✓✓ Usuário admin criado com sucesso! ✓✓✓");
                     logger.LogInformation("═══════════════════════════════════════");
                     logger.LogInformation("  Email: admin@SBP.com");
@@ -198,6 +153,55 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
                 logger.LogError(ex, "Erro ao inicializar o banco de dados.");
             }
+        }
+
+        private static async Task EnsureDefaultTenantAsync(
+            ApplicationDbContext context,
+            ApplicationUser owner,
+            ILogger logger)
+        {
+            const string defaultSlug = "default";
+
+            var tenant = await context.Tenants
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(t => t.Slug == defaultSlug);
+
+            if (tenant == null)
+            {
+                tenant = new Tenant
+                {
+                    Name = "Default",
+                    Slug = defaultSlug,
+                    OwnerUserId = owner.Id
+                };
+                context.Tenants.Add(tenant);
+                context.TenantUsers.Add(new TenantUser
+                {
+                    TenantId = tenant.Id,
+                    UserId = owner.Id,
+                    Role = Domain.Enums.TenantRole.Owner
+                });
+                await context.SaveChangesAsync();
+                logger.LogInformation("✓ Tenant 'default' criado para o usuário admin");
+            }
+            else
+            {
+                var membershipExists = await context.TenantUsers
+                    .IgnoreQueryFilters()
+                    .AnyAsync(tu => tu.TenantId == tenant.Id && tu.UserId == owner.Id);
+                if (!membershipExists)
+                {
+                    context.TenantUsers.Add(new TenantUser
+                    {
+                        TenantId = tenant.Id,
+                        UserId = owner.Id,
+                        Role = Domain.Enums.TenantRole.Owner
+                    });
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
         }
     }
 }

@@ -2,8 +2,10 @@ using SaaS_BasePlatform.Domain.Common;
 
 namespace SaaS_BasePlatform.Domain.Entities
 {
-    public class PermissionAuditLog : EntityBase
+    public class PermissionAuditLog : EntityBase, ITenantScoped
     {
+        public Guid TenantId { get; set; }
+
         public Guid RoleId { get; set; }
         public string RoleName { get; set; } = null!;
 

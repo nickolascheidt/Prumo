@@ -10,7 +10,11 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
         {
             builder.ToTable("RolePermissions");
 
-            builder.HasKey(rp => new { rp.RoleId, rp.PermissionId });
+            builder.Property(rp => rp.TenantId).IsRequired();
+
+            builder.HasKey(rp => new { rp.TenantId, rp.RoleId, rp.PermissionId });
+
+            builder.HasIndex(rp => rp.TenantId);
 
             builder.HasOne(rp => rp.Role)
                 .WithMany()

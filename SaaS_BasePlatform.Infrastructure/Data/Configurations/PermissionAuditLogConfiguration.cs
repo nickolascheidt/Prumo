@@ -34,6 +34,9 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
             builder.Property(p => p.Reason)
                 .HasMaxLength(500);
 
+            builder.Property(p => p.TenantId).IsRequired();
+
+            builder.HasIndex(p => p.TenantId);
             builder.HasIndex(p => p.RoleId);
             builder.HasIndex(p => p.PermissionId);
             builder.HasIndex(p => p.PerformedByUserId);

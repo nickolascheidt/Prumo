@@ -256,9 +256,12 @@ namespace SaaS_BasePlatform.Application.Services
             // Adicionar claims de roles
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            // Adicionar claims de permissions
-            var permissions = await _permissionService.GetUserPermissionsAsync(user.Id);
-            claims.AddRange(permissions.Select(permission => new Claim("permission", permission)));
+            // Permissions are tenant-scoped — only emit them when a tenant is selected.
+            if (tenantId.HasValue)
+            {
+                var permissions = await _permissionService.GetUserPermissionsForTenantAsync(user.Id, tenantId.Value);
+                claims.AddRange(permissions.Select(permission => new Claim("permission", permission)));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key não configurada")));

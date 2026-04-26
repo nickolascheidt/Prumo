@@ -6,6 +6,7 @@ namespace SaaS_BasePlatform.Infrastructure.Authorization
     public interface IPermissionService
     {
         Task<IReadOnlyCollection<string>> GetUserPermissionsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyCollection<string>> GetUserPermissionsForTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default);
         Task<IReadOnlyCollection<string>> GetRolePermissionsAsync(string roleName, CancellationToken cancellationToken = default);
 
         Task<IReadOnlyCollection<Permission>> GetAllPermissionsAsync(CancellationToken cancellationToken = default);

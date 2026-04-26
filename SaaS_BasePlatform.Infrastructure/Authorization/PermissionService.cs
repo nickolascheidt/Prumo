@@ -56,6 +56,24 @@ namespace SaaS_BasePlatform.Infrastructure.Authorization
             return permissions;
         }
 
+        public async Task<IReadOnlyCollection<string>> GetUserPermissionsForTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null) return Array.Empty<string>();
+
+            var roleNames = await _userManager.GetRolesAsync(user);
+            if (roleNames.Count == 0) return Array.Empty<string>();
+
+            var permissions = await _context.RolePermissions
+                .IgnoreQueryFilters()
+                .Where(rp => rp.TenantId == tenantId && roleNames.Contains(rp.Role.Name!))
+                .Select(rp => rp.Permission.Name)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            return permissions;
+        }
+
         public async Task<IReadOnlyCollection<Permission>> GetAllPermissionsAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Permissions

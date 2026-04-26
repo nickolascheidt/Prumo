@@ -1,7 +1,11 @@
+using SaaS_BasePlatform.Domain.Common;
+
 namespace SaaS_BasePlatform.Domain.Entities
 {
-    public class RolePermission
+    public class RolePermission : ITenantScoped
     {
+        public Guid TenantId { get; set; }
+
         public Guid RoleId { get; set; }
         public ApplicationRole Role { get; set; } = null!;
 

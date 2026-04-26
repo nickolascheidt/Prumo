@@ -10,7 +10,9 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
         {
             builder.ToTable("ResourcePermissions");
 
-            builder.HasKey(rp => new { rp.RoleId, rp.ResourceId });
+            builder.Property(rp => rp.TenantId).IsRequired();
+
+            builder.HasKey(rp => new { rp.TenantId, rp.RoleId, rp.ResourceId });
 
             builder.Property(rp => rp.Level)
                 .IsRequired()

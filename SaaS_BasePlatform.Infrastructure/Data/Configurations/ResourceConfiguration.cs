@@ -16,7 +16,9 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(100);
 
-            builder.HasIndex(r => r.Code)
+            builder.Property(r => r.TenantId).IsRequired();
+
+            builder.HasIndex(r => new { r.TenantId, r.Code })
                 .IsUnique();
 
             builder.Property(r => r.Name)

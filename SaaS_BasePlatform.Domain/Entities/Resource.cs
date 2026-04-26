@@ -6,8 +6,10 @@ namespace SaaS_BasePlatform.Domain.Entities
     /// Representa um recurso da aplicação (tela, funcionalidade, módulo)
     /// Ex: "WorkLog.Management", "Employee.List", "Reports.Financial"
     /// </summary>
-    public class Resource : EntityBase
+    public class Resource : EntityBase, ITenantScoped
     {
+        public Guid TenantId { get; set; }
+
         /// <summary>
         /// Identificador único do recurso (ex: "WorkLog.Management")
         /// </summary>

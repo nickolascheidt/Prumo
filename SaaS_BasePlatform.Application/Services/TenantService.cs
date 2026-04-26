@@ -3,6 +3,7 @@ using SaaS_BasePlatform.Application.DTOs.Tenants;
 using SaaS_BasePlatform.Domain.Entities;
 using SaaS_BasePlatform.Domain.Enums;
 using SaaS_BasePlatform.Infrastructure.Data;
+using SaaS_BasePlatform.Infrastructure.Data.Seeders;
 
 namespace SaaS_BasePlatform.Application.Services
 {
@@ -44,6 +45,8 @@ namespace SaaS_BasePlatform.Application.Services
             });
 
             await _db.SaveChangesAsync(cancellationToken);
+
+            await TenantBootstrapSeeder.SeedAsync(_db, tenant.Id, cancellationToken);
 
             return new TenantDto(tenant.Id, tenant.Name, tenant.Slug, tenant.OwnerUserId, tenant.CreatedAt);
         }
