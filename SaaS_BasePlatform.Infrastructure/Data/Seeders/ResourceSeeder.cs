@@ -16,70 +16,6 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
             // Definir recursos do sistema
             var resources = new[]
             {
-                // Módulo RH
-                new Resource
-                {
-                    Code = "WorkLog.Management",
-                    Name = "Gestão de Ponto",
-                    Description = "Controle de ponto dos funcionários",
-                    Module = "RH",
-                    FrontendRoute = "/rh/controle-ponto",
-                    Icon = "schedule",
-                    DisplayOrder = 1
-                },
-                new Resource
-                {
-                    Code = "Employee.Management",
-                    Name = "Gestão de Funcionários",
-                    Description = "Cadastro e gerenciamento de funcionários",
-                    Module = "RH",
-                    FrontendRoute = "/rh/funcionarios",
-                    Icon = "people",
-                    DisplayOrder = 2
-                },
-                new Resource
-                {
-                    Code = "Employee.Reports",
-                    Name = "Relatórios de RH",
-                    Description = "Relatórios e dashboards de RH",
-                    Module = "RH",
-                    FrontendRoute = "/rh/relatorios",
-                    Icon = "assessment",
-                    DisplayOrder = 3
-                },
-
-                // Módulo Financeiro/Contabilidade
-                new Resource
-                {
-                    Code = "Payment.Management",
-                    Name = "Gestão de Pagamentos",
-                    Description = "Controle de pagamentos e folha",
-                    Module = "Financeiro",
-                    FrontendRoute = "/financeiro/pagamentos",
-                    Icon = "payments",
-                    DisplayOrder = 10
-                },
-                new Resource
-                {
-                    Code = "Payment.Reports",
-                    Name = "Relatórios Financeiros",
-                    Description = "Relatórios e balanços financeiros",
-                    Module = "Financeiro",
-                    FrontendRoute = "/financeiro/relatorios",
-                    Icon = "bar_chart",
-                    DisplayOrder = 11
-                },
-                new Resource
-                {
-                    Code = "PaymentPeriod.Management",
-                    Name = "Períodos de Pagamento",
-                    Description = "Gestão de períodos de pagamento",
-                    Module = "Financeiro",
-                    FrontendRoute = "/financeiro/periodos",
-                    Icon = "date_range",
-                    DisplayOrder = 12
-                },
-
                 // Módulo Administrativo
                 new Resource
                 {
@@ -153,10 +89,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
 
         private static async Task ConfigureDefaultPermissionsAsync(ApplicationDbContext context)
         {
-            // Buscar roles
+            // Buscar role de administrador
             var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Administrador");
-            var rhRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "RH");
-            var contabilidadeRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Contabilidade");
 
             if (adminRole == null) return;
 
@@ -175,59 +109,6 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
                         ResourceId = resource.Id,
                         Level = PermissionLevel.Full
                     });
-                }
-            }
-
-            // RH tem acesso ao módulo RH e Dashboard
-            if (rhRole != null)
-            {
-                var rhResources = await context.Resources
-                    .Where(r => r.Module == "RH" || r.Code == "Dashboard.Main")
-                    .ToListAsync();
-
-                foreach (var resource in rhResources)
-                {
-                    var exists = await context.ResourcePermissions
-                        .AnyAsync(rp => rp.RoleId == rhRole.Id && rp.ResourceId == resource.Id);
-
-                    if (!exists)
-                    {
-                        context.ResourcePermissions.Add(new ResourcePermission
-                        {
-                            RoleId = rhRole.Id,
-                            ResourceId = resource.Id,
-                            Level = PermissionLevel.Full
-                        });
-                    }
-                }
-            }
-
-            // Contabilidade tem acesso ao módulo Financeiro e Dashboard
-            if (contabilidadeRole != null)
-            {
-                var financeResources = await context.Resources
-                    .Where(r => r.Module == "Financeiro" || r.Code == "Dashboard.Main")
-                    .ToListAsync();
-
-                foreach (var resource in financeResources)
-                {
-                    var exists = await context.ResourcePermissions
-                        .AnyAsync(rp => rp.RoleId == contabilidadeRole.Id && rp.ResourceId == resource.Id);
-
-                    if (!exists)
-                    {
-                        // Contabilidade pode ver relatórios com acesso Full, mas pagamentos apenas Read
-                        var level = resource.Code.Contains("Reports") 
-                            ? PermissionLevel.Full 
-                            : PermissionLevel.Read;
-
-                        context.ResourcePermissions.Add(new ResourcePermission
-                        {
-                            RoleId = contabilidadeRole.Id,
-                            ResourceId = resource.Id,
-                            Level = level
-                        });
-                    }
                 }
             }
 

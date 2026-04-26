@@ -11,12 +11,6 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         {
         }
 
-        // DbSets para Gestão de Funcionários para Safra
-        public DbSet<Employee> Employees => Set<Employee>();
-        public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
-        public DbSet<PaymentPeriod> PaymentPeriods => Set<PaymentPeriod>();
-        public DbSet<Payment> Payments => Set<Payment>();
-
         // DbSets para Controle de Acesso e Permissões
         public DbSet<Permission> Permissions => Set<Permission>();
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();

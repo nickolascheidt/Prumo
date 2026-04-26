@@ -25,4 +25,8 @@
     <ProjectReference Include="..\SaaS_BasePlatform.Domain\SaaS_BasePlatform.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Validators\" />
+  </ItemGroup>
+
 </Project>

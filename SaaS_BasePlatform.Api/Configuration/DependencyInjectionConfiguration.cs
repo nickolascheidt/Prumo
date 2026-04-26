@@ -18,10 +18,6 @@ public static class DependencyInjectionConfiguration
 
         // Register Services
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IEmployeeService, EmployeeService>();
-        services.AddScoped<IWorkLogService, WorkLogService>();
-        services.AddScoped<IPaymentPeriodService, PaymentPeriodService>();
-        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IResourcePermissionService, ResourcePermissionService>();
 

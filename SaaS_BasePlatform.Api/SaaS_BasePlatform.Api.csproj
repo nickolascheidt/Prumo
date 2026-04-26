@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Controllers\Examples\**" />
+    <Content Remove="Controllers\Examples\**" />
+    <EmbeddedResource Remove="Controllers\Examples\**" />
+    <None Remove="Controllers\Examples\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="SERILOG_GUIDE.md" />
   </ItemGroup>
 
@@ -36,10 +43,6 @@
     <ProjectReference Include="..\SaaS_BasePlatform.Application\SaaS_BasePlatform.Application.csproj" />
     <ProjectReference Include="..\SaaS_BasePlatform.Infrastructure\SaaS_BasePlatform.Infrastructure.csproj" />
     <ProjectReference Include="..\SaaS_BasePlatform.Domain\SaaS_BasePlatform.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Controllers\Examples\" />
   </ItemGroup>
 
 </Project>
