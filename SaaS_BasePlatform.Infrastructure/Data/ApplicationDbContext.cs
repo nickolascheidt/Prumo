@@ -33,6 +33,10 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
+        // Accounts Payable (Contas a Pagar)
+        public DbSet<AccountsPayableCategory> AccountsPayableCategories => Set<AccountsPayableCategory>();
+        public DbSet<AccountsPayableEntry> AccountsPayableEntries => Set<AccountsPayableEntry>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

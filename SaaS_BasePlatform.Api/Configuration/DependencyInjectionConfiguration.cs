@@ -28,6 +28,9 @@ public static class DependencyInjectionConfiguration
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<IApiKeyService, ApiKeyService>();
 
+        // Accounts Payable
+        services.AddScoped<IAccountsPayableService, AccountsPayableService>();
+
         // Register FluentValidation Validators
         services.AddValidatorsFromAssembly(Assembly.Load("SaaS_BasePlatform.Application"));
 
