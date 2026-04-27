@@ -19,12 +19,12 @@ public static class MiddlewareConfiguration
             });
         }
 
-        app.UseCors("AppCorsPolicy");
-
-        if (!app.Environment.IsEnvironment("Demo"))
+        if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Demo"))
         {
             app.UseHttpsRedirection();
         }
+
+        app.UseCors("AppCorsPolicy");
 
         app.UseSerilogRequestLogging(options =>
         {
