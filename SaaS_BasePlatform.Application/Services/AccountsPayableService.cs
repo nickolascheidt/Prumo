@@ -182,7 +182,7 @@ namespace SaaS_BasePlatform.Application.Services
                 TenantId = tenantId,
                 Description = request.Description.Trim(),
                 Amount = request.Amount,
-                DueDate = request.DueDate,
+                DueDate = ToUtc(request.DueDate),
                 CategoryId = category.Id,
                 Status = AccountsPayableStatus.Pending,
                 PaymentMethod = request.PaymentMethod,
@@ -215,7 +215,7 @@ namespace SaaS_BasePlatform.Application.Services
 
             entry.Description = request.Description.Trim();
             entry.Amount = request.Amount;
-            entry.DueDate = request.DueDate;
+            entry.DueDate = ToUtc(request.DueDate);
             entry.CategoryId = category.Id;
             entry.PaymentMethod = request.PaymentMethod;
             entry.SupplierName = string.IsNullOrWhiteSpace(request.SupplierName) ? null : request.SupplierName.Trim();
@@ -337,7 +337,7 @@ namespace SaaS_BasePlatform.Application.Services
                     TenantId = tenantId,
                     Description = line.Description.Trim(),
                     Amount = line.Amount,
-                    DueDate = line.DueDate,
+                    DueDate = ToUtc(line.DueDate),
                     Category = category,
                     Status = AccountsPayableStatus.Pending,
                     PaymentMethod = line.PaymentMethod,
@@ -372,8 +372,10 @@ namespace SaaS_BasePlatform.Application.Services
                 .IgnoreQueryFilters()
                 .Where(e => e.TenantId == tenantId);
 
-            if (query.From.HasValue) baseQuery = baseQuery.Where(e => e.DueDate >= query.From.Value);
-            if (query.To.HasValue) baseQuery = baseQuery.Where(e => e.DueDate <= query.To.Value);
+            var from = ToUtc(query.From);
+            var to = ToUtc(query.To);
+            if (from.HasValue) baseQuery = baseQuery.Where(e => e.DueDate >= from.Value);
+            if (to.HasValue) baseQuery = baseQuery.Where(e => e.DueDate <= to.Value);
 
             var statusGroups = await baseQuery
                 .GroupBy(e => e.Status)
@@ -456,8 +458,10 @@ namespace SaaS_BasePlatform.Application.Services
                 .IgnoreQueryFilters()
                 .Where(e => e.TenantId == tenantId);
 
-            if (query.From.HasValue) q = q.Where(e => e.DueDate >= query.From.Value);
-            if (query.To.HasValue) q = q.Where(e => e.DueDate <= query.To.Value);
+            var from = ToUtc(query.From);
+            var to = ToUtc(query.To);
+            if (from.HasValue) q = q.Where(e => e.DueDate >= from.Value);
+            if (to.HasValue) q = q.Where(e => e.DueDate <= to.Value);
             if (query.Status.HasValue) q = q.Where(e => e.Status == query.Status.Value);
             if (query.CategoryId.HasValue) q = q.Where(e => e.CategoryId == query.CategoryId.Value);
             if (query.PaymentMethod.HasValue) q = q.Where(e => e.PaymentMethod == query.PaymentMethod.Value);
@@ -494,6 +498,16 @@ namespace SaaS_BasePlatform.Application.Services
                 _ => q.OrderBy(e => e.DueDate)
             };
         }
+
+        private static DateTime ToUtc(DateTime value) =>
+            value.Kind switch
+            {
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            };
+
+        private static DateTime? ToUtc(DateTime? value) => value.HasValue ? ToUtc(value.Value) : null;
 
         private static void ValidateEntryFields(string description, decimal amount)
         {
