@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using SaaS_BasePlatform.Api.Configuration;
 using Serilog;
 
@@ -11,7 +12,9 @@ try
 
     builder.Host.ConfigureSerilog();
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
     builder.Services.AddCacheConfiguration(builder.Configuration);
     builder.Services.AddAuthenticationConfiguration(builder.Configuration);
