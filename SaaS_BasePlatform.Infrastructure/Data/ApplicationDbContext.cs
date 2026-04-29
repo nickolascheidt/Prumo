@@ -37,6 +37,12 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         public DbSet<AccountsPayableCategory> AccountsPayableCategories => Set<AccountsPayableCategory>();
         public DbSet<AccountsPayableEntry> AccountsPayableEntries => Set<AccountsPayableEntry>();
 
+        // General Ledger
+        public DbSet<Account> Accounts => Set<Account>();
+        public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+        public DbSet<JournalLine> JournalLines => Set<JournalLine>();
+        public DbSet<TenantGlSettings> TenantGlSettings => Set<TenantGlSettings>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
