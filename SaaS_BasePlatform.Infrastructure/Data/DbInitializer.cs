@@ -202,6 +202,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
             }
 
             await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
+            await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
         }
     }
 }
