@@ -16,7 +16,7 @@ namespace SaaS_BasePlatform.Application.Services
         Task<EntryDto?> GetEntryAsync(Guid tenantId, Guid entryId, CancellationToken cancellationToken = default);
         Task<EntryDto> CreateEntryAsync(Guid tenantId, Guid createdByUserId, CreateEntryRequestDto request, CancellationToken cancellationToken = default);
         Task<EntryDto> UpdateEntryAsync(Guid tenantId, Guid entryId, UpdateEntryRequestDto request, CancellationToken cancellationToken = default);
-        Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, MarkPaidRequestDto request, CancellationToken cancellationToken = default);
+        Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, Guid paidByUserId, MarkPaidRequestDto request, CancellationToken cancellationToken = default);
         Task<EntryDto> CancelEntryAsync(Guid tenantId, Guid entryId, CancelEntryRequestDto request, CancellationToken cancellationToken = default);
 
         // Bulk

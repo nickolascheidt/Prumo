@@ -31,6 +31,12 @@ public static class DependencyInjectionConfiguration
         // Accounts Payable
         services.AddScoped<IAccountsPayableService, AccountsPayableService>();
 
+        // General Ledger
+        services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IJournalService, JournalService>();
+        services.AddScoped<ITenantGlSettingsService, TenantGlSettingsService>();
+        services.AddScoped<IGlPostingService, GlPostingService>();
+
         // Register FluentValidation Validators
         services.AddValidatorsFromAssembly(Assembly.Load("SaaS_BasePlatform.Application"));
 

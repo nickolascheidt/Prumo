@@ -15,10 +15,12 @@ namespace SaaS_BasePlatform.Application.Services
         private const int MaxBulkLines = 500;
 
         private readonly ApplicationDbContext _db;
+        private readonly IGlPostingService _glPosting;
 
-        public AccountsPayableService(ApplicationDbContext db)
+        public AccountsPayableService(ApplicationDbContext db, IGlPostingService glPosting)
         {
-            _db = db;
+            _db        = db;
+            _glPosting = glPosting;
         }
 
         // ---------- Categories ----------
@@ -227,7 +229,7 @@ namespace SaaS_BasePlatform.Application.Services
                 ?? throw new InvalidOperationException("Failed to read updated entry.");
         }
 
-        public async Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, MarkPaidRequestDto request, CancellationToken cancellationToken = default)
+        public async Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, Guid paidByUserId, MarkPaidRequestDto request, CancellationToken cancellationToken = default)
         {
             var entry = await _db.AccountsPayableEntries
                 .IgnoreQueryFilters()
@@ -236,6 +238,10 @@ namespace SaaS_BasePlatform.Application.Services
 
             entry.MarkPaid(request.PaidAt, request.PaymentMethod);
             await _db.SaveChangesAsync(cancellationToken);
+
+            await _glPosting.PostApPaymentAsync(
+                tenantId, entry.Id, entry.Description,
+                entry.Amount, request.PaidAt, paidByUserId, cancellationToken);
 
             return await GetEntryAsync(tenantId, entry.Id, cancellationToken)
                 ?? throw new InvalidOperationException("Failed to read updated entry.");
