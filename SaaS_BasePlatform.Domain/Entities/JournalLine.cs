@@ -2,6 +2,7 @@ using SaaS_BasePlatform.Domain.Enums;
 
 namespace SaaS_BasePlatform.Domain.Entities
 {
+    // Intentionally not EntityBase: journal lines are immutable accounting records.
     public class JournalLine
     {
         public Guid Id { get; set; } = Guid.NewGuid();

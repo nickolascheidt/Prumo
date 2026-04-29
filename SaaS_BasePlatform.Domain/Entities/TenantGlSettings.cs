@@ -1,5 +1,6 @@
 namespace SaaS_BasePlatform.Domain.Entities
 {
+    // Intentionally not EntityBase: PK is TenantId (1:1 with Tenant), not an independent Guid.
     public class TenantGlSettings
     {
         public Guid TenantId { get; set; }

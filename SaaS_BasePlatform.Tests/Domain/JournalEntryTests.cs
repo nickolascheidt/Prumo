@@ -56,4 +56,12 @@ public class JournalEntryTests
 
         Assert.Null(ex);
     }
+
+    [Fact]
+    public void ValidateBalance_WithEmptyList_ThrowsInvalidOperationException()
+    {
+        var lines = new List<JournalLine>();
+
+        Assert.Throws<InvalidOperationException>(() => JournalEntry.ValidateBalance(lines));
+    }
 }
