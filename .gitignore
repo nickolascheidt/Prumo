@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.md
+!docs/**/*.md
 
 # Secrets and sensitive configuration files
 **/appsettings.*.local.json
