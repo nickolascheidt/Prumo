@@ -104,7 +104,7 @@ namespace SaaS_BasePlatform.Api.Controllers
         {
             if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
-            var entry = await _service.MarkEntryPaidAsync(tenantId, id, request, ct);
+            var entry = await _service.MarkEntryPaidAsync(tenantId, id, CurrentUserId, request, ct);
             return Ok(entry);
         }
 
