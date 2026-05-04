@@ -25,8 +25,8 @@ namespace SaaS_BasePlatform.Application.Services
                 .IgnoreQueryFilters()
                 .Where(e => e.TenantId == tenantId);
 
-            if (query.From.HasValue) q = q.Where(e => e.Date >= query.From.Value);
-            if (query.To.HasValue)   q = q.Where(e => e.Date <= query.To.Value);
+            if (query.From.HasValue) q = q.Where(e => e.Date >= DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc));
+            if (query.To.HasValue)   q = q.Where(e => e.Date <= DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc));
             if (!string.IsNullOrEmpty(query.SourceModule))
                 q = q.Where(e => e.SourceModule == query.SourceModule);
 
@@ -139,8 +139,8 @@ namespace SaaS_BasePlatform.Application.Services
                 .Include(l => l.JournalEntry)
                 .Where(l => l.AccountId == accountId && l.JournalEntry.TenantId == tenantId);
 
-            if (from.HasValue) query = query.Where(l => l.JournalEntry.Date >= from.Value);
-            if (to.HasValue)   query = query.Where(l => l.JournalEntry.Date <= to.Value);
+            if (from.HasValue) query = query.Where(l => l.JournalEntry.Date >= DateTime.SpecifyKind(from.Value, DateTimeKind.Utc));
+            if (to.HasValue)   query = query.Where(l => l.JournalEntry.Date <= DateTime.SpecifyKind(to.Value, DateTimeKind.Utc));
 
             var rawLines = await query
                 .OrderBy(l => l.JournalEntry.Date)

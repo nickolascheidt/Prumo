@@ -95,6 +95,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
 
                 // Tenant-scoped role permissions and resources are now seeded per-tenant
                 // via TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
+                await EnsureTenantBootstrapAsync(context, logger);
 
                 // Verificar se já existe o admin
                 var adminUser = await userManager.FindByEmailAsync("admin@SBP.com");
@@ -203,6 +204,23 @@ namespace SaaS_BasePlatform.Infrastructure.Data
 
             await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
             await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
+        }
+
+        private static async Task EnsureTenantBootstrapAsync(
+            ApplicationDbContext context,
+            ILogger logger)
+        {
+            var tenantIds = await context.Tenants
+                .IgnoreQueryFilters()
+                .Select(t => t.Id)
+                .ToListAsync();
+
+            foreach (var tenantId in tenantIds)
+            {
+                await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenantId);
+            }
+
+            logger.LogInformation("✓ Bootstrap de recursos/permissoes reaplicado para {Count} tenant(s)", tenantIds.Count);
         }
     }
 }

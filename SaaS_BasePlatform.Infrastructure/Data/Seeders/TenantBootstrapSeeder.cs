@@ -63,6 +63,26 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
                 FrontendRoute = "/dashboard",
                 Icon = "dashboard",
                 DisplayOrder = 0
+            },
+            new()
+            {
+                Code = "ChartOfAccounts.Management",
+                Name = "Plano de Contas",
+                Description = "Cadastro e gerenciamento do plano de contas",
+                Module = "Financeiro",
+                FrontendRoute = "/finance/chart-of-accounts",
+                Icon = "account_tree",
+                DisplayOrder = 29
+            },
+            new()
+            {
+                Code = "GeneralLedger.Management",
+                Name = "Razao Geral",
+                Description = "Consulta e gerenciamento de lancamentos contabeis do razao geral",
+                Module = "Financeiro",
+                FrontendRoute = "/finance/general-ledger",
+                Icon = "menu_book",
+                DisplayOrder = 30
             }
         };
 
