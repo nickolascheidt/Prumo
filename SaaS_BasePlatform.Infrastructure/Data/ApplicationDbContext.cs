@@ -43,6 +43,12 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         public DbSet<JournalLine> JournalLines => Set<JournalLine>();
         public DbSet<TenantGlSettings> TenantGlSettings => Set<TenantGlSettings>();
 
+        // HR Module
+        public DbSet<Employee> Employees => Set<Employee>();
+        public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
+        public DbSet<PaymentPeriod> PaymentPeriods => Set<PaymentPeriod>();
+        public DbSet<Payment> Payments => Set<Payment>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
