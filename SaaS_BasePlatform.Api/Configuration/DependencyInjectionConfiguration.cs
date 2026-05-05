@@ -37,6 +37,12 @@ public static class DependencyInjectionConfiguration
         services.AddScoped<ITenantGlSettingsService, TenantGlSettingsService>();
         services.AddScoped<IGlPostingService, GlPostingService>();
 
+        // HR Module
+        services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<IWorkLogService, WorkLogService>();
+        services.AddScoped<IPaymentPeriodService, PaymentPeriodService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+
         // Register FluentValidation Validators
         services.AddValidatorsFromAssembly(Assembly.Load("SaaS_BasePlatform.Application"));
 
