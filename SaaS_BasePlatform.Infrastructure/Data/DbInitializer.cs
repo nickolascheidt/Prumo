@@ -45,8 +45,11 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 var rolesConfig = new Dictionary<string, string>
                 {
                     { "Administrador", "Acesso total ao sistema" },
-                    { "Funcionario", "Acesso para funcionários do sistema" },
-                    { "Cliente", "Acesso para clientes" }
+                    { "Funcionario",   "Acesso para funcionários do sistema" },
+                    { "Cliente",       "Acesso para clientes" },
+                    { "RH",            "Acesso ao módulo de Recursos Humanos" },
+                    { "Financeiro",    "Acesso ao módulo Financeiro" },
+                    { "ContasAPagar",  "Acesso ao módulo de Contas a Pagar" }
                 };
 
                 foreach (var (roleName, description) in rolesConfig)
