@@ -83,7 +83,57 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
                 FrontendRoute = "/finance/general-ledger",
                 Icon = "menu_book",
                 DisplayOrder = 30
-            }
+            },
+            new()
+            {
+                Code = "HR.Employees",
+                Name = "Funcionários",
+                Description = "Gestão de funcionários",
+                Module = "RH",
+                FrontendRoute = "/hr/employees",
+                Icon = "badge",
+                DisplayOrder = 40
+            },
+            new()
+            {
+                Code = "HR.WorkLogs",
+                Name = "Horas Trabalhadas",
+                Description = "Registro de horas",
+                Module = "RH",
+                FrontendRoute = "/hr/worklogs",
+                Icon = "schedule",
+                DisplayOrder = 41
+            },
+            new()
+            {
+                Code = "HR.Payments",
+                Name = "Pagamentos RH",
+                Description = "Pagamentos de funcionários",
+                Module = "RH",
+                FrontendRoute = "/hr/payments",
+                Icon = "payments",
+                DisplayOrder = 42
+            },
+            new()
+            {
+                Code = "HR.PaymentPeriods",
+                Name = "Períodos de Pagamento",
+                Description = "Períodos gerados para pagamento",
+                Module = "RH",
+                FrontendRoute = "/hr/periodos",
+                Icon = "event_note",
+                DisplayOrder = 43
+            },
+            new()
+            {
+                Code = "AccountsPayable.Entries",
+                Name = "Contas a Pagar",
+                Description = "Lançamentos de contas a pagar",
+                Module = "ContasAPagar",
+                FrontendRoute = "/accounts-payable",
+                Icon = "request_quote",
+                DisplayOrder = 50
+            },
         };
 
         public static async Task SeedAsync(ApplicationDbContext db, Guid tenantId, CancellationToken cancellationToken = default)
@@ -125,8 +175,11 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
             var rolePermissionConfig = new Dictionary<string, IReadOnlyCollection<string>>
             {
                 { "Administrador", Permissions.DefaultRolePermissions.Admin },
-                { "Funcionario",  Permissions.DefaultRolePermissions.Funcionario },
-                { "Cliente",      Permissions.DefaultRolePermissions.Cliente }
+                { "Funcionario",   Permissions.DefaultRolePermissions.Funcionario },
+                { "Cliente",       Permissions.DefaultRolePermissions.Cliente },
+                { "RH",            Permissions.DefaultRolePermissions.RH },
+                { "Financeiro",    Permissions.DefaultRolePermissions.Financeiro },
+                { "ContasAPagar",  Permissions.DefaultRolePermissions.ContasAPagar }
             };
 
             foreach (var (roleName, perms) in rolePermissionConfig)
@@ -191,6 +244,48 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
 
                 await db.SaveChangesAsync(cancellationToken);
             }
+
+            // Module roles: each gets Full access only to their own module's resources
+            var moduleRoleResourceMap = new Dictionary<string, string>
+            {
+                { "RH",           "RH" },
+                { "Financeiro",   "Financeiro" },
+                { "ContasAPagar", "ContasAPagar" }
+            };
+
+            foreach (var (roleName, moduleName) in moduleRoleResourceMap)
+            {
+                if (!rolesByName.TryGetValue(roleName, out var moduleRoleId)) continue;
+
+                var moduleResources = await db.Resources
+                    .IgnoreQueryFilters()
+                    .Where(r => r.TenantId == tenantId && r.Module == moduleName)
+                    .Select(r => r.Id)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var resourceId in moduleResources)
+                {
+                    var exists = await db.ResourcePermissions
+                        .IgnoreQueryFilters()
+                        .AnyAsync(rp =>
+                            rp.TenantId == tenantId &&
+                            rp.RoleId == moduleRoleId &&
+                            rp.ResourceId == resourceId, cancellationToken);
+
+                    if (!exists)
+                    {
+                        db.ResourcePermissions.Add(new ResourcePermission
+                        {
+                            TenantId   = tenantId,
+                            RoleId     = moduleRoleId,
+                            ResourceId = resourceId,
+                            Level      = PermissionLevel.Full
+                        });
+                    }
+                }
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
         }
     }
 }

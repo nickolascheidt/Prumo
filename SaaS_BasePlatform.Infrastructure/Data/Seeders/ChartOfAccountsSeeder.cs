@@ -28,6 +28,12 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
             new("5",     "Despesas",                        AccountType.Expense,   false, null),
             new("5.1",   "Despesas Operacionais",           AccountType.Expense,   true,  "5"),
             new("5.2",   "Custo dos Produtos/Serviços",     AccountType.Expense,   true,  "5"),
+            new("2.1.3", "Salários a Pagar",          AccountType.Liability, true,  "2.1"),
+            new("2.1.4", "Encargos Sociais a Pagar",  AccountType.Liability, true,  "2.1"),
+            new("5.1.1", "Despesas com Pessoal",      AccountType.Expense,   true,  "5.1"),
+            new("5.1.2", "Despesas Administrativas",  AccountType.Expense,   true,  "5.1"),
+            new("5.1.3", "Despesas Operacionais",     AccountType.Expense,   true,  "5.1"),
+            new("5.1.4", "Despesas com Fornecedores", AccountType.Expense,   true,  "5.1"),
         };
 
         public static async Task SeedAsync(
@@ -68,7 +74,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
                 {
                     TenantId                        = tenantId,
                     DefaultCashAccountId            = seeded["1.1.1"],
-                    DefaultAccountsPayableAccountId = seeded["2.1.1"]
+                    DefaultAccountsPayableAccountId = seeded["2.1.1"],
+                    DefaultExpenseAccountId         = seeded["5.1.4"]
                 });
                 await db.SaveChangesAsync(ct);
             }

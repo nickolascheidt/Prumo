@@ -61,6 +61,23 @@ namespace SaaS_BasePlatform.Domain.Authorization
             public const string ViewReports = "stock.view_reports";
         }
 
+        public static class Finance
+        {
+            public const string All    = "finance.*";
+            public const string View   = "finance.view";
+            public const string Manage = "finance.manage";
+        }
+
+        public static class AccountsPayable
+        {
+            public const string All              = "accounts_payable.*";
+            public const string View             = "accounts_payable.view";
+            public const string Create           = "accounts_payable.create";
+            public const string Edit             = "accounts_payable.edit";
+            public const string Delete           = "accounts_payable.delete";
+            public const string ManageCategories = "accounts_payable.manage_categories";
+        }
+
         /// <summary>
         /// Retorna todas as permissões do sistema
         /// </summary>
@@ -102,7 +119,18 @@ namespace SaaS_BasePlatform.Domain.Authorization
                 // Stock
                 Stock.View,
                 Stock.Manage,
-                Stock.ViewReports
+                Stock.ViewReports,
+
+                // Finance
+                Finance.View,
+                Finance.Manage,
+
+                // AccountsPayable
+                AccountsPayable.View,
+                AccountsPayable.Create,
+                AccountsPayable.Edit,
+                AccountsPayable.Delete,
+                AccountsPayable.ManageCategories,
             };
         }
 
@@ -163,6 +191,24 @@ namespace SaaS_BasePlatform.Domain.Authorization
             {
                 // Apenas visualizar produtos
                 Products.View
+            };
+
+            public static IReadOnlyCollection<string> RH => new[]
+            {
+                Employees.View, Employees.Create, Employees.Edit, Employees.Delete, Employees.ManagePayments,
+                WorkLogs.View,  WorkLogs.Create,  WorkLogs.Edit,  WorkLogs.Delete,
+                Payments.View,  Payments.Create,  Payments.Delete, Payments.ViewReports
+            };
+
+            public static IReadOnlyCollection<string> Financeiro => new[]
+            {
+                Finance.View, Finance.Manage
+            };
+
+            public static IReadOnlyCollection<string> ContasAPagar => new[]
+            {
+                AccountsPayable.View,   AccountsPayable.Create, AccountsPayable.Edit,
+                AccountsPayable.Delete, AccountsPayable.ManageCategories
             };
         }
     }

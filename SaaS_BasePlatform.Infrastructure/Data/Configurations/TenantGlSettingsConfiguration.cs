@@ -27,6 +27,11 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
                 .WithMany()
                 .HasForeignKey(s => s.DefaultAccountsPayableAccountId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(s => s.DefaultExpenseAccount)
+                .WithMany()
+                .HasForeignKey(s => s.DefaultExpenseAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

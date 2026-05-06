@@ -9,5 +9,7 @@ namespace SaaS_BasePlatform.Domain.Entities
         public Account? DefaultCashAccount { get; set; }
         public Guid? DefaultAccountsPayableAccountId { get; set; }
         public Account? DefaultAccountsPayableAccount { get; set; }
+        public Guid? DefaultExpenseAccountId { get; set; }
+        public Account? DefaultExpenseAccount { get; set; }
     }
 }
