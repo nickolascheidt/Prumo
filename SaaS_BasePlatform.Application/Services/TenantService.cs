@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using SaaS_BasePlatform.Application.DTOs.Auth;
 using SaaS_BasePlatform.Application.DTOs.Tenants;
 using SaaS_BasePlatform.Domain.Entities;
 using SaaS_BasePlatform.Domain.Enums;
@@ -142,6 +143,39 @@ namespace SaaS_BasePlatform.Application.Services
             if (user == null || !user.IsActive)
                 return null;
             return new UserLookupDto(user.Id, user.Email!, user.FullName);
+        }
+
+        public async Task<TenantMemberDto> CreateAndAddMemberAsync(
+            Guid tenantId, CreateTenantUserDto dto, CancellationToken ct = default)
+        {
+            var existing = await _userManager.FindByEmailAsync(dto.Email.Trim().ToLowerInvariant());
+            if (existing != null)
+                throw new InvalidOperationException($"A user with email '{dto.Email}' already exists.");
+
+            var user = new ApplicationUser
+            {
+                UserName = dto.Email.Trim().ToLowerInvariant(),
+                Email = dto.Email.Trim().ToLowerInvariant(),
+                FullName = dto.FullName,
+                PhoneNumber = dto.Phone,
+                IsActive = true
+            };
+
+            var createResult = await _userManager.CreateAsync(user, dto.Password);
+            if (!createResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(e => e.Description)));
+
+            var roleResult = await _userManager.AddToRoleAsync(user, "Usuario");
+            if (!roleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
+                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+            }
+
+            _db.TenantUsers.Add(new TenantUser { TenantId = tenantId, UserId = user.Id, Role = dto.Role });
+            await _db.SaveChangesAsync(ct);
+
+            return new TenantMemberDto(user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow);
         }
 
         public async Task UpdateMemberRoleAsync(

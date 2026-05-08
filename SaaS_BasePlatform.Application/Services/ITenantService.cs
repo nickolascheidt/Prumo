@@ -1,3 +1,4 @@
+using SaaS_BasePlatform.Application.DTOs.Auth;
 using SaaS_BasePlatform.Application.DTOs.Tenants;
 using SaaS_BasePlatform.Domain.Enums;
 
@@ -15,6 +16,7 @@ namespace SaaS_BasePlatform.Application.Services
         Task<bool> IsMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
         Task<TenantRole?> GetUserRoleAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
         Task<UserLookupDto?> LookupUserByEmailAsync(string email, CancellationToken ct = default);
+        Task<TenantMemberDto> CreateAndAddMemberAsync(Guid tenantId, CreateTenantUserDto dto, CancellationToken ct = default);
         Task UpdateMemberRoleAsync(Guid tenantId, Guid userId, TenantRole newRole, CancellationToken ct = default);
     }
 }
