@@ -84,6 +84,20 @@ namespace SaaS_BasePlatform.Api.Controllers
             return NoContent();
         }
 
+        [HttpPost("{tenantId:guid}/users")]
+        [ProducesResponseType(typeof(TenantMemberDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<TenantMemberDto>> CreateUser(
+            Guid tenantId, [FromBody] CreateTenantUserDto request, CancellationToken ct)
+        {
+            var role = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
+            if (role is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
+
+            var member = await _tenantService.CreateAndAddMemberAsync(tenantId, request, ct);
+            return StatusCode(StatusCodes.Status201Created, member);
+        }
+
         [HttpDelete("{tenantId:guid}/members/{userId:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> RemoveMember(Guid tenantId, Guid userId, CancellationToken ct)
