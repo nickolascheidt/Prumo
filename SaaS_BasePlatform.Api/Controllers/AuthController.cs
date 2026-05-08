@@ -111,6 +111,17 @@ namespace SaaS_BasePlatform.Api.Controllers
             return Ok(users);
         }
 
+        [HttpGet("users/lookup")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserLookupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UserLookupDto>> LookupUserByEmail(
+            [FromQuery] string email, CancellationToken cancellationToken)
+        {
+            var result = await _authService.LookupUserByEmailAsync(email, cancellationToken);
+            return result == null ? NotFound() : Ok(result);
+        }
+
         /// <summary>
         /// Alterar senha
         /// </summary>

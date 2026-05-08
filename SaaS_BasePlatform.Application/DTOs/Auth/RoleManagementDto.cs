@@ -16,4 +16,10 @@ namespace SaaS_BasePlatform.Application.DTOs.Auth
         string FullName,
         IEnumerable<string> Roles
     );
+
+    public record UserLookupDto(
+        Guid UserId,
+        string Email,
+        string? FullName
+    );
 }
