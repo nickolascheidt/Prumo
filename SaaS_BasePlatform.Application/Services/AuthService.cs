@@ -293,5 +293,12 @@ namespace SaaS_BasePlatform.Application.Services
                 user.LastLoginAt
             );
         }
+
+        public async Task<UserLookupDto?> LookupUserByEmailAsync(string email, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return null;
+            return new UserLookupDto(user.Id, user.Email!, user.FullName);
+        }
     }
 }

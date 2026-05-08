@@ -14,5 +14,6 @@ namespace SaaS_BasePlatform.Application.Services
         Task RemoveRoleFromUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
         Task<UserRolesDto> GetUserRolesAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<bool> DeleteUserAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<UserLookupDto?> LookupUserByEmailAsync(string email, CancellationToken cancellationToken = default);
     }
 }
