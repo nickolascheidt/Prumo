@@ -14,5 +14,7 @@ namespace SaaS_BasePlatform.Application.Services
         Task RemoveMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
         Task<bool> IsMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
         Task<TenantRole?> GetUserRoleAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
+        Task<TenantMemberDto> CreateAndAddMemberAsync(
+            Guid tenantId, CreateTenantUserDto dto, CancellationToken cancellationToken = default);
     }
 }
