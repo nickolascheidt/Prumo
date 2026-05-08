@@ -26,4 +26,11 @@ namespace SaaS_BasePlatform.Application.DTOs.Tenants
         string? FullName,
         TenantRole Role,
         DateTime JoinedAt);
+
+    public record CreateTenantUserDto(
+        string Email,
+        string Password,
+        string FullName,
+        string? PhoneNumber,
+        TenantRole Role);
 }
