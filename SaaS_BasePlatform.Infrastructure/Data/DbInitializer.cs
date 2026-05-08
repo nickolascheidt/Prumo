@@ -28,12 +28,28 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 await context.Database.MigrateAsync();
                 logger.LogInformation("Banco de dados verificado/criado com sucesso");
 
+                // One-time cleanup: remove legacy "User" role if it exists
+                var legacyUserRole = await roleManager.FindByNameAsync("User");
+                if (legacyUserRole != null)
+                {
+                    var legacyRps = context.RolePermissions
+                        .IgnoreQueryFilters()
+                        .Where(rp => rp.RoleId == legacyUserRole.Id);
+                    context.RolePermissions.RemoveRange(legacyRps);
+                    await context.SaveChangesAsync();
+                    await roleManager.DeleteAsync(legacyUserRole);
+                    logger.LogInformation("✓ Role legada 'User' removida");
+                }
+
                 // Criar roles se não existirem
                 var rolesConfig = new Dictionary<string, string>
                 {
                     { "Administrador", "Acesso total ao sistema" },
-                    { "Funcionario", "Acesso para funcionários do sistema" },
-                    { "Cliente", "Acesso para clientes" }
+                    { "Funcionario",   "Acesso para funcionários do sistema" },
+                    { "Cliente",       "Acesso para clientes" },
+                    { "RH",            "Acesso ao módulo de Recursos Humanos" },
+                    { "Financeiro",    "Acesso ao módulo Financeiro" },
+                    { "ContasAPagar",  "Acesso ao módulo de Contas a Pagar" }
                 };
 
                 foreach (var (roleName, description) in rolesConfig)
@@ -60,7 +76,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                     }
                     else
                     {
-                        logger.LogInformation($"✓ Role '{roleName}' já existe");
+                        logger.LogDebug($"✓ Role '{roleName}' já existe");
                     }
                 }
 
@@ -101,7 +117,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 var adminUser = await userManager.FindByEmailAsync("admin@SBP.com");
                 if (adminUser != null)
                 {
-                    logger.LogInformation("✓ Usuário admin já existe.");
+                    logger.LogDebug("✓ Usuário admin já existe.");
 
                     // Verificar se tem a role
                     var hasRole = await userManager.IsInRoleAsync(adminUser, "Administrador");

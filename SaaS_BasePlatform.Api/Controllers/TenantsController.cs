@@ -108,5 +108,32 @@ namespace SaaS_BasePlatform.Api.Controllers
             await _tenantService.RemoveMemberAsync(tenantId, userId, ct);
             return NoContent();
         }
+
+        [HttpGet("users/lookup")]
+        [ProducesResponseType(typeof(UserLookupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UserLookupDto>> LookupUser(
+            [FromQuery] string email, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return BadRequest("email query parameter is required.");
+
+            var user = await _tenantService.LookupUserByEmailAsync(email, ct);
+            return user == null ? NotFound() : Ok(user);
+        }
+
+        [HttpPut("{tenantId:guid}/members/{userId:guid}/role")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateMemberRole(
+            Guid tenantId, Guid userId, [FromBody] UpdateMemberRoleDto request, CancellationToken ct)
+        {
+            var callerRole = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
+            if (callerRole is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
+
+            await _tenantService.UpdateMemberRoleAsync(tenantId, userId, request.Role, ct);
+            return NoContent();
+        }
     }
 }

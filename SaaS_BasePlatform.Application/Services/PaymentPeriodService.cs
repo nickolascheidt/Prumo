@@ -92,6 +92,18 @@ namespace SaaS_BasePlatform.Application.Services
                 .ToListAsync(ct);
         }
 
+        public async Task<IReadOnlyList<PaymentPeriodSummaryDto>> ListAllByTenantAsync(
+            Guid tenantId, CancellationToken ct = default)
+        {
+            var periods = await _db.PaymentPeriods
+                .IgnoreQueryFilters()
+                .Include(p => p.Employee)
+                .Where(p => p.Employee.TenantId == tenantId)
+                .OrderByDescending(p => p.StartDate)
+                .ToListAsync(ct);
+            return periods.Select(p => ToSummaryDto(p)).ToList();
+        }
+
         public async Task UpdateStatusAsync(
             Guid tenantId, Guid periodId, PaymentStatus status, CancellationToken ct = default)
         {

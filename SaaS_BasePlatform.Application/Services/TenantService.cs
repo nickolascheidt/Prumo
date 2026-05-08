@@ -136,39 +136,30 @@ namespace SaaS_BasePlatform.Application.Services
             return membership?.Role;
         }
 
-        public async Task<TenantMemberDto> CreateAndAddMemberAsync(
-            Guid tenantId, CreateTenantUserDto dto, CancellationToken cancellationToken = default)
+        public async Task<UserLookupDto?> LookupUserByEmailAsync(string email, CancellationToken ct = default)
         {
-            var existing = await _userManager.FindByEmailAsync(dto.Email);
-            if (existing != null)
-                throw new InvalidOperationException($"A user with email '{dto.Email}' already exists.");
+            var user = await _userManager.FindByEmailAsync(email.Trim().ToLowerInvariant());
+            if (user == null || !user.IsActive)
+                return null;
+            return new UserLookupDto(user.Id, user.Email!, user.FullName);
+        }
 
-            var user = new ApplicationUser
-            {
-                UserName = dto.Email,
-                Email = dto.Email,
-                FullName = dto.FullName,
-                PhoneNumber = dto.PhoneNumber,
-                EmailConfirmed = true,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
+        public async Task UpdateMemberRoleAsync(
+            Guid tenantId, Guid userId, TenantRole newRole, CancellationToken ct = default)
+        {
+            var member = await _db.TenantUsers
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, ct)
+                ?? throw new KeyNotFoundException("Member not found.");
 
-            var createResult = await _userManager.CreateAsync(user, dto.Password);
-            if (!createResult.Succeeded)
-                throw new InvalidOperationException(
-                    string.Join("; ", createResult.Errors.Select(e => e.Description)));
+            if (member.Role == TenantRole.Owner)
+                throw new InvalidOperationException("Cannot change the Owner's role.");
 
-            var roleResult = await _userManager.AddToRoleAsync(user, "Usuario");
-            if (!roleResult.Succeeded)
-            {
-                await _userManager.DeleteAsync(user);
-                throw new InvalidOperationException(
-                    string.Join("; ", roleResult.Errors.Select(e => e.Description)));
-            }
-            await AddMemberAsync(tenantId, user.Id, dto.Role, cancellationToken);
+            if (newRole == TenantRole.Owner)
+                throw new InvalidOperationException("Cannot promote a member to Owner.");
 
-            return new TenantMemberDto(user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow);
+            member.Role = newRole;
+            await _db.SaveChangesAsync(ct);
         }
     }
 }

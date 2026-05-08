@@ -31,6 +31,16 @@ namespace SaaS_BasePlatform.Api.Controllers
         private static bool CanAccess(TenantRole? role) => role.HasValue;
         private static bool CanManage(TenantRole? role) => role is TenantRole.Owner or TenantRole.Admin;
 
+        [HttpGet("/api/tenants/{tenantId:guid}/payment-periods")]
+        [ProducesResponseType(typeof(IReadOnlyList<PaymentPeriodSummaryDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<IReadOnlyList<PaymentPeriodSummaryDto>>> ListAll(
+            Guid tenantId, CancellationToken ct)
+        {
+            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
+            return Ok(await _service.ListAllByTenantAsync(tenantId, ct));
+        }
+
         [HttpGet]
         [ProducesResponseType(typeof(IReadOnlyList<PaymentPeriodSummaryDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]

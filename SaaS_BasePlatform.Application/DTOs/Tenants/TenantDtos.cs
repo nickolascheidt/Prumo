@@ -27,14 +27,7 @@ namespace SaaS_BasePlatform.Application.DTOs.Tenants
         TenantRole Role,
         DateTime JoinedAt);
 
-    public record CreateTenantUserDto(
-        string Email,
-        string Password,
-        string FullName,
-        string? PhoneNumber,
-        TenantRole Role)
-    {
-        public override string ToString() =>
-            $"CreateTenantUserDto {{ Email = {Email}, FullName = {FullName}, Role = {Role} }}";
-    }
+    public record UserLookupDto(Guid UserId, string Email, string? FullName);
+
+    public record UpdateMemberRoleDto(TenantRole Role);
 }
