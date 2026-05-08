@@ -159,7 +159,10 @@ namespace SaaS_BasePlatform.Application.Services
                 throw new InvalidOperationException(
                     string.Join("; ", createResult.Errors.Select(e => e.Description)));
 
-            await _userManager.AddToRoleAsync(user, "Usuario");
+            var roleResult = await _userManager.AddToRoleAsync(user, "Usuario");
+            if (!roleResult.Succeeded)
+                throw new InvalidOperationException(
+                    string.Join("; ", roleResult.Errors.Select(e => e.Description)));
             await AddMemberAsync(tenantId, user.Id, dto.Role, cancellationToken);
 
             return new TenantMemberDto(user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow);

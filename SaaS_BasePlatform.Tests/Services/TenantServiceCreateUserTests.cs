@@ -56,6 +56,31 @@ public class TenantServiceCreateUserTests
     }
 
     [Fact]
+    public async Task CreateAndAddMemberAsync_WhenRoleAssignmentFails_ThrowsInvalidOperation()
+    {
+        var db = MakeDb();
+        var userManager = MakeUserManager();
+        userManager.FindByEmailAsync(Arg.Any<string>()).Returns((ApplicationUser?)null);
+        userManager.CreateAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>())
+            .Returns(callInfo =>
+            {
+                var user = callInfo.ArgAt<ApplicationUser>(0);
+                db.Users.Add(user);
+                db.SaveChanges();
+                return IdentityResult.Success;
+            });
+        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "Usuario")
+            .Returns(IdentityResult.Failed(new IdentityError { Description = "Role not found" }));
+
+        var sut = new TenantService(db, userManager);
+        var dto = new CreateTenantUserDto("new@example.com", "Pass1!", "Test User", null, TenantRole.Member);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.CreateAndAddMemberAsync(Guid.NewGuid(), dto));
+        Assert.Contains("Role not found", ex.Message);
+    }
+
+    [Fact]
     public async Task CreateAndAddMemberAsync_OnSuccess_ReturnsMemberDtoAndAddsTenantUser()
     {
         var db = MakeDb();
