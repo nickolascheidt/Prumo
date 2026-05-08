@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SaaS_BasePlatform.Application\SaaS_BasePlatform.Application.csproj" />
     <ProjectReference Include="..\SaaS_BasePlatform.Domain\SaaS_BasePlatform.Domain.csproj" />
+    <ProjectReference Include="..\SaaS_BasePlatform.Infrastructure\SaaS_BasePlatform.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using SaaS_BasePlatform.Application.DTOs.Tenants;
 using SaaS_BasePlatform.Application.Services;
@@ -52,8 +50,9 @@ public class TenantServiceCreateUserTests
         var sut = new TenantService(db, userManager);
         var dto = new CreateTenantUserDto("new@example.com", "weak", "Test User", null, TenantRole.Member);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.CreateAndAddMemberAsync(Guid.NewGuid(), dto));
+        Assert.Contains("Too weak", ex.Message);
     }
 
     [Fact]
@@ -88,6 +87,8 @@ public class TenantServiceCreateUserTests
         Assert.Equal("new@example.com", result.Email);
         Assert.Equal("João Silva", result.FullName);
         Assert.Equal(TenantRole.Member, result.Role);
-        Assert.True(await db.TenantUsers.AnyAsync(tu => tu.TenantId == tenantId));
+        Assert.True(await db.TenantUsers.AnyAsync(tu =>
+            tu.TenantId == tenantId && tu.Role == TenantRole.Member));
+        await userManager.Received(1).AddToRoleAsync(Arg.Any<ApplicationUser>(), "Usuario");
     }
 }
