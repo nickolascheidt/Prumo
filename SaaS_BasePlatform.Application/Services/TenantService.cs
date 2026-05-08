@@ -161,8 +161,11 @@ namespace SaaS_BasePlatform.Application.Services
 
             var roleResult = await _userManager.AddToRoleAsync(user, "Usuario");
             if (!roleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
                 throw new InvalidOperationException(
                     string.Join("; ", roleResult.Errors.Select(e => e.Description)));
+            }
             await AddMemberAsync(tenantId, user.Id, dto.Role, cancellationToken);
 
             return new TenantMemberDto(user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow);

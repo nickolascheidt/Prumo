@@ -32,5 +32,9 @@ namespace SaaS_BasePlatform.Application.DTOs.Tenants
         string Password,
         string FullName,
         string? PhoneNumber,
-        TenantRole Role);
+        TenantRole Role)
+    {
+        public override string ToString() =>
+            $"CreateTenantUserDto {{ Email = {Email}, FullName = {FullName}, Role = {Role} }}";
+    }
 }

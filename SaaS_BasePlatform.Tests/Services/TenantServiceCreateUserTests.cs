@@ -71,6 +71,14 @@ public class TenantServiceCreateUserTests
             });
         userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "Usuario")
             .Returns(IdentityResult.Failed(new IdentityError { Description = "Role not found" }));
+        userManager.DeleteAsync(Arg.Any<ApplicationUser>())
+            .Returns(callInfo =>
+            {
+                var user = callInfo.ArgAt<ApplicationUser>(0);
+                db.Users.Remove(user);
+                db.SaveChanges();
+                return IdentityResult.Success;
+            });
 
         var sut = new TenantService(db, userManager);
         var dto = new CreateTenantUserDto("new@example.com", "Pass1!", "Test User", null, TenantRole.Member);
@@ -78,6 +86,7 @@ public class TenantServiceCreateUserTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.CreateAndAddMemberAsync(Guid.NewGuid(), dto));
         Assert.Contains("Role not found", ex.Message);
+        Assert.False(await db.Users.AnyAsync(u => u.Email == "new@example.com"));
     }
 
     [Fact]
