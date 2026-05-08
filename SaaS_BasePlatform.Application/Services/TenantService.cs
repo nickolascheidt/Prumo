@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SaaS_BasePlatform.Application.DTOs.Tenants;
 using SaaS_BasePlatform.Domain.Entities;
@@ -10,10 +11,12 @@ namespace SaaS_BasePlatform.Application.Services
     public class TenantService : ITenantService
     {
         private readonly ApplicationDbContext _db;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TenantService(ApplicationDbContext db)
+        public TenantService(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
         {
             _db = db;
+            _userManager = userManager;
         }
 
         public async Task<TenantDto> CreateAsync(Guid ownerUserId, CreateTenantRequestDto request, CancellationToken cancellationToken = default)
@@ -131,6 +134,35 @@ namespace SaaS_BasePlatform.Application.Services
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, cancellationToken);
             return membership?.Role;
+        }
+
+        public async Task<TenantMemberDto> CreateAndAddMemberAsync(
+            Guid tenantId, CreateTenantUserDto dto, CancellationToken cancellationToken = default)
+        {
+            var existing = await _userManager.FindByEmailAsync(dto.Email);
+            if (existing != null)
+                throw new InvalidOperationException($"A user with email '{dto.Email}' already exists.");
+
+            var user = new ApplicationUser
+            {
+                UserName = dto.Email,
+                Email = dto.Email,
+                FullName = dto.FullName,
+                PhoneNumber = dto.PhoneNumber,
+                EmailConfirmed = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await _userManager.CreateAsync(user, dto.Password);
+            if (!createResult.Succeeded)
+                throw new InvalidOperationException(
+                    string.Join("; ", createResult.Errors.Select(e => e.Description)));
+
+            await _userManager.AddToRoleAsync(user, "Usuario");
+            await AddMemberAsync(tenantId, user.Id, dto.Role, cancellationToken);
+
+            return new TenantMemberDto(user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow);
         }
     }
 }
