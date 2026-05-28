@@ -1,4 +1,3 @@
-using SaaS_BasePlatform.Api.Authentication;
 using SaaS_BasePlatform.Application.Services;
 using SaaS_BasePlatform.Domain.Common;
 
@@ -7,6 +6,7 @@ namespace SaaS_BasePlatform.Api.Middleware
     public class TenantResolutionMiddleware
     {
         public const string TenantHeader = "X-Tenant-Id";
+        private const string TenantIdClaim = "tenant_id";
 
         private readonly RequestDelegate _next;
 
@@ -19,7 +19,7 @@ namespace SaaS_BasePlatform.Api.Middleware
         {
             if (context.User?.Identity?.IsAuthenticated == true)
             {
-                var tenantClaim = context.User.FindFirst(ApiKeyAuthenticationHandler.TenantIdClaim)?.Value;
+                var tenantClaim = context.User.FindFirst(TenantIdClaim)?.Value;
                 if (!string.IsNullOrEmpty(tenantClaim) && Guid.TryParse(tenantClaim, out var claimTenantId))
                 {
                     tenantContext.SetTenant(claimTenantId);

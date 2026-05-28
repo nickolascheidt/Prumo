@@ -9,6 +9,5 @@ namespace SaaS_BasePlatform.Domain.Entities
         public Guid OwnerUserId { get; set; }
 
         public ICollection<TenantUser> Members { get; set; } = new List<TenantUser>();
-        public ICollection<ApiKey> ApiKeys { get; set; } = new List<ApiKey>();
     }
 }
