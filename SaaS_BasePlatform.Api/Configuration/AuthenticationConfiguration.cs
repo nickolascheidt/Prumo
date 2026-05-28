@@ -1,4 +1,3 @@
-using SaaS_BasePlatform.Api.Authentication;
 using SaaS_BasePlatform.Api.Authorization;
 using SaaS_BasePlatform.Domain.Authorization;
 using SaaS_BasePlatform.Infrastructure.Authorization;
@@ -23,8 +22,6 @@ public static class AuthenticationConfiguration
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         })
-        .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
-            ApiKeyAuthenticationOptions.DefaultScheme, _ => { })
         .AddJwtBearer(options =>
         {
             options.RequireHttpsMetadata = false;
@@ -52,8 +49,7 @@ public static class AuthenticationConfiguration
         services.AddAuthorization(options =>
         {
             options.DefaultPolicy = new AuthorizationPolicyBuilder(
-                    JwtBearerDefaults.AuthenticationScheme,
-                    ApiKeyAuthenticationOptions.DefaultScheme)
+                    JwtBearerDefaults.AuthenticationScheme)
                 .RequireAuthenticatedUser()
                 .Build();
 
@@ -62,7 +58,6 @@ public static class AuthenticationConfiguration
                 options.AddPolicy(permission, policy =>
                 {
                     policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
-                    policy.AuthenticationSchemes.Add(ApiKeyAuthenticationOptions.DefaultScheme);
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(new PermissionRequirement(permission));
                 });

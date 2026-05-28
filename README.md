@@ -95,7 +95,6 @@ All endpoints require a `Bearer` token except `POST /api/auth/login` and `POST /
 | Tenants | `/api/tenants` | Multi-tenant membership management |
 | Permissions | `/api/permissions` | Permission catalog and role assignment |
 | Resources | `/api/resources` | Resource-level access control |
-| API Keys | `/api/tenants/{id}/api-keys` | Tenant API key management |
 | Accounts Payable | `/api/tenants/{id}/accounts-payable` | AP entries, categories, reports |
 | Chart of Accounts | `/api/tenants/{id}/chart-of-accounts` | Account hierarchy (Owner/Admin only for writes) |
 | General Ledger | `/api/tenants/{id}/general-ledger` | Journal entries and account statements |

@@ -26,11 +26,6 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
                 .WithOne(m => m.Tenant)
                 .HasForeignKey(m => m.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasMany(t => t.ApiKeys)
-                .WithOne(k => k.Tenant)
-                .HasForeignKey(k => k.TenantId)
-                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
