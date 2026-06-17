@@ -12,6 +12,8 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
 
             builder.HasKey(tur => new { tur.TenantId, tur.UserId, tur.RoleId });
 
+            builder.Property(tur => tur.TenantId).IsRequired();
+
             builder.HasOne(tur => tur.User)
                 .WithMany()
                 .HasForeignKey(tur => tur.UserId)
