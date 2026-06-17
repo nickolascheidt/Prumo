@@ -31,6 +31,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data
         // Multi-tenancy
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
+        public DbSet<TenantUserRole> TenantUserRoles => Set<TenantUserRole>();
 
         // Accounts Payable (Contas a Pagar)
         public DbSet<AccountsPayableCategory> AccountsPayableCategories => Set<AccountsPayableCategory>();
