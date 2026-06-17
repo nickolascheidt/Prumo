@@ -79,6 +79,26 @@ namespace SaaS_BasePlatform.Domain.Authorization
         }
 
         /// <summary>
+        /// Canonical Identity role names. <see cref="Roles.MasterAdmin"/> is global (cross-tenant);
+        /// the feature roles are assigned per-tenant via TenantUserRole.
+        /// </summary>
+        public static class Roles
+        {
+            public const string MasterAdmin = "Administrador";
+            public const string Funcionario = "Funcionario";
+            public const string Cliente = "Cliente";
+            public const string RH = "RH";
+            public const string Financeiro = "Financeiro";
+            public const string ContasAPagar = "ContasAPagar";
+
+            /// <summary>Roles a tenant admin may assign to members within their tenant.</summary>
+            public static readonly IReadOnlyList<string> AssignableFeatureRoles = new[]
+            {
+                Funcionario, Cliente, RH, Financeiro, ContasAPagar
+            };
+        }
+
+        /// <summary>
         /// Retorna todas as permissões do sistema
         /// </summary>
         public static IReadOnlyCollection<string> GetAllPermissions()
