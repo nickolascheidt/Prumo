@@ -1,4 +1,5 @@
 using SaaS_BasePlatform.Application.DTOs;
+using SaaS_BasePlatform.Domain.Common;
 using SaaS_BasePlatform.Domain.Entities;
 using SaaS_BasePlatform.Domain.Enums;
 using SaaS_BasePlatform.Infrastructure.Data;
@@ -32,13 +33,16 @@ namespace SaaS_BasePlatform.Application.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ITenantContext _tenantContext;
 
         public ResourcePermissionService(
             ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ITenantContext tenantContext)
         {
             _context = context;
             _userManager = userManager;
+            _tenantContext = tenantContext;
         }
 
         #region Resource Management
@@ -262,15 +266,28 @@ namespace SaaS_BasePlatform.Application.Services
             if (user == null) return PermissionLevel.None;
 
             var userRoles = await _userManager.GetRolesAsync(user);
-            if (!userRoles.Any()) return PermissionLevel.None;
 
             if (userRoles.Contains("Administrador"))
                 return PermissionLevel.Full;
 
-            var roleIds = await _context.Roles
+            if (await IsTenantAdminAsync(userId))
+                return PermissionLevel.Full;
+
+            var globalRoleIds = await _context.Roles
                 .Where(r => userRoles.Contains(r.Name!))
                 .Select(r => r.Id)
                 .ToListAsync();
+
+            var tenantRoleIds = _tenantContext.HasTenant
+                ? await _context.TenantUserRoles
+                    .IgnoreQueryFilters()
+                    .Where(tur => tur.TenantId == _tenantContext.TenantId!.Value && tur.UserId == userId)
+                    .Select(tur => tur.RoleId)
+                    .ToListAsync()
+                : new List<Guid>();
+
+            var roleIds = globalRoleIds.Concat(tenantRoleIds).Distinct().ToList();
+            if (roleIds.Count == 0) return PermissionLevel.None;
 
             var maxPermission = await _context.ResourcePermissions
                 .Where(rp => roleIds.Contains(rp.RoleId))
@@ -289,6 +306,18 @@ namespace SaaS_BasePlatform.Application.Services
         #endregion
 
         #region Private Helpers
+
+        private async Task<bool> IsTenantAdminAsync(Guid userId)
+        {
+            if (!_tenantContext.HasTenant) return false;
+            var tenantId = _tenantContext.TenantId!.Value;
+            var role = await _context.TenantUsers
+                .IgnoreQueryFilters()
+                .Where(tu => tu.TenantId == tenantId && tu.UserId == userId)
+                .Select(tu => (TenantRole?)tu.Role)
+                .FirstOrDefaultAsync();
+            return role is TenantRole.Owner or TenantRole.Admin;
+        }
 
         private async Task<UserPermissionsDto> BuildUserPermissionsDto(ApplicationUser user)
         {
@@ -326,10 +355,42 @@ namespace SaaS_BasePlatform.Application.Services
                 };
             }
 
-            var roleIds = await _context.Roles
+            if (await IsTenantAdminAsync(user.Id))
+            {
+                var tenantResources = await _context.Resources
+                    .Where(r => r.IsActive)
+                    .OrderBy(r => r.Module).ThenBy(r => r.DisplayOrder)
+                    .ToListAsync();
+
+                var allowed = tenantResources.Select(r => new ResourceDto
+                {
+                    Id = r.Id, Code = r.Code, Name = r.Name, Description = r.Description,
+                    Module = r.Module, FrontendRoute = r.FrontendRoute, Icon = r.Icon,
+                    DisplayOrder = r.DisplayOrder, UserPermissionLevel = PermissionLevel.Full
+                }).ToList();
+
+                return new UserPermissionsDto
+                {
+                    UserId = user.Id, Email = user.Email ?? "", FullName = user.FullName,
+                    Roles = userRoles.ToList(), AllowedResources = allowed,
+                    ResourcePermissions = allowed.ToDictionary(r => r.Code, _ => PermissionLevel.Full)
+                };
+            }
+
+            var globalRoleIds = await _context.Roles
                 .Where(r => userRoles.Contains(r.Name!))
                 .Select(r => r.Id)
                 .ToListAsync();
+
+            var tenantRoleIdsForBuild = _tenantContext.HasTenant
+                ? await _context.TenantUserRoles
+                    .IgnoreQueryFilters()
+                    .Where(tur => tur.TenantId == _tenantContext.TenantId!.Value && tur.UserId == user.Id)
+                    .Select(tur => tur.RoleId)
+                    .ToListAsync()
+                : new List<Guid>();
+
+            var roleIds = globalRoleIds.Concat(tenantRoleIdsForBuild).Distinct().ToList();
 
             // Busca todas as permissões do usuário (agregando por resource, pegando o maior nível)
             var userResourcePermissions = await _context.ResourcePermissions
