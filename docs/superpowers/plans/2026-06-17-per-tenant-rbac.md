@@ -10,6 +10,34 @@
 
 ---
 
+## ⏸️ EXECUTION STATUS — paused 2026-06-17 (resume here tomorrow)
+
+Executed subagent-driven on branch `feature/per-tenant-rbac` (backend) and `feature/per-tenant-rbac` (Angular, quick-wins only so far).
+
+**DONE & committed (backend, all green — 57 tests pass, build clean):**
+- ✅ A0–A3 persistence: `Permissions.Roles` constants, `TenantUserRole` entity + EF config + DbSet + migration `20260617234848_AddTenantUserRoles` (spec ✅, quality ✅).
+- ✅ A4 backfill: `DbInitializer.BackfillTenantUserRolesAsync` + wiring; hardened against null master-role delete; tests incl. master-skip (spec ✅, quality ✅).
+- ✅ B1 `TenantRoleService` (effective-role resolution, assign/revoke feature roles) + DI + tests (spec ✅, quality ✅).
+- ✅ B2 `PermissionService.GetUserPermissionsForTenantAsync` uses effective roles; + cross-tenant no-leak test (spec ✅, quality ✅).
+- ✅ B3 `ResourcePermissionService` tenant-admin aware (master + tenant-admin → Full; per-tenant role union; no-ambient-tenant guard; `GetEffectiveRoleIdsAsync` helper) + tests incl. non-admin per-tenant resolution & cross-tenant no-leak (spec ✅, quality ✅).
+- ⚠️ B4 JWT per-tenant role + `tenant_role` claims: production code DONE & spec-compliant (commit `25b5e72`), BUT code-quality review found a **CRITICAL test-fidelity issue** — `AuthServiceTestHarness` is a hand-copied claim builder that (a) emits the role claim as `"role"` while production emits the full `ClaimTypes.Role` URI, and (b) doesn't exercise the real union/`tenant_role`/permission logic. **FIRST TASK TOMORROW: rework the test to drive the real token path** (e.g. `[InternalsVisibleTo]` + internal claim-builder seam, using the already-created-but-unused `tenantRoleService` substitute), or at minimum fix the harness claim name + assert the real URI. Production behavior is correct (bearer middleware maps the URI back via `RoleClaimType`), so this is test-quality, not a functional bug.
+
+**REMAINING (not started):**
+- ⬜ B5 per-tenant feature-role endpoints (TenantsController + DTOs).
+- ⬜ B6 lock global role assignment to master; drop phantom `Usuario` (register + `CreateAndAddMemberAsync`).
+- ⬜ B7 full backend test pass / regression sweep.
+- ⬜ C1–C2 frontend models + AuthService master/tenant-role helpers + ApiService methods.
+- ⬜ C3 repurpose users-roles screen to per-tenant assignment (the direct UI fix for #1).
+- ⬜ C4 gate routes/menu/dashboards by resource access (#7).
+- ⬜ C5 frontend lint/test pass.
+- ⬜ D1–D2 apply migration + manual cross-tenant verification (needs a running Postgres; dev env currently torn down — see memory `saasbase-azure-env-state`).
+
+**Frontend quick-wins (#2–#5)** are already committed on the Angular `feature/per-tenant-rbac` branch (commit `96ec7c3`) and are independent/safe.
+
+**Process note:** executing via superpowers:subagent-driven-development — fresh implementer per task, then spec-compliance review, then code-quality review, fixing findings before closing each task.
+
+---
+
 ## Glossary / Model decisions (read first)
 
 - **Master admin** = user holding the global Identity role `Administrador` (row in `AspNetUserRoles`, no tenant). Bypasses all tenant scoping. Only a master admin can grant/revoke it.
