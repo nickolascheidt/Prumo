@@ -58,20 +58,27 @@ namespace SaaS_BasePlatform.Infrastructure.Authorization
 
         public async Task<IReadOnlyCollection<string>> GetUserPermissionsForTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default)
         {
-            var user = await _userManager.FindByIdAsync(userId.ToString());
-            if (user == null) return Array.Empty<string>();
+            // Effective role IDs for this tenant: global Identity roles (master admin) ∪ per-tenant feature roles.
+            var globalRoleIds = await _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.RoleId)
+                .ToListAsync(cancellationToken);
 
-            var roleNames = await _userManager.GetRolesAsync(user);
-            if (roleNames.Count == 0) return Array.Empty<string>();
-
-            var permissions = await _context.RolePermissions
+            var tenantRoleIds = await _context.TenantUserRoles
                 .IgnoreQueryFilters()
-                .Where(rp => rp.TenantId == tenantId && roleNames.Contains(rp.Role.Name!))
+                .Where(tur => tur.TenantId == tenantId && tur.UserId == userId)
+                .Select(tur => tur.RoleId)
+                .ToListAsync(cancellationToken);
+
+            var roleIds = globalRoleIds.Concat(tenantRoleIds).Distinct().ToList();
+            if (roleIds.Count == 0) return Array.Empty<string>();
+
+            return await _context.RolePermissions
+                .IgnoreQueryFilters()
+                .Where(rp => rp.TenantId == tenantId && roleIds.Contains(rp.RoleId))
                 .Select(rp => rp.Permission.Name)
                 .Distinct()
                 .ToListAsync(cancellationToken);
-
-            return permissions;
         }
 
         public async Task<IReadOnlyCollection<Permission>> GetAllPermissionsAsync(CancellationToken cancellationToken = default)
