@@ -16,6 +16,10 @@ namespace SaaS_BasePlatform.Tests.Services
             new(new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options, ctx);
 
+        private static ApplicationDbContext NewDb(ITenantContext ctx, string dbName) =>
+            new(new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(dbName).Options, ctx);
+
         private static UserManager<ApplicationUser> MockUserManager(Guid userId)
         {
             var store = Substitute.For<IUserStore<ApplicationUser>>();
@@ -48,6 +52,136 @@ namespace SaaS_BasePlatform.Tests.Services
             var level = await sut.GetUserPermissionForResourceAsync(user, "HR.Employees");
 
             Assert.Equal(PermissionLevel.Full, level);
+        }
+
+        [Fact]
+        public async Task NonAdmin_per_tenant_role_grants_correct_level_and_no_cross_tenant_leak()
+        {
+            // Arrange — shared in-memory database so both context instances see the same data
+            var dbName = Guid.NewGuid().ToString();
+            var tenantA = Guid.NewGuid();
+            var tenantB = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+
+            var ctxA = Substitute.For<ITenantContext>();
+            ctxA.TenantId.Returns(tenantA);
+            ctxA.HasTenant.Returns(true);
+
+            using var dbA = NewDb(ctxA, dbName);
+
+            // Role "RH" scoped to tenantA
+            var rhRoleId = Guid.NewGuid();
+            dbA.Roles.Add(new ApplicationRole { Id = rhRoleId, Name = "RH", NormalizedName = "RH" });
+
+            // Resource scoped to tenantA
+            var resourceId = Guid.NewGuid();
+            dbA.Resources.Add(new Resource
+            {
+                Id = resourceId,
+                TenantId = tenantA,
+                Code = "HR.Employees",
+                Name = "Employees",
+                Module = "RH",
+                IsActive = true
+            });
+
+            // ResourcePermission: tenantA, RH role -> HR.Employees, Level=Write
+            dbA.ResourcePermissions.Add(new ResourcePermission
+            {
+                TenantId = tenantA,
+                RoleId = rhRoleId,
+                ResourceId = resourceId,
+                Level = PermissionLevel.Write
+            });
+
+            // TenantUserRole: assign user to RH role within tenantA
+            dbA.TenantUserRoles.Add(new TenantUserRole
+            {
+                TenantId = tenantA,
+                UserId = userId,
+                RoleId = rhRoleId
+            });
+
+            await dbA.SaveChangesAsync();
+
+            // UserManager returns NO global roles (user has only a per-tenant role)
+            var um = MockUserManager(userId);
+
+            // Act — query as tenantA context: expect Write
+            var sutA = new ResourcePermissionService(dbA, um, ctxA);
+            var levelA = await sutA.GetUserPermissionForResourceAsync(userId, "HR.Employees");
+            Assert.Equal(PermissionLevel.Write, levelA);
+
+            // Act — query as tenantB context over same DB: expect None (no cross-tenant leak)
+            var ctxB = Substitute.For<ITenantContext>();
+            ctxB.TenantId.Returns(tenantB);
+            ctxB.HasTenant.Returns(true);
+
+            using var dbB = NewDb(ctxB, dbName);
+            var sutB = new ResourcePermissionService(dbB, um, ctxB);
+            var levelB = await sutB.GetUserPermissionForResourceAsync(userId, "HR.Employees");
+            Assert.Equal(PermissionLevel.None, levelB);
+        }
+
+        [Fact]
+        public async Task TenantAdmin_BuildUserPermissionsDto_returns_full_for_active_resource()
+        {
+            // Arrange
+            var tenantId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+
+            var ctx = Substitute.For<ITenantContext>();
+            ctx.TenantId.Returns(tenantId);
+            ctx.HasTenant.Returns(true);
+
+            using var db = NewDb(ctx);
+
+            // Seed an active resource in this tenant
+            var resourceId = Guid.NewGuid();
+            db.Resources.Add(new Resource
+            {
+                Id = resourceId,
+                TenantId = tenantId,
+                Code = "HR.Employees",
+                Name = "Employees",
+                Module = "RH",
+                IsActive = true
+            });
+
+            // Register user as tenant Owner (tenant admin)
+            db.TenantUsers.Add(new TenantUser
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                Role = TenantRole.Owner
+            });
+
+            await db.SaveChangesAsync();
+
+            // UserManager: user "Owner" has no global roles
+            var store = Substitute.For<IUserStore<ApplicationUser>>();
+            var um = Substitute.For<UserManager<ApplicationUser>>(
+                store, null, null, null, null, null, null, null, null);
+            var appUser = new ApplicationUser
+            {
+                Id = userId,
+                UserName = "owner@example.com",
+                Email = "owner@example.com"
+            };
+            um.FindByIdAsync(userId.ToString()).Returns(appUser);
+            um.GetRolesAsync(Arg.Is<ApplicationUser>(u => u.Id == userId))
+              .Returns(new List<string>());
+
+            // Act
+            var sut = new ResourcePermissionService(db, um, ctx);
+            var dto = await sut.GetUserPermissionsAsync(userId);
+
+            // Assert
+            Assert.NotNull(dto);
+            Assert.True(dto!.ResourcePermissions.ContainsKey("HR.Employees"),
+                "Expected HR.Employees in ResourcePermissions");
+            Assert.Equal(PermissionLevel.Full, dto.ResourcePermissions["HR.Employees"]);
+            Assert.Contains(dto.AllowedResources, r => r.Code == "HR.Employees" && r.UserPermissionLevel == PermissionLevel.Full);
         }
     }
 }
