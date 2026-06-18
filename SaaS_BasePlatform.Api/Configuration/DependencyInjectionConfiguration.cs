@@ -26,6 +26,7 @@ public static class DependencyInjectionConfiguration
         // Multi-tenancy
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddScoped<ITenantService, TenantService>();
+        services.AddScoped<ITenantRoleService, TenantRoleService>();
 
         // Accounts Payable
         services.AddScoped<IAccountsPayableService, AccountsPayableService>();
