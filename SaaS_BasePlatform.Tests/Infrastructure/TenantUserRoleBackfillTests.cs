@@ -59,5 +59,21 @@ namespace SaaS_BasePlatform.Tests.Infrastructure
 
             Assert.Equal(1, await db.TenantUserRoles.IgnoreQueryFilters().CountAsync());
         }
+
+        [Fact]
+        public async Task Backfill_skips_master_admin_role()
+        {
+            using var db = NewDb();
+            var userId = Guid.NewGuid();
+            var tenant = Guid.NewGuid();
+            var adminRoleId = Guid.NewGuid();
+            db.Roles.Add(new ApplicationRole { Id = adminRoleId, Name = "Administrador", NormalizedName = "ADMINISTRADOR" });
+            db.TenantUsers.Add(new TenantUser { TenantId = tenant, UserId = userId, Role = TenantRole.Member });
+            await db.SaveChangesAsync();
+
+            await DbInitializer.BackfillTenantUserRolesAsync(db, new[] { (userId, adminRoleId, "Administrador") });
+
+            Assert.Equal(0, await db.TenantUserRoles.IgnoreQueryFilters().CountAsync());
+        }
     }
 }

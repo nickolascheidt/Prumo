@@ -115,26 +115,32 @@ namespace SaaS_BasePlatform.Infrastructure.Data
 
                 // Backfill: convert legacy global feature-role assignments to per-tenant rows.
                 var masterRoleId = (await roleManager.FindByNameAsync(Permissions.Roles.MasterAdmin))?.Id;
-                var globalAssignments = await (
-                    from ur in context.UserRoles
-                    join r in context.Roles on ur.RoleId equals r.Id
-                    where r.Id != masterRoleId
-                    select new { ur.UserId, r.Id, r.Name }
-                ).ToListAsync();
-
-                if (globalAssignments.Count > 0)
+                if (masterRoleId is null)
                 {
-                    await BackfillTenantUserRolesAsync(
-                        context,
-                        globalAssignments.Select(a => (a.UserId, a.Id, a.Name!)).ToList());
+                    logger.LogWarning("Master role '{Role}' not found; skipping per-tenant role backfill.", Permissions.Roles.MasterAdmin);
+                }
+                else
+                {
+                    var globalAssignments = await (
+                        from ur in context.UserRoles
+                        join r in context.Roles on ur.RoleId equals r.Id
+                        where r.Id != masterRoleId
+                        select new { ur.UserId, r.Id, r.Name }
+                    ).ToListAsync();
 
-                    // Remove the now-migrated global feature-role assignments.
-                    var toRemove = await context.UserRoles
-                        .Where(ur => ur.RoleId != masterRoleId)
-                        .ToListAsync();
-                    context.UserRoles.RemoveRange(toRemove);
-                    await context.SaveChangesAsync();
-                    logger.LogInformation("✓ Backfilled {Count} per-tenant role rows", globalAssignments.Count);
+                    if (globalAssignments.Count > 0)
+                    {
+                        await BackfillTenantUserRolesAsync(
+                            context,
+                            globalAssignments.Select(a => (a.UserId, a.Id, a.Name!)).ToList());
+
+                        var toRemove = await context.UserRoles
+                            .Where(ur => ur.RoleId != masterRoleId.Value)
+                            .ToListAsync();
+                        context.UserRoles.RemoveRange(toRemove);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("✓ Backfilled {Count} per-tenant role rows", globalAssignments.Count);
+                    }
                 }
 
                 // Verificar se já existe o admin
