@@ -17,19 +17,22 @@ namespace SaaS_BasePlatform.Application.Services
         private readonly IConfiguration _configuration;
         private readonly IPermissionService _permissionService;
         private readonly ITenantService _tenantService;
+        private readonly ITenantRoleService _tenantRoleService;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration,
             IPermissionService permissionService,
-            ITenantService tenantService)
+            ITenantService tenantService,
+            ITenantRoleService tenantRoleService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _permissionService = permissionService;
             _tenantService = tenantService;
+            _tenantRoleService = tenantRoleService;
         }
 
         private int TokenExpirationHours =>
@@ -238,34 +241,38 @@ namespace SaaS_BasePlatform.Application.Services
 
         private async Task<string> GenerateJwtToken(ApplicationUser user, Guid? tenantId)
         {
-            var roles = await _userManager.GetRolesAsync(user);
+            var globalRoles = await _userManager.GetRolesAsync(user);
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName!),
-                new Claim(ClaimTypes.Email, user.Email!),
-                new Claim("FullName", user.FullName ?? string.Empty)
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Name, user.UserName!),
+                new(ClaimTypes.Email, user.Email!),
+                new("FullName", user.FullName ?? string.Empty)
             };
+
+            IEnumerable<string> roleClaims = globalRoles;
 
             if (tenantId.HasValue)
             {
                 claims.Add(new Claim("tenant_id", tenantId.Value.ToString()));
-            }
 
-            // Adicionar claims de roles
-            claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+                // Effective roles = global (master) ∪ per-tenant feature roles.
+                roleClaims = await _tenantRoleService.GetEffectiveRoleNamesAsync(
+                    user.Id, tenantId.Value, (IReadOnlyCollection<string>)globalRoles);
 
-            // Permissions are tenant-scoped — only emit them when a tenant is selected.
-            if (tenantId.HasValue)
-            {
+                var tenantRole = await _tenantService.GetUserRoleAsync(tenantId.Value, user.Id);
+                if (tenantRole.HasValue)
+                    claims.Add(new Claim("tenant_role", tenantRole.Value.ToString()));
+
                 var permissions = await _permissionService.GetUserPermissionsForTenantAsync(user.Id, tenantId.Value);
-                claims.AddRange(permissions.Select(permission => new Claim("permission", permission)));
+                claims.AddRange(permissions.Select(p => new Claim("permission", p)));
             }
+
+            claims.AddRange(roleClaims.Distinct().Select(r => new Claim(ClaimTypes.Role, r)));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key não configurada")));
-
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -273,8 +280,7 @@ namespace SaaS_BasePlatform.Application.Services
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(TokenExpirationHours),
-                signingCredentials: creds
-            );
+                signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
