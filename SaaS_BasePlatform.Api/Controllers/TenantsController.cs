@@ -16,11 +16,13 @@ namespace SaaS_BasePlatform.Api.Controllers
     {
         private readonly ITenantService _tenantService;
         private readonly IAuthService _authService;
+        private readonly ITenantRoleService _tenantRoleService;
 
-        public TenantsController(ITenantService tenantService, IAuthService authService)
+        public TenantsController(ITenantService tenantService, IAuthService authService, ITenantRoleService tenantRoleService)
         {
             _tenantService = tenantService;
             _authService = authService;
+            _tenantRoleService = tenantRoleService;
         }
 
         private Guid CurrentUserId =>
@@ -133,6 +135,49 @@ namespace SaaS_BasePlatform.Api.Controllers
             if (callerRole is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
 
             await _tenantService.UpdateMemberRoleAsync(tenantId, userId, request.Role, ct);
+            return NoContent();
+        }
+
+        [HttpGet("{tenantId:guid}/assignable-roles")]
+        [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+        public ActionResult<IReadOnlyList<string>> GetAssignableRoles(Guid tenantId)
+            => Ok(SaaS_BasePlatform.Domain.Authorization.Permissions.Roles.AssignableFeatureRoles);
+
+        [HttpGet("{tenantId:guid}/members/{userId:guid}/roles")]
+        [ProducesResponseType(typeof(TenantMemberRolesDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TenantMemberRolesDto>> GetMemberRoles(
+            Guid tenantId, Guid userId, CancellationToken ct)
+        {
+            if (!await _tenantService.IsMemberAsync(tenantId, CurrentUserId, ct)) return Forbid();
+            var roles = await _tenantRoleService.GetTenantRoleNamesAsync(userId, tenantId, ct);
+            return Ok(new TenantMemberRolesDto(userId, roles));
+        }
+
+        [HttpPost("{tenantId:guid}/members/{userId:guid}/roles")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> AssignMemberRole(
+            Guid tenantId, Guid userId, [FromBody] AssignFeatureRoleDto request, CancellationToken ct)
+        {
+            var callerRole = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
+            if (callerRole is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
+            if (!await _tenantService.IsMemberAsync(tenantId, userId, ct))
+                return BadRequest(new { message = "User is not a member of this tenant." });
+
+            await _tenantRoleService.AssignFeatureRoleAsync(tenantId, userId, request.RoleName, CurrentUserId, ct);
+            return NoContent();
+        }
+
+        [HttpDelete("{tenantId:guid}/members/{userId:guid}/roles/{roleName}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> RevokeMemberRole(
+            Guid tenantId, Guid userId, string roleName, CancellationToken ct)
+        {
+            var callerRole = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
+            if (callerRole is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
+
+            await _tenantRoleService.RevokeFeatureRoleAsync(tenantId, userId, roleName, ct);
             return NoContent();
         }
     }
