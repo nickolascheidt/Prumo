@@ -144,7 +144,9 @@ namespace SaaS_BasePlatform.Api.Controllers
         }
 
         /// <summary>
-        /// Atribuir role a um usuário (requer autenticação como Admin)
+        /// Atribuir role global a um usuário (requer autenticação como Admin).
+        /// Apenas a role master 'Administrador' pode ser atribuída globalmente;
+        /// roles de funcionalidade são atribuídas por tenant.
         /// </summary>
         [HttpPost("users/{userId}/roles")]
         [Authorize(Roles = "Administrador")]
