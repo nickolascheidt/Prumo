@@ -163,5 +163,64 @@ namespace SaaS_BasePlatform.Tests.Services
             Assert.True(root.TryGetProperty("tenant_id", out var tenantIdEl), "Expected 'tenant_id' claim");
             Assert.Equal(tenantId.ToString(), tenantIdEl.GetString());
         }
+
+        [Fact]
+        public async Task Token_without_tenant_has_global_roles_and_no_tenant_claims()
+        {
+            // Arrange: an active user with a GLOBAL role and no tenant selected.
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "admin@x.com",
+                Email = "admin@x.com",
+                FullName = "Admin User",
+                IsActive = true
+            };
+
+            var userManager = MakeUserManager();
+            userManager.FindByEmailAsync(user.Email).Returns(user);
+            userManager.GetRolesAsync(user).Returns(new List<string> { "Administrador" });
+
+            var signInManager = MakeSignInManager(userManager);
+            signInManager
+                .CheckPasswordSignInAsync(user, "pw", Arg.Any<bool>())
+                .Returns(SignInResult.Success);
+
+            var configuration = MakeConfiguration();
+
+            var permissionService = Substitute.For<IPermissionService>();
+            var tenantService = Substitute.For<ITenantService>();
+            var tenantRoleService = Substitute.For<ITenantRoleService>();
+
+            var sut = new AuthService(
+                userManager, signInManager, configuration,
+                permissionService, tenantService, tenantRoleService);
+
+            // Act: LoginAsync with no TenantSlug drives the real GenerateJwtToken(user, null).
+            var response = await sut.LoginAsync(
+                new SaaS_BasePlatform.Application.DTOs.Auth.LoginRequestDto(user.Email, "pw"));
+            var token = response.Token;
+
+            // Assert against the raw serialized JWT payload.
+            using var doc = DecodePayload(token);
+            var root = doc.RootElement;
+
+            // Global role serialized under the full ClaimTypes.Role URI (no OutboundClaimTypeMap).
+            Assert.True(
+                root.TryGetProperty(RoleClaimKey, out var roleEl),
+                $"Expected role claim under key '{RoleClaimKey}' in JWT payload.");
+            Assert.Contains("Administrador", StringValues(roleEl));
+
+            // No-tenant branch: none of the tenant-scoped claims are emitted.
+            Assert.False(root.TryGetProperty("tenant_id", out _), "Expected no 'tenant_id' claim");
+            Assert.False(root.TryGetProperty("tenant_role", out _), "Expected no 'tenant_role' claim");
+            Assert.False(root.TryGetProperty("permission", out _), "Expected no 'permission' claim");
+
+            // Tenant data services must not be consulted for a no-tenant token.
+            await tenantRoleService.DidNotReceiveWithAnyArgs()
+                .GetEffectiveRoleNamesAsync(default, default, default!, default);
+            await permissionService.DidNotReceiveWithAnyArgs()
+                .GetUserPermissionsForTenantAsync(default, default, default);
+        }
     }
 }
