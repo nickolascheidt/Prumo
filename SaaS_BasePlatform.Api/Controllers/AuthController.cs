@@ -37,7 +37,7 @@ namespace SaaS_BasePlatform.Api.Controllers
         }
 
         /// <summary>
-        /// Registrar novo usuário (role: Usuario)
+        /// Registrar novo usuário (sem role global; roles de feature são atribuídas por tenant)
         /// </summary>
         [HttpPost("register")]
         [EnableRateLimiting("public")]
@@ -46,7 +46,7 @@ namespace SaaS_BasePlatform.Api.Controllers
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<LoginResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
-            var response = await _authService.RegisterAsync(request, "Usuario", cancellationToken);
+            var response = await _authService.RegisterAsync(request, null, cancellationToken);
             return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
         }
 

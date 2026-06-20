@@ -1,4 +1,5 @@
 using SaaS_BasePlatform.Application.DTOs.Auth;
+using SaaS_BasePlatform.Domain.Authorization;
 using SaaS_BasePlatform.Domain.Entities;
 using SaaS_BasePlatform.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -101,7 +102,7 @@ namespace SaaS_BasePlatform.Application.Services
             );
         }
 
-        public async Task<LoginResponseDto> RegisterAsync(RegisterRequestDto request, string roleName, CancellationToken cancellationToken = default)
+        public async Task<LoginResponseDto> RegisterAsync(RegisterRequestDto request, string? roleName, CancellationToken cancellationToken = default)
         {
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
             if (existingUser != null)
@@ -124,8 +125,9 @@ namespace SaaS_BasePlatform.Application.Services
                 throw new InvalidOperationException($"Erro ao criar usuário: {errors}");
             }
 
-            // Add role
-            await _userManager.AddToRoleAsync(user, roleName);
+            // Self-registration grants no global role; tenant feature roles are assigned per-tenant.
+            if (!string.IsNullOrWhiteSpace(roleName))
+                await _userManager.AddToRoleAsync(user, roleName);
 
             var token = await GenerateJwtToken(user, null);
             var userDto = await MapToUserDto(user);
@@ -171,6 +173,10 @@ namespace SaaS_BasePlatform.Application.Services
 
         public async Task AssignRoleToUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
         {
+            if (roleName != Permissions.Roles.MasterAdmin)
+                throw new InvalidOperationException(
+                    "Only the master admin role can be assigned globally. Use per-tenant role assignment for feature roles.");
+
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
                 throw new KeyNotFoundException($"Usuário com ID '{userId}' não encontrado");

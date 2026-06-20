@@ -56,40 +56,6 @@ public class TenantServiceCreateUserTests
     }
 
     [Fact]
-    public async Task CreateAndAddMemberAsync_WhenRoleAssignmentFails_ThrowsInvalidOperation()
-    {
-        var db = MakeDb();
-        var userManager = MakeUserManager();
-        userManager.FindByEmailAsync(Arg.Any<string>()).Returns((ApplicationUser?)null);
-        userManager.CreateAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>())
-            .Returns(callInfo =>
-            {
-                var user = callInfo.ArgAt<ApplicationUser>(0);
-                db.Users.Add(user);
-                db.SaveChanges();
-                return IdentityResult.Success;
-            });
-        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "Usuario")
-            .Returns(IdentityResult.Failed(new IdentityError { Description = "Role not found" }));
-        userManager.DeleteAsync(Arg.Any<ApplicationUser>())
-            .Returns(callInfo =>
-            {
-                var user = callInfo.ArgAt<ApplicationUser>(0);
-                db.Users.Remove(user);
-                db.SaveChanges();
-                return IdentityResult.Success;
-            });
-
-        var sut = new TenantService(db, userManager);
-        var dto = new CreateTenantUserDto("new@example.com", "Pass1!", "Test User", null, TenantRole.Member);
-
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.CreateAndAddMemberAsync(Guid.NewGuid(), dto));
-        Assert.Contains("Role not found", ex.Message);
-        Assert.False(await db.Users.AnyAsync(u => u.Email == "new@example.com"));
-    }
-
-    [Fact]
     public async Task CreateAndAddMemberAsync_OnSuccess_ReturnsMemberDtoAndAddsTenantUser()
     {
         var db = MakeDb();
@@ -110,8 +76,6 @@ public class TenantServiceCreateUserTests
                 db.SaveChanges();
                 return IdentityResult.Success;
             });
-        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "Usuario")
-            .Returns(IdentityResult.Success);
 
         var sut = new TenantService(db, userManager);
         var dto = new CreateTenantUserDto("new@example.com", "Pass1!", "João Silva", "+55 11 99999-0000", TenantRole.Member);
@@ -123,6 +87,5 @@ public class TenantServiceCreateUserTests
         Assert.Equal(TenantRole.Member, result.Role);
         Assert.True(await db.TenantUsers.AnyAsync(tu =>
             tu.TenantId == tenantId && tu.Role == TenantRole.Member));
-        await userManager.Received(1).AddToRoleAsync(Arg.Any<ApplicationUser>(), "Usuario");
     }
 }

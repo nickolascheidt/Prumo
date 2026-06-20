@@ -165,13 +165,6 @@ namespace SaaS_BasePlatform.Application.Services
             if (!createResult.Succeeded)
                 throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(e => e.Description)));
 
-            var roleResult = await _userManager.AddToRoleAsync(user, "Usuario");
-            if (!roleResult.Succeeded)
-            {
-                await _userManager.DeleteAsync(user);
-                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(e => e.Description)));
-            }
-
             _db.TenantUsers.Add(new TenantUser { TenantId = tenantId, UserId = user.Id, Role = dto.Role });
             await _db.SaveChangesAsync(ct);
 
