@@ -155,6 +155,7 @@ namespace SaaS_BasePlatform.Api.Controllers
 
         [HttpPost("{tenantId:guid}/members/{userId:guid}/roles")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> AssignMemberRole(
             Guid tenantId, Guid userId, [FromBody] AssignFeatureRoleDto request, CancellationToken ct)
