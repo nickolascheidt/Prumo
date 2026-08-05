@@ -1,4 +1,5 @@
 using NSubstitute;
+using SaaS_BasePlatform.Application.DTOs.Auth;
 using SaaS_BasePlatform.Application.DTOs.Tenants;
 using SaaS_BasePlatform.Application.Services;
 using SaaS_BasePlatform.Domain.Enums;

@@ -35,4 +35,8 @@ namespace SaaS_BasePlatform.Application.DTOs.Tenants
         TenantRole Role);
 
     public record UpdateMemberRoleDto(TenantRole Role);
+
+    public record TenantMemberRolesDto(Guid UserId, IReadOnlyList<string> Roles);
+
+    public record AssignFeatureRoleDto(string RoleName);
 }

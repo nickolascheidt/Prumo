@@ -113,6 +113,36 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 // via TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
                 await EnsureTenantBootstrapAsync(context, logger);
 
+                // Backfill: convert legacy global feature-role assignments to per-tenant rows.
+                var masterRoleId = (await roleManager.FindByNameAsync(Permissions.Roles.MasterAdmin))?.Id;
+                if (masterRoleId is null)
+                {
+                    logger.LogWarning("Master role '{Role}' not found; skipping per-tenant role backfill.", Permissions.Roles.MasterAdmin);
+                }
+                else
+                {
+                    var globalAssignments = await (
+                        from ur in context.UserRoles
+                        join r in context.Roles on ur.RoleId equals r.Id
+                        where r.Id != masterRoleId
+                        select new { ur.UserId, r.Id, r.Name }
+                    ).ToListAsync();
+
+                    if (globalAssignments.Count > 0)
+                    {
+                        await BackfillTenantUserRolesAsync(
+                            context,
+                            globalAssignments.Select(a => (a.UserId, a.Id, a.Name!)).ToList());
+
+                        var toRemove = await context.UserRoles
+                            .Where(ur => ur.RoleId != masterRoleId.Value)
+                            .ToListAsync();
+                        context.UserRoles.RemoveRange(toRemove);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("✓ Backfilled {Count} per-tenant role rows", globalAssignments.Count);
+                    }
+                }
+
                 // Verificar se já existe o admin
                 var adminUser = await userManager.FindByEmailAsync("admin@SBP.com");
                 if (adminUser != null)
@@ -170,6 +200,49 @@ namespace SaaS_BasePlatform.Infrastructure.Data
                 var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
                 logger.LogError(ex, "Erro ao inicializar o banco de dados.");
             }
+        }
+
+        /// <summary>
+        /// For each (userId, roleId) global feature-role assignment, create a
+        /// per-tenant TenantUserRole for every tenant the user belongs to.
+        /// Idempotent. Does not touch the master-admin role.
+        /// </summary>
+        public static async Task BackfillTenantUserRolesAsync(
+            ApplicationDbContext context,
+            IReadOnlyCollection<(Guid UserId, Guid RoleId, string RoleName)> globalAssignments,
+            CancellationToken cancellationToken = default)
+        {
+            foreach (var (userId, roleId, roleName) in globalAssignments)
+            {
+                if (roleName == Domain.Authorization.Permissions.Roles.MasterAdmin)
+                    continue;
+
+                var tenantIds = await context.TenantUsers
+                    .IgnoreQueryFilters()
+                    .Where(tu => tu.UserId == userId)
+                    .Select(tu => tu.TenantId)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var tenantId in tenantIds)
+                {
+                    var exists = await context.TenantUserRoles
+                        .IgnoreQueryFilters()
+                        .AnyAsync(tur => tur.TenantId == tenantId
+                                      && tur.UserId == userId
+                                      && tur.RoleId == roleId, cancellationToken);
+                    if (!exists)
+                    {
+                        context.TenantUserRoles.Add(new TenantUserRole
+                        {
+                            TenantId = tenantId,
+                            UserId = userId,
+                            RoleId = roleId,
+                            GrantedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+            await context.SaveChangesAsync(cancellationToken);
         }
 
         private static async Task EnsureDefaultTenantAsync(

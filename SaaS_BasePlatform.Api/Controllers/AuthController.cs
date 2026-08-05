@@ -37,7 +37,7 @@ namespace SaaS_BasePlatform.Api.Controllers
         }
 
         /// <summary>
-        /// Registrar novo usuário (role: Usuario)
+        /// Registrar novo usuário (sem role global; roles de feature são atribuídas por tenant)
         /// </summary>
         [HttpPost("register")]
         [EnableRateLimiting("public")]
@@ -46,7 +46,7 @@ namespace SaaS_BasePlatform.Api.Controllers
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<LoginResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
-            var response = await _authService.RegisterAsync(request, "Usuario", cancellationToken);
+            var response = await _authService.RegisterAsync(request, null, cancellationToken);
             return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
         }
 
@@ -80,11 +80,19 @@ namespace SaaS_BasePlatform.Api.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 
-            var user = await _authService.GetUserByIdAsync(userId, cancellationToken);
+            // Roles and permissions are tenant-scoped once a tenant has been selected,
+            // so /me must resolve them against the same tenant the JWT was issued for.
+            Guid? tenantId = Guid.TryParse(User.FindFirst("tenant_id")?.Value, out var tid)
+                ? tid
+                : null;
+
+            var user = await _authService.GetUserByIdAsync(userId, tenantId, cancellationToken);
             if (user == null)
                 return NotFound();
 
-            var permissions = await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
+            var permissions = tenantId.HasValue
+                ? await _permissionService.GetUserPermissionsForTenantAsync(userId, tenantId.Value, cancellationToken)
+                : await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
 
             return Ok(new CurrentUserDto(
                 user.Id,
@@ -144,7 +152,9 @@ namespace SaaS_BasePlatform.Api.Controllers
         }
 
         /// <summary>
-        /// Atribuir role a um usuário (requer autenticação como Admin)
+        /// Atribuir role global a um usuário (requer autenticação como Admin).
+        /// Apenas a role master 'Administrador' pode ser atribuída globalmente;
+        /// roles de funcionalidade são atribuídas por tenant.
         /// </summary>
         [HttpPost("users/{userId}/roles")]
         [Authorize(Roles = "Administrador")]
