@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using SaaS_BasePlatform.Application.Services;
+using SaaS_BasePlatform.Domain.Authorization;
 using SaaS_BasePlatform.Domain.Common;
 using SaaS_BasePlatform.Domain.Entities;
 using SaaS_BasePlatform.Domain.Enums;
@@ -182,6 +183,52 @@ namespace SaaS_BasePlatform.Tests.Services
                 "Expected HR.Employees in ResourcePermissions");
             Assert.Equal(PermissionLevel.Full, dto.ResourcePermissions["HR.Employees"]);
             Assert.Contains(dto.AllowedResources, r => r.Code == "HR.Employees" && r.UserPermissionLevel == PermissionLevel.Full);
+        }
+
+        [Fact]
+        public async Task MasterAdmin_without_tenant_returns_empty_instead_of_throwing_on_duplicate_codes()
+        {
+            // Arrange — no ambient tenant, so the Resources query filter is disabled and
+            // both tenants' copies of the seeded catalog are visible. Building a
+            // code-keyed dictionary over that set used to throw (duplicate key) and
+            // surfaced as a 500 on GET /api/resources/my-permissions.
+            var ctx = Substitute.For<ITenantContext>();
+            ctx.TenantId.Returns((Guid?)null);
+            ctx.HasTenant.Returns(false);
+            using var db = NewDb(ctx);
+
+            var userId = Guid.NewGuid();
+            foreach (var tenant in new[] { Guid.NewGuid(), Guid.NewGuid() })
+            {
+                db.Resources.Add(new Resource
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenant,
+                    Code = "HR.Employees",
+                    Name = "Funcionários",
+                    Module = "RH",
+                    IsActive = true
+                });
+            }
+            await db.SaveChangesAsync();
+
+            var store = Substitute.For<IUserStore<ApplicationUser>>();
+            var um = Substitute.For<UserManager<ApplicationUser>>(
+                store, null, null, null, null, null, null, null, null);
+            var appUser = new ApplicationUser { Id = userId, UserName = "admin@SBP.com", Email = "admin@SBP.com" };
+            um.FindByIdAsync(userId.ToString()).Returns(appUser);
+            um.GetRolesAsync(Arg.Is<ApplicationUser>(u => u.Id == userId))
+              .Returns(new List<string> { Permissions.Roles.MasterAdmin });
+
+            // Act
+            var sut = new ResourcePermissionService(db, um, ctx);
+            var dto = await sut.GetUserPermissionsAsync(userId);
+
+            // Assert
+            Assert.NotNull(dto);
+            Assert.Empty(dto!.AllowedResources);
+            Assert.Empty(dto.ResourcePermissions);
+            Assert.Contains(Permissions.Roles.MasterAdmin, dto.Roles);
         }
     }
 }

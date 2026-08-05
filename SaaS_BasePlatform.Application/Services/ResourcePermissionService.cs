@@ -333,6 +333,23 @@ namespace SaaS_BasePlatform.Application.Services
         {
             var userRoles = await _userManager.GetRolesAsync(user);
 
+            // No ambient tenant: the Resources query filter is disabled, so every branch
+            // below would read across tenants — duplicate resource codes (each tenant is
+            // seeded with the same catalog) and a cross-tenant leak. Resource access is
+            // only meaningful once a tenant is selected.
+            if (!_tenantContext.HasTenant)
+            {
+                return new UserPermissionsDto
+                {
+                    UserId = user.Id,
+                    Email = user.Email ?? "",
+                    FullName = user.FullName,
+                    Roles = userRoles.ToList(),
+                    AllowedResources = new List<ResourceDto>(),
+                    ResourcePermissions = new Dictionary<string, PermissionLevel>()
+                };
+            }
+
             if (userRoles.Contains(Permissions.Roles.MasterAdmin))
             {
                 var allResources = await _context.Resources
@@ -384,20 +401,6 @@ namespace SaaS_BasePlatform.Application.Services
                     UserId = user.Id, Email = user.Email ?? "", FullName = user.FullName,
                     Roles = userRoles.ToList(), AllowedResources = allowed,
                     ResourcePermissions = allowed.ToDictionary(r => r.Code, _ => PermissionLevel.Full)
-                };
-            }
-
-            // Fix 1: no ambient tenant — ResourcePermissions filter is disabled, risk of cross-tenant leak.
-            if (!_tenantContext.HasTenant)
-            {
-                return new UserPermissionsDto
-                {
-                    UserId = user.Id,
-                    Email = user.Email ?? "",
-                    FullName = user.FullName,
-                    Roles = userRoles.ToList(),
-                    AllowedResources = new List<ResourceDto>(),
-                    ResourcePermissions = new Dictionary<string, PermissionLevel>()
                 };
             }
 
