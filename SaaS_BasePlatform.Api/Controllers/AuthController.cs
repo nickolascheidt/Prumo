@@ -80,11 +80,19 @@ namespace SaaS_BasePlatform.Api.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 
-            var user = await _authService.GetUserByIdAsync(userId, cancellationToken);
+            // Roles and permissions are tenant-scoped once a tenant has been selected,
+            // so /me must resolve them against the same tenant the JWT was issued for.
+            Guid? tenantId = Guid.TryParse(User.FindFirst("tenant_id")?.Value, out var tid)
+                ? tid
+                : null;
+
+            var user = await _authService.GetUserByIdAsync(userId, tenantId, cancellationToken);
             if (user == null)
                 return NotFound();
 
-            var permissions = await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
+            var permissions = tenantId.HasValue
+                ? await _permissionService.GetUserPermissionsForTenantAsync(userId, tenantId.Value, cancellationToken)
+                : await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
 
             return Ok(new CurrentUserDto(
                 user.Id,

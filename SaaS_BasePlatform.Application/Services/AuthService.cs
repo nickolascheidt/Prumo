@@ -139,13 +139,13 @@ namespace SaaS_BasePlatform.Application.Services
             );
         }
 
-        public async Task<UserDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+        public async Task<UserDto?> GetUserByIdAsync(Guid userId, Guid? tenantId = null, CancellationToken cancellationToken = default)
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
                 return null;
 
-            return await MapToUserDto(user);
+            return await MapToUserDto(user, tenantId, cancellationToken);
         }
 
         public async Task<IEnumerable<UserDto>> GetAllUsersAsync(CancellationToken cancellationToken = default)
@@ -291,9 +291,17 @@ namespace SaaS_BasePlatform.Application.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        private async Task<UserDto> MapToUserDto(ApplicationUser user)
+        private async Task<UserDto> MapToUserDto(
+            ApplicationUser user, Guid? tenantId = null, CancellationToken cancellationToken = default)
         {
-            var roles = await _userManager.GetRolesAsync(user);
+            var globalRoles = await _userManager.GetRolesAsync(user);
+
+            // Mirror GenerateJwtToken: inside a tenant the effective roles are
+            // global (master) ∪ per-tenant feature roles.
+            IEnumerable<string> roles = tenantId.HasValue
+                ? await _tenantRoleService.GetEffectiveRoleNamesAsync(
+                    user.Id, tenantId.Value, (IReadOnlyCollection<string>)globalRoles, cancellationToken)
+                : globalRoles;
 
             return new UserDto(
                 user.Id,
