@@ -1,8 +1,14 @@
 name: build-and-deploy
 
+# Manual only, on purpose. Pushing to main must never build or deploy on its own:
+# the dev stack is deliberately torn down to $0 between sessions, and the deploy
+# this workflow dispatches runs `terraform apply -auto-approve`, which recreates
+# the entire Azure environment (and its cost).
+#
+# To actually ship: Actions > build-and-deploy > Run workflow. That builds the
+# image, pushes it to ACR and dispatches the dev deploy, exactly as before.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write
