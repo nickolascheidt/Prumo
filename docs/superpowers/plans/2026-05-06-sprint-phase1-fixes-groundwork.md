@@ -15,19 +15,19 @@
 | File | Action |
 |------|--------|
 | `SaaSBasePlatform-Angular/src/app/modules/auth/login/login.component.ts` | Modify — clear pre-filled credentials |
-| `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs` | Modify — suppress duplicate logs + delete "User" role + seed new roles |
-| `SaaS_BasePlatform.Domain/Authorization/Permissions.cs` | Modify — add Finance, AccountsPayable classes + DefaultRolePermissions.RH/Financeiro/ContasAPagar |
-| `SaaS_BasePlatform.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs` | Modify — add new roles to rolePermissionConfig + ResourcePermissions |
-| `SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs` | Modify — add DefaultExpenseAccountId |
-| `SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs` | Modify — configure new FK |
-| `SaaS_BasePlatform.Infrastructure/Data/Migrations/` | New — EF migration AddDefaultExpenseAccount |
-| `SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs` | Modify — add 6 new accounts + assign DefaultExpenseAccountId |
+| `Prumo.Infrastructure/Data/DbInitializer.cs` | Modify — suppress duplicate logs + delete "User" role + seed new roles |
+| `Prumo.Domain/Authorization/Permissions.cs` | Modify — add Finance, AccountsPayable classes + DefaultRolePermissions.RH/Financeiro/ContasAPagar |
+| `Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs` | Modify — add new roles to rolePermissionConfig + ResourcePermissions |
+| `Prumo.Domain/Entities/TenantGlSettings.cs` | Modify — add DefaultExpenseAccountId |
+| `Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs` | Modify — configure new FK |
+| `Prumo.Infrastructure/Data/Migrations/` | New — EF migration AddDefaultExpenseAccount |
+| `Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs` | Modify — add 6 new accounts + assign DefaultExpenseAccountId |
 | `SaaSBasePlatform-Angular/src/app/core/models/index.ts` | Modify — add defaultExpenseAccountId to TenantGlSettings |
 | `SaaSBasePlatform-Angular/src/app/modules/finance/chart-of-accounts/accounts-hints.component.ts` | Create — GL account hints card |
 | `SaaSBasePlatform-Angular/src/app/modules/finance/chart-of-accounts/chart-of-accounts.component.html` | Modify — add hints component at top |
 | `SaaSBasePlatform-Angular/src/app/modules/finance/chart-of-accounts/chart-of-accounts.component.ts` | Modify — import AccountsHintsComponent |
-| `SaaS_BasePlatform.Tests/Infrastructure/DbInitializerCleanupTests.cs` | Create — test "User" role cleanup |
-| `SaaS_BasePlatform.Tests/Domain/PermissionsTests.cs` | Create — test new permission strings exist + Admin has all |
+| `Prumo.Tests/Infrastructure/DbInitializerCleanupTests.cs` | Create — test "User" role cleanup |
+| `Prumo.Tests/Domain/PermissionsTests.cs` | Create — test new permission strings exist + Admin has all |
 
 ---
 
@@ -74,22 +74,22 @@ git commit -m "fix: remove pre-filled admin credentials from login form"
 ## Task 2: Suppress duplicate startup logs + delete "User" role
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`
-- Create: `SaaS_BasePlatform.Tests/Infrastructure/DbInitializerCleanupTests.cs`
+- Modify: `Prumo.Infrastructure/Data/DbInitializer.cs`
+- Create: `Prumo.Tests/Infrastructure/DbInitializerCleanupTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `SaaS_BasePlatform.Tests/Infrastructure/DbInitializerCleanupTests.cs`:
+Create `Prumo.Tests/Infrastructure/DbInitializerCleanupTests.cs`:
 
 ```csharp
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Domain.Entities;
+using Prumo.Infrastructure.Data;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Infrastructure;
+namespace Prumo.Tests.Infrastructure;
 
 public class DbInitializerCleanupTests
 {
@@ -123,7 +123,7 @@ Expected: PASS (assertion on local dictionary, no DB needed)
 
 - [ ] **Step 3: Update DbInitializer — suppress logs + add User role cleanup**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`.
+Open `Prumo.Infrastructure/Data/DbInitializer.cs`.
 
 **3a.** Add the "User" role cleanup block immediately after `await context.Database.MigrateAsync();` (line 28) and before the roles seeding loop:
 
@@ -173,7 +173,7 @@ Expected: PASS
 - [ ] **Step 5: Build to confirm no compile errors**
 
 ```bash
-dotnet build SaaS_BasePlatform.Infrastructure
+dotnet build Prumo.Infrastructure
 ```
 
 Expected: Build succeeded, 0 error(s)
@@ -181,8 +181,8 @@ Expected: Build succeeded, 0 error(s)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs
-git add SaaS_BasePlatform.Tests/Infrastructure/DbInitializerCleanupTests.cs
+git add Prumo.Infrastructure/Data/DbInitializer.cs
+git add Prumo.Tests/Infrastructure/DbInitializerCleanupTests.cs
 git commit -m "fix: suppress duplicate startup logs and remove legacy User role at startup"
 ```
 
@@ -191,18 +191,18 @@ git commit -m "fix: suppress duplicate startup logs and remove legacy User role 
 ## Task 3: Add Finance and AccountsPayable permissions + module role permission sets
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Domain/Authorization/Permissions.cs`
-- Create: `SaaS_BasePlatform.Tests/Domain/PermissionsTests.cs`
+- Modify: `Prumo.Domain/Authorization/Permissions.cs`
+- Create: `Prumo.Tests/Domain/PermissionsTests.cs`
 
 - [ ] **Step 1: Write failing tests**
 
-Create `SaaS_BasePlatform.Tests/Domain/PermissionsTests.cs`:
+Create `Prumo.Tests/Domain/PermissionsTests.cs`:
 
 ```csharp
-using SaaS_BasePlatform.Domain.Authorization;
+using Prumo.Domain.Authorization;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Domain;
+namespace Prumo.Tests.Domain;
 
 public class PermissionsTests
 {
@@ -277,7 +277,7 @@ Expected: FAIL — `Finance`, `AccountsPayable`, `DefaultRolePermissions.RH` etc
 
 - [ ] **Step 3: Add Finance + AccountsPayable permission classes to Permissions.cs**
 
-Open `SaaS_BasePlatform.Domain/Authorization/Permissions.cs`.
+Open `Prumo.Domain/Authorization/Permissions.cs`.
 
 After the `Stock` class (around line 57) and before `GetAllPermissions()`, add:
 
@@ -352,8 +352,8 @@ Expected: 6 tests PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Domain/Authorization/Permissions.cs
-git add SaaS_BasePlatform.Tests/Domain/PermissionsTests.cs
+git add Prumo.Domain/Authorization/Permissions.cs
+git add Prumo.Tests/Domain/PermissionsTests.cs
 git commit -m "feat: add Finance and AccountsPayable permissions with module-scoped role permission sets"
 ```
 
@@ -362,14 +362,14 @@ git commit -m "feat: add Finance and AccountsPayable permissions with module-sco
 ## Task 4: Seed new roles in DbInitializer and TenantBootstrapSeeder
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`
+- Modify: `Prumo.Infrastructure/Data/DbInitializer.cs`
+- Modify: `Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`
 
 - [ ] **Step 1: Add RH and ContasAPagar resources to TenantBootstrapSeeder.DefaultResources**
 
 The module-role resource permission loop in Step 3 filters by `Resource.Module`. The current `DefaultResources` array has no entries for `Module = "RH"` or `Module = "ContasAPagar"`. Add them.
 
-Open `SaaS_BasePlatform.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`.
+Open `Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`.
 
 After the last entry in `DefaultResources` (the `"GeneralLedger.Management"` entry), add:
 
@@ -428,7 +428,7 @@ After the last entry in `DefaultResources` (the `"GeneralLedger.Management"` ent
 
 - [ ] **Step 3: Add new roles to DbInitializer.rolesConfig**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`.
+Open `Prumo.Infrastructure/Data/DbInitializer.cs`.
 
 Replace:
 ```csharp
@@ -455,7 +455,7 @@ With:
 
 - [ ] **Step 4: Add new roles to TenantBootstrapSeeder.rolePermissionConfig**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`.
+Open `Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`.
 
 Replace:
 ```csharp
@@ -531,7 +531,7 @@ Still in `TenantBootstrapSeeder.cs`, after the existing Admin `ResourcePermissio
 - [ ] **Step 4: Build to confirm no compile errors**
 
 ```bash
-dotnet build SaaS_BasePlatform.Infrastructure
+dotnet build Prumo.Infrastructure
 ```
 
 Expected: Build succeeded, 0 error(s)
@@ -539,7 +539,7 @@ Expected: Build succeeded, 0 error(s)
 - [ ] **Step 6: Build to confirm no compile errors**
 
 ```bash
-dotnet build SaaS_BasePlatform.Infrastructure
+dotnet build Prumo.Infrastructure
 ```
 
 Expected: Build succeeded, 0 error(s)
@@ -547,8 +547,8 @@ Expected: Build succeeded, 0 error(s)
 - [ ] **Step 7: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs
-git add SaaS_BasePlatform.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs
+git add Prumo.Infrastructure/Data/DbInitializer.cs
+git add Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs
 git commit -m "feat: seed RH, Financeiro, ContasAPagar roles with module-scoped permissions and resources"
 ```
 
@@ -557,18 +557,18 @@ git commit -m "feat: seed RH, Financeiro, ContasAPagar roles with module-scoped 
 ## Task 5: Add DefaultExpenseAccountId to TenantGlSettings + EF migration
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs`
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`
+- Modify: `Prumo.Domain/Entities/TenantGlSettings.cs`
+- Modify: `Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`
 - New: EF Core migration
 
 - [ ] **Step 1: Add the new property to the entity**
 
-Open `SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs`.
+Open `Prumo.Domain/Entities/TenantGlSettings.cs`.
 
 Replace the entire file content with:
 
 ```csharp
-namespace SaaS_BasePlatform.Domain.Entities
+namespace Prumo.Domain.Entities
 {
     // Intentionally not EntityBase: PK is TenantId (1:1 with Tenant), not an independent Guid.
     public class TenantGlSettings
@@ -587,7 +587,7 @@ namespace SaaS_BasePlatform.Domain.Entities
 
 - [ ] **Step 2: Configure the new FK in EF**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`.
+Open `Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`.
 
 Add after the last `builder.HasOne` block (after line 29):
 
@@ -601,10 +601,10 @@ Add after the last `builder.HasOne` block (after line 29):
 - [ ] **Step 3: Create the EF migration**
 
 ```bash
-dotnet ef migrations add AddDefaultExpenseAccount -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api
+dotnet ef migrations add AddDefaultExpenseAccount -p Prumo.Infrastructure -s Prumo.Api
 ```
 
-Expected: migration file created in `SaaS_BasePlatform.Infrastructure/Data/Migrations/`
+Expected: migration file created in `Prumo.Infrastructure/Data/Migrations/`
 
 - [ ] **Step 4: Verify the migration looks correct**
 
@@ -630,9 +630,9 @@ Expected: Build succeeded, 0 error(s)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs
-git add SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs
-git add SaaS_BasePlatform.Infrastructure/Data/Migrations/
+git add Prumo.Domain/Entities/TenantGlSettings.cs
+git add Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs
+git add Prumo.Infrastructure/Data/Migrations/
 git commit -m "feat: add DefaultExpenseAccountId to TenantGlSettings"
 ```
 
@@ -641,11 +641,11 @@ git commit -m "feat: add DefaultExpenseAccountId to TenantGlSettings"
 ## Task 6: Expand ChartOfAccountsSeeder with new sub-accounts
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`
+- Modify: `Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`
 
 - [ ] **Step 1: Add new account seeds to DefaultAccounts**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`.
+Open `Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`.
 
 In `DefaultAccounts`, after the last entry (`new("5.2", ...)`) add:
 
@@ -694,7 +694,7 @@ With:
 - [ ] **Step 3: Build to confirm no compile errors**
 
 ```bash
-dotnet build SaaS_BasePlatform.Infrastructure
+dotnet build Prumo.Infrastructure
 ```
 
 Expected: Build succeeded, 0 error(s)
@@ -710,7 +710,7 @@ Expected: all existing tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs
+git add Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs
 git commit -m "feat: expand chart of accounts seed with HR and AP sub-accounts, set DefaultExpenseAccountId"
 ```
 

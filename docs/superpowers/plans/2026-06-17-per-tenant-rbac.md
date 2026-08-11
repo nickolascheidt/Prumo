@@ -74,7 +74,7 @@ Expected: build succeeds (establishes a green baseline before changes).
 ### Task A0: Reserved role constants
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Domain/Authorization/Permissions.cs`
+- Modify: `Prumo.Domain/Authorization/Permissions.cs`
 
 - [ ] **Step 1: Add role-name constants**
 
@@ -110,7 +110,7 @@ Expected: PASS.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Domain/Authorization/Permissions.cs
+git add Prumo.Domain/Authorization/Permissions.cs
 git commit -m "feat(rbac): add canonical role-name constants"
 ```
 
@@ -119,14 +119,14 @@ git commit -m "feat(rbac): add canonical role-name constants"
 ### Task A1: `TenantUserRole` entity
 
 **Files:**
-- Create: `SaaS_BasePlatform.Domain/Entities/TenantUserRole.cs`
+- Create: `Prumo.Domain/Entities/TenantUserRole.cs`
 
 - [ ] **Step 1: Create the entity**
 
 ```csharp
-using SaaS_BasePlatform.Domain.Common;
+using Prumo.Domain.Common;
 
-namespace SaaS_BasePlatform.Domain.Entities
+namespace Prumo.Domain.Entities
 {
     /// <summary>
     /// Per-tenant assignment of an Identity role to a user. Replaces global
@@ -156,7 +156,7 @@ Expected: PASS.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Domain/Entities/TenantUserRole.cs
+git add Prumo.Domain/Entities/TenantUserRole.cs
 git commit -m "feat(rbac): add TenantUserRole entity"
 ```
 
@@ -165,17 +165,17 @@ git commit -m "feat(rbac): add TenantUserRole entity"
 ### Task A2: EF configuration + DbSet
 
 **Files:**
-- Create: `SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantUserRoleConfiguration.cs`
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs`
+- Create: `Prumo.Infrastructure/Data/Configurations/TenantUserRoleConfiguration.cs`
+- Modify: `Prumo.Infrastructure/Data/ApplicationDbContext.cs`
 
 - [ ] **Step 1: Create the configuration** (mirrors `TenantUserConfiguration`)
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Domain.Entities;
 
-namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
+namespace Prumo.Infrastructure.Data.Configurations
 {
     public class TenantUserRoleConfiguration : IEntityTypeConfiguration<TenantUserRole>
     {
@@ -219,7 +219,7 @@ Expected: PASS.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantUserRoleConfiguration.cs SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs
+git add Prumo.Infrastructure/Data/Configurations/TenantUserRoleConfiguration.cs Prumo.Infrastructure/Data/ApplicationDbContext.cs
 git commit -m "feat(rbac): configure TenantUserRoles table"
 ```
 
@@ -228,15 +228,15 @@ git commit -m "feat(rbac): configure TenantUserRoles table"
 ### Task A3: EF migration
 
 **Files:**
-- Create: `SaaS_BasePlatform.Infrastructure/Migrations/<timestamp>_AddTenantUserRoles.cs` (generated)
+- Create: `Prumo.Infrastructure/Migrations/<timestamp>_AddTenantUserRoles.cs` (generated)
 
 - [ ] **Step 1: Generate the migration**
 
 Run from repo root:
 ```bash
-dotnet ef migrations add AddTenantUserRoles -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api
+dotnet ef migrations add AddTenantUserRoles -p Prumo.Infrastructure -s Prumo.Api
 ```
-Expected: a new migration file is created under `SaaS_BasePlatform.Infrastructure/Migrations/` creating table `TenantUserRoles` with composite PK `(TenantId, UserId, RoleId)` and FKs to `AspNetUsers` / `AspNetRoles`.
+Expected: a new migration file is created under `Prumo.Infrastructure/Migrations/` creating table `TenantUserRoles` with composite PK `(TenantId, UserId, RoleId)` and FKs to `AspNetUsers` / `AspNetRoles`.
 
 - [ ] **Step 2: Inspect the migration**
 
@@ -250,7 +250,7 @@ Expected: PASS.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Migrations/
+git add Prumo.Infrastructure/Migrations/
 git commit -m "feat(rbac): migration for TenantUserRoles"
 ```
 
@@ -261,19 +261,19 @@ git commit -m "feat(rbac): migration for TenantUserRoles"
 Converts existing global feature-role memberships into `TenantUserRole` rows (one per tenant the user belongs to), then removes the global feature-role assignments. `Administrador` is left global (master admins).
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`
-- Test: `SaaS_BasePlatform.Tests/Infrastructure/TenantUserRoleBackfillTests.cs`
+- Modify: `Prumo.Infrastructure/Data/DbInitializer.cs`
+- Test: `Prumo.Tests/Infrastructure/TenantUserRoleBackfillTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
+using Prumo.Infrastructure.Data;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Infrastructure
+namespace Prumo.Tests.Infrastructure
 {
     public class TenantUserRoleBackfillTests
     {
@@ -418,7 +418,7 @@ Then call it once during init. In `InitializeAsync`, immediately **before** the 
                 }
 ```
 
-Add `using SaaS_BasePlatform.Domain.Authorization;` to the file's usings if not present (it already imports it at `:1`).
+Add `using Prumo.Domain.Authorization;` to the file's usings if not present (it already imports it at `:1`).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -429,7 +429,7 @@ Expected: PASS.
 
 ```bash
 dotnet build
-git add SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs SaaS_BasePlatform.Tests/Infrastructure/TenantUserRoleBackfillTests.cs
+git add Prumo.Infrastructure/Data/DbInitializer.cs Prumo.Tests/Infrastructure/TenantUserRoleBackfillTests.cs
 git commit -m "feat(rbac): backfill global feature roles into per-tenant rows"
 ```
 
@@ -442,22 +442,22 @@ git commit -m "feat(rbac): backfill global feature roles into per-tenant rows"
 Single source of truth for "which role names does this user have in this tenant".
 
 **Files:**
-- Create: `SaaS_BasePlatform.Application/Services/ITenantRoleService.cs`
-- Create: `SaaS_BasePlatform.Application/Services/TenantRoleService.cs`
-- Modify: `SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs`
-- Test: `SaaS_BasePlatform.Tests/Services/TenantRoleServiceTests.cs`
+- Create: `Prumo.Application/Services/ITenantRoleService.cs`
+- Create: `Prumo.Application/Services/TenantRoleService.cs`
+- Modify: `Prumo.Api/Configuration/DependencyInjectionConfiguration.cs`
+- Test: `Prumo.Tests/Services/TenantRoleServiceTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Application.Services;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Application.Services;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
+using Prumo.Infrastructure.Data;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Services
+namespace Prumo.Tests.Services
 {
     public class TenantRoleServiceTests
     {
@@ -522,7 +522,7 @@ Expected: FAIL — types do not exist.
 `ITenantRoleService.cs`:
 
 ```csharp
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public interface ITenantRoleService
     {
@@ -550,11 +550,11 @@ namespace SaaS_BasePlatform.Application.Services
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Domain.Authorization;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Domain.Authorization;
+using Prumo.Domain.Entities;
+using Prumo.Infrastructure.Data;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public class TenantRoleService : ITenantRoleService
     {
@@ -639,7 +639,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/Services/ITenantRoleService.cs SaaS_BasePlatform.Application/Services/TenantRoleService.cs SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs SaaS_BasePlatform.Tests/Services/TenantRoleServiceTests.cs
+git add Prumo.Application/Services/ITenantRoleService.cs Prumo.Application/Services/TenantRoleService.cs Prumo.Api/Configuration/DependencyInjectionConfiguration.cs Prumo.Tests/Services/TenantRoleServiceTests.cs
 git commit -m "feat(rbac): tenant-scoped role resolution service"
 ```
 
@@ -650,19 +650,19 @@ git commit -m "feat(rbac): tenant-scoped role resolution service"
 `PermissionService.GetUserPermissionsForTenantAsync` currently joins the user's **global** roles. Switch it to effective roles.
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Infrastructure/Authorization/PermissionService.cs`
-- Test: `SaaS_BasePlatform.Tests/Services/PermissionServiceTenantTests.cs`
+- Modify: `Prumo.Infrastructure/Authorization/PermissionService.cs`
+- Test: `Prumo.Tests/Services/PermissionServiceTenantTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Infrastructure.Authorization;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Domain.Entities;
+using Prumo.Infrastructure.Authorization;
+using Prumo.Infrastructure.Data;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Services
+namespace Prumo.Tests.Services
 {
     public class PermissionServiceTenantTests
     {
@@ -741,7 +741,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Authorization/PermissionService.cs SaaS_BasePlatform.Tests/Services/PermissionServiceTenantTests.cs
+git add Prumo.Infrastructure/Authorization/PermissionService.cs Prumo.Tests/Services/PermissionServiceTenantTests.cs
 git commit -m "feat(rbac): module permissions resolve from per-tenant roles"
 ```
 
@@ -752,22 +752,22 @@ git commit -m "feat(rbac): module permissions resolve from per-tenant roles"
 `ResourcePermissionService` must: (a) treat global master `Administrador` as Full everywhere; (b) treat tenant `Owner`/`Admin` as Full within the active tenant; (c) otherwise resolve effective per-tenant roles. It must use the ambient `ITenantContext`.
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/Services/ResourcePermissionService.cs`
-- Test: `SaaS_BasePlatform.Tests/Services/ResourcePermissionTenantTests.cs`
+- Modify: `Prumo.Application/Services/ResourcePermissionService.cs`
+- Test: `Prumo.Tests/Services/ResourcePermissionTenantTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-using SaaS_BasePlatform.Application.Services;
-using SaaS_BasePlatform.Domain.Common;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Application.Services;
+using Prumo.Domain.Common;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
+using Prumo.Infrastructure.Data;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Services
+namespace Prumo.Tests.Services
 {
     public class ResourcePermissionTenantTests
     {
@@ -825,7 +825,7 @@ In `ResourcePermissionService.cs`, add the field and constructor parameter:
         }
 ```
 
-Add `using SaaS_BasePlatform.Domain.Common;` at the top.
+Add `using Prumo.Domain.Common;` at the top.
 
 - [ ] **Step 4: Add the tenant-admin short-circuit helper**
 
@@ -914,7 +914,7 @@ Expected: PASS.
 
 ```bash
 dotnet build
-git add SaaS_BasePlatform.Application/Services/ResourcePermissionService.cs SaaS_BasePlatform.Tests/Services/ResourcePermissionTenantTests.cs
+git add Prumo.Application/Services/ResourcePermissionService.cs Prumo.Tests/Services/ResourcePermissionTenantTests.cs
 git commit -m "feat(rbac): resource access honors tenant admin + per-tenant roles"
 ```
 
@@ -923,8 +923,8 @@ git commit -m "feat(rbac): resource access honors tenant admin + per-tenant role
 ### Task B4: JWT emits per-tenant role + tenant_role claims
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/Services/AuthService.cs`
-- Test: `SaaS_BasePlatform.Tests/Services/AuthServiceTokenTests.cs`
+- Modify: `Prumo.Application/Services/AuthService.cs`
+- Test: `Prumo.Tests/Services/AuthServiceTokenTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -932,11 +932,11 @@ git commit -m "feat(rbac): resource access honors tenant admin + per-tenant role
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;
-using SaaS_BasePlatform.Application.Services;
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Application.Services;
+using Prumo.Domain.Entities;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Services
+namespace Prumo.Tests.Services
 {
     public class AuthServiceTokenTests
     {
@@ -965,7 +965,7 @@ namespace SaaS_BasePlatform.Tests.Services
 }
 ```
 
-> `AuthServiceTestHarness.GenerateTokenAsync` is a thin static test helper you create in the test project that builds the claim list exactly as `AuthService.GenerateJwtToken` does and signs it with a fixed test key. Its purpose is to lock the **claim shape**. (Claim type `"role"` is the short form `ClaimTypes.Role` serializes to in the JWT.) Place it in `SaaS_BasePlatform.Tests/Services/AuthServiceTestHarness.cs`; copy the final claim-building block from Step 3 into it.
+> `AuthServiceTestHarness.GenerateTokenAsync` is a thin static test helper you create in the test project that builds the claim list exactly as `AuthService.GenerateJwtToken` does and signs it with a fixed test key. Its purpose is to lock the **claim shape**. (Claim type `"role"` is the short form `ClaimTypes.Role` serializes to in the JWT.) Place it in `Prumo.Tests/Services/AuthServiceTestHarness.cs`; copy the final claim-building block from Step 3 into it.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1039,7 +1039,7 @@ Expected: PASS.
 
 ```bash
 dotnet build
-git add SaaS_BasePlatform.Application/Services/AuthService.cs SaaS_BasePlatform.Tests/Services/AuthServiceTokenTests.cs SaaS_BasePlatform.Tests/Services/AuthServiceTestHarness.cs
+git add Prumo.Application/Services/AuthService.cs Prumo.Tests/Services/AuthServiceTokenTests.cs Prumo.Tests/Services/AuthServiceTestHarness.cs
 git commit -m "feat(rbac): JWT carries per-tenant roles and tenant_role"
 ```
 
@@ -1048,9 +1048,9 @@ git commit -m "feat(rbac): JWT carries per-tenant roles and tenant_role"
 ### Task B5: Per-tenant feature-role endpoints
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs`
-- Modify: `SaaS_BasePlatform.Api/Controllers/TenantsController.cs`
-- Test: `SaaS_BasePlatform.Tests/Controllers/TenantRoleEndpointsTests.cs` (optional integration-style; minimum: service covered by B1)
+- Modify: `Prumo.Application/DTOs/Tenants/TenantDtos.cs`
+- Modify: `Prumo.Api/Controllers/TenantsController.cs`
+- Test: `Prumo.Tests/Controllers/TenantRoleEndpointsTests.cs` (optional integration-style; minimum: service covered by B1)
 
 - [ ] **Step 1: Add DTOs**
 
@@ -1069,7 +1069,7 @@ Inject `ITenantRoleService` (add field + constructor param). Add these actions:
         [HttpGet("{tenantId:guid}/assignable-roles")]
         [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
         public ActionResult<IReadOnlyList<string>> GetAssignableRoles(Guid tenantId)
-            => Ok(SaaS_BasePlatform.Domain.Authorization.Permissions.Roles.AssignableFeatureRoles);
+            => Ok(Prumo.Domain.Authorization.Permissions.Roles.AssignableFeatureRoles);
 
         [HttpGet("{tenantId:guid}/members/{userId:guid}/roles")]
         [ProducesResponseType(typeof(TenantMemberRolesDto), StatusCodes.Status200OK)]
@@ -1120,7 +1120,7 @@ Expected: PASS.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs SaaS_BasePlatform.Api/Controllers/TenantsController.cs
+git add Prumo.Application/DTOs/Tenants/TenantDtos.cs Prumo.Api/Controllers/TenantsController.cs
 git commit -m "feat(rbac): per-tenant feature-role assignment endpoints"
 ```
 
@@ -1131,19 +1131,19 @@ git commit -m "feat(rbac): per-tenant feature-role assignment endpoints"
 `AuthController.AssignRoleToUser` / `register` currently assign global Identity roles. Restrict assignment to the master role only, and stop assigning the non-existent `Usuario`.
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/Services/AuthService.cs`
-- Modify: `SaaS_BasePlatform.Api/Controllers/AuthController.cs`
-- Modify: `SaaS_BasePlatform.Application/Services/TenantService.cs`
-- Test: `SaaS_BasePlatform.Tests/Services/AuthServiceRoleGuardTests.cs`
+- Modify: `Prumo.Application/Services/AuthService.cs`
+- Modify: `Prumo.Api/Controllers/AuthController.cs`
+- Modify: `Prumo.Application/Services/TenantService.cs`
+- Test: `Prumo.Tests/Services/AuthServiceRoleGuardTests.cs`
 
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
 using NSubstitute;
-using SaaS_BasePlatform.Application.Services;
+using Prumo.Application.Services;
 using Xunit;
 
-namespace SaaS_BasePlatform.Tests.Services
+namespace Prumo.Tests.Services
 {
     public class AuthServiceRoleGuardTests
     {
@@ -1175,7 +1175,7 @@ At the top of `AuthService.AssignRoleToUserAsync` (`AuthService.cs:169`), before
                     "Only the master admin role can be assigned globally. Use per-tenant role assignment for feature roles.");
 ```
 
-Add `using SaaS_BasePlatform.Domain.Authorization;` (or use the fully-qualified name as shown).
+Add `using Prumo.Domain.Authorization;` (or use the fully-qualified name as shown).
 
 - [ ] **Step 4: Register users without the phantom global role**
 
@@ -1535,7 +1535,7 @@ git commit -m "chore(rbac): lint/test cleanup"
 
 With PostgreSQL reachable (see `appsettings.ConnectionStrings.json`), run from repo root:
 ```bash
-dotnet ef database update -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api
+dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api
 ```
 Expected: `TenantUserRoles` table created; `DbInitializer` backfill log line `✓ Backfilled N per-tenant role rows` appears on next API start.
 
@@ -1543,7 +1543,7 @@ Expected: `TenantUserRoles` table created; `DbInitializer` backfill log line `�
 
 - [ ] **Step 1: Run API + SPA**
 
-Backend: `dotnet run --project SaaS_BasePlatform.Api`. Frontend: `npm start`.
+Backend: `dotnet run --project Prumo.Api`. Frontend: `npm start`.
 
 - [ ] **Step 2: Verify #1**
 

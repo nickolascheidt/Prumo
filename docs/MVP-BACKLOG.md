@@ -47,7 +47,7 @@ readonly availableRoles: string[] = ['Administrador', 'Funcionario', 'Cliente', 
 ```
 
 As roles reais do backend (`Permissions.Roles`, em
-`SaaS_BasePlatform.Domain/Authorization/Permissions.cs:85`) são:
+`Prumo.Domain/Authorization/Permissions.cs:85`) são:
 `Administrador`, `Funcionario`, `Cliente`, `RH`, `Financeiro`, `ContasAPagar`.
 
 Ou seja: além de `Usuario` não existir, **faltam três roles** na tela (RH,
@@ -86,7 +86,7 @@ listar/criar/excluir role. O único parecido é
    conta feature roles.
 
 **O que precisa:** incluir as roles no `TenantMemberDto`
-(`SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs:23`) para o
+(`Prumo.Application/DTOs/Tenants/TenantDtos.cs:23`) para o
 `GET /tenants/{id}/members` já devolver tudo numa tirada só (evita N+1), e
 **decidir** se a role global entra na contagem.
 
@@ -130,34 +130,42 @@ tela que mostra os dados do tenant.
 
 **Esforço:** trivial, 4 linhas.
 
-## 7. Renomear o sistema — VEREDITO: fácil, ~meio dia, banco não é tocado
+## 7. Renomear o sistema — ✅ FEITO em 2026-08-11
 
-Os números assustam mas enganam: **368 arquivos / ~18.500 ocorrências** no
-backend, sendo que praticamente todas são `namespace SaaS_BasePlatform.X` e
-`using SaaS_BasePlatform.X`. É find/replace mecânico + renomear 5 diretórios +
-o `.slnx` + o `Dockerfile`.
+O nome escolhido foi **Prumo** — do instrumento de prumo, e da expressão "estar a
+prumo": em ordem, correto. Raiz de namespace `Prumo`; "Prumo ERP" fica como nome
+de exibição (README, `<title>`, cabeçalho da UI), fora do código.
 
-**O ponto que foi verificado com cuidado:** as **588 ocorrências dentro das
-migrations** são nomes de tipo CLR no model snapshot
-(`modelBuilder.Entity("SaaS_BasePlatform.Domain.Entities.ApplicationUser")`).
-Trocam no mesmo find/replace, o snapshot continua consistente, e **nenhum nome
-de tabela ou coluna muda** → não precisa de migration nova, não precisa mexer no
-Postgres.
+**Os ~18.500 do levantamento original estavam errados** — aquele número contava
+`bin`/`obj`. Contando só arquivos rastreados pelo git, o escopo real era
+**1.573 ocorrências em 204 arquivos** no backend e **48 em 116 arquivos** no
+frontend. O rename levou minutos, não meio dia.
 
-**Frontend:** 9 arquivos, 35 ocorrências. Trivial.
+Três variantes que um find/replace ingênuo teria errado, e por isso a busca foi
+feita com `saas.?base.?platform`, não com a string literal:
 
-**Efeitos colaterais, ambos benignos:**
-- JWT `Issuer`/`Audience` carregam o nome (`SaaS_BasePlatformApi`, em
-  `appsettings*.json`). Trocar invalida os tokens em circulação — todo mundo
-  reloga uma vez.
-- As chaves do `localStorage` (`saas_baseplatform_token`, `_user`,
-  `_permissions`, `_resource_permissions`, `_tenant_id`) idem, se quiser trocar.
+- `SaaS BasePlatform` **com espaço** — rodapé do login no frontend.
+- `saas-baseplatform-erp` — nome do projeto Angular, em 5 arquivos que precisam
+  concordar entre si (`angular.json`, `package.json`, `package-lock.json`,
+  `karma.conf.js`, `Dockerfile`).
+- `saas_baseplatform_*` — as chaves do `localStorage`.
 
-**Precedente:** ainda existem `BiomePampa.Api/`, `BiomePampa.Domain/`,
-`BiomePampa.Application/`, `BiomePampa.Infrastructure/`, `BiomePampa.Tests/` na
-raiz — só lixo de `bin`/`obj`. **O projeto já foi renomeado uma vez e deu certo.**
+**O que garantiu que o banco não fosse tocado:** `SaaSBasePlatformDb` não contém
+`SaaS_BasePlatform` (não tem o underscore), então o replace do namespace nunca
+encostou no nome do banco. Os nomes de banco ficaram **deliberadamente
+inalterados** — renomear banco não é find/replace, e o item 12 já vai ter que
+unificar isso quando consertar o `ApplicationDbContextFactory`.
 
-**⚠️ FALTA O NOME NOVO.** É o único bloqueio deste item.
+**Efeitos colaterais, ambos aplicados:**
+- JWT `Issuer`/`Audience` agora são `PrumoApi`/`PrumoClient`. Invalida os tokens
+  em circulação — todo mundo reloga uma vez.
+- As chaves do `localStorage` viraram `prumo_*`. Força logout, que aliás é
+  exatamente o que a dívida de verificação do menu já exigia.
+
+**Verificação:** backend `dotnet build` com 0 erros e **63/63 testes aprovados**;
+frontend com build de produção limpo. Os diretórios mortos `BiomePampa.*` foram
+apagados no mesmo pass (item 9), junto com o scaffold `BiomePampa.Api.http`, que
+ainda apontava para `/weatherforecast/`.
 
 ### O que fica de fora do rename (por ora)
 
@@ -176,7 +184,7 @@ O maior item, e o único que não é trabalho de uma tarde.
 **Estado atual:**
 - ✅ `POST /api/auth/register` já existe e é público (com rate limiting).
 - ✅ `AddDefaultTokenProviders()` já está ligado
-  (`SaaS_BasePlatform.Api/Configuration/DatabaseConfiguration.cs:32`), então os
+  (`Prumo.Api/Configuration/DatabaseConfiguration.cs:32`), então os
   **tokens expiráveis** de confirmação de e-mail e de reset de senha vêm prontos
   do Identity. Não precisa inventar nada.
 - ❌ **Não existe nenhuma infraestrutura de e-mail.** Zero referência a SMTP,
@@ -198,9 +206,10 @@ pelo e-mail? (o `GET /tenants/users/lookup` por e-mail já existe e ajudaria aqu
 
 ## 9. Limpeza
 
-- Apagar `BiomePampa.Api/`, `BiomePampa.Application/`, `BiomePampa.Domain/`,
-  `BiomePampa.Infrastructure/`, `BiomePampa.Tests/` da raiz do backend — são só
-  `bin`/`obj` de antes do rename anterior.
+- ✅ **Feito em 2026-08-11, junto com o rename (item 7):** apagados
+  `BiomePampa.Api/`, `BiomePampa.Application/`, `BiomePampa.Domain/`,
+  `BiomePampa.Infrastructure/`, `BiomePampa.Tests/` da raiz do backend — eram só
+  `bin`/`obj` de antes do rename anterior, nenhum arquivo rastreado pelo git.
 - Existem planos não commitados em `docs/superpowers/plans/`: `hr-module-backend`,
   `hr-module-frontend`, `user-management`.
 - O catálogo de permissões (`Permissions.cs`) ainda lista módulos que não têm
@@ -218,7 +227,7 @@ pelo e-mail? (o `GET /tenants/users/lookup` por e-mail já existe e ajudaria aqu
 
 ## 10. O filtro global de tenant é fail-open — e já vazou uma vez
 
-**Causa:** `SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs:77-80`:
+**Causa:** `Prumo.Infrastructure/Data/ApplicationDbContext.cs:77-80`:
 
 ```csharp
 modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
@@ -273,8 +282,8 @@ de fato dependem do filtro global — o resultado são **25 sites em 2 arquivos*
 
 | Arquivo | Entidades | Sites |
 |---|---|---|
-| `SaaS_BasePlatform.Application/Services/ResourcePermissionService.cs` | `Resources`, `ResourcePermissions` | 16 |
-| `SaaS_BasePlatform.Infrastructure/Authorization/PermissionService.cs` | `RolePermissions`, `PermissionAuditLogs` | 9 |
+| `Prumo.Application/Services/ResourcePermissionService.cs` | `Resources`, `ResourcePermissions` | 16 |
+| `Prumo.Infrastructure/Authorization/PermissionService.cs` | `RolePermissions`, `PermissionAuditLogs` | 9 |
 
 São exatamente os dois arquivos onde o vazamento do `73dc458` aconteceu. Não é
 coincidência: é o único lugar do código que ainda confia no filtro.
@@ -299,7 +308,7 @@ o token no `selectTenant` **e** manda `X-Tenant-Id` em todo request
 (`jwt.interceptor.ts:24`), então claim e rota concordam na prática.
 
 **Achado colateral:** o `Repository<T>` / `UnitOfWork`
-(`SaaS_BasePlatform.Infrastructure/Repositories/`) — o único consumidor natural
+(`Prumo.Infrastructure/Repositories/`) — o único consumidor natural
 do filtro global, porque não chama `IgnoreQueryFilters` — é **código morto**.
 Está registrado no DI (`DependencyInjectionConfiguration.cs:18`), mas nenhum
 service injeta `IRepository<Algo>`; as únicas referências estão dentro dos
@@ -435,7 +444,7 @@ o README e o CLAUDE.md.
 
 - O arquivo é morto duas vezes: além de não existir `AddJsonFile` em lugar nenhum,
   ele **não é copiado para o output** — não há entrada para ele no
-  `SaaS_BasePlatform.Api.csproj` nem no `Dockerfile`. Mesmo que alguém adicionasse
+  `Prumo.Api.csproj` nem no `Dockerfile`. Mesmo que alguém adicionasse
   o `AddJsonFile`, não funcionaria no container sem também mexer no build.
 - **Quem diverge é só o factory.** O `DefaultConnection` dentro do
   `appsettings.ConnectionStrings.json` aponta para `SaaSBasePlatformDb` — a

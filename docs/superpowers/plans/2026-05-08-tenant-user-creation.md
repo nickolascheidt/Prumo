@@ -13,12 +13,12 @@
 ## File Map
 
 **Backend — create/modify:**
-- Modify: `SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs` — add `CreateTenantUserDto`
-- Modify: `SaaS_BasePlatform.Application/Services/ITenantService.cs` — add interface method
-- Modify: `SaaS_BasePlatform.Application/Services/TenantService.cs` — inject `UserManager`, implement method
-- Modify: `SaaS_BasePlatform.Api/Controllers/TenantsController.cs` — add endpoint
-- Create: `SaaS_BasePlatform.Tests/Services/TenantServiceCreateUserTests.cs` — unit tests
-- Modify: `SaaS_BasePlatform.Tests/SaaS_BasePlatform.Tests.csproj` — add EF InMemory package
+- Modify: `Prumo.Application/DTOs/Tenants/TenantDtos.cs` — add `CreateTenantUserDto`
+- Modify: `Prumo.Application/Services/ITenantService.cs` — add interface method
+- Modify: `Prumo.Application/Services/TenantService.cs` — inject `UserManager`, implement method
+- Modify: `Prumo.Api/Controllers/TenantsController.cs` — add endpoint
+- Create: `Prumo.Tests/Services/TenantServiceCreateUserTests.cs` — unit tests
+- Modify: `Prumo.Tests/Prumo.Tests.csproj` — add EF InMemory package
 
 **Frontend — modify (separate repo `SaaSBasePlatform-Angular`):**
 - Modify: `src/app/core/models/index.ts` — add `CreateTenantUserRequest`
@@ -30,11 +30,11 @@
 ## Task 1: Add `CreateTenantUserDto`
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs`
+- Modify: `Prumo.Application/DTOs/Tenants/TenantDtos.cs`
 
 - [ ] **Step 1: Add the record to TenantDtos.cs**
 
-  Open `SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs` and append after the last record:
+  Open `Prumo.Application/DTOs/Tenants/TenantDtos.cs` and append after the last record:
 
   ```csharp
   public record CreateTenantUserDto(
@@ -49,7 +49,7 @@
 - [ ] **Step 2: Build to confirm no errors**
 
   ```bash
-  dotnet build SaaS_BasePlatform.Application
+  dotnet build Prumo.Application
   ```
   Expected: Build succeeded, 0 errors.
 
@@ -58,11 +58,11 @@
 ## Task 2: Add interface method to `ITenantService`
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/Services/ITenantService.cs`
+- Modify: `Prumo.Application/Services/ITenantService.cs`
 
 - [ ] **Step 1: Add the method signature**
 
-  Open `SaaS_BasePlatform.Application/Services/ITenantService.cs` and add after `GetUserRoleAsync`:
+  Open `Prumo.Application/Services/ITenantService.cs` and add after `GetUserRoleAsync`:
 
   ```csharp
   Task<TenantMemberDto> CreateAndAddMemberAsync(
@@ -72,7 +72,7 @@
 - [ ] **Step 2: Build Application — expect a compile error in TenantService**
 
   ```bash
-  dotnet build SaaS_BasePlatform.Application
+  dotnet build Prumo.Application
   ```
   Expected: Error — `TenantService` does not implement `CreateAndAddMemberAsync`. This is expected and confirms the interface is wired.
 
@@ -81,17 +81,17 @@
 ## Task 3: Add EF InMemory package to Tests project and write failing tests
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Tests/SaaS_BasePlatform.Tests.csproj`
-- Create: `SaaS_BasePlatform.Tests/Services/TenantServiceCreateUserTests.cs`
+- Modify: `Prumo.Tests/Prumo.Tests.csproj`
+- Create: `Prumo.Tests/Services/TenantServiceCreateUserTests.cs`
 
 - [ ] **Step 1: Add EF InMemory package to test project**
 
   Check the EF Core version already used in Infrastructure:
   ```bash
-  grep "EntityFrameworkCore\"" SaaS_BasePlatform.Infrastructure/SaaS_BasePlatform.Infrastructure.csproj
+  grep "EntityFrameworkCore\"" Prumo.Infrastructure/Prumo.Infrastructure.csproj
   ```
 
-  Open `SaaS_BasePlatform.Tests/SaaS_BasePlatform.Tests.csproj` and add the InMemory package using the **same version number** you found above:
+  Open `Prumo.Tests/Prumo.Tests.csproj` and add the InMemory package using the **same version number** you found above:
 
   ```xml
   <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="<same-as-infrastructure>" />
@@ -99,12 +99,12 @@
 
   Run restore:
   ```bash
-  dotnet restore SaaS_BasePlatform.Tests
+  dotnet restore Prumo.Tests
   ```
 
 - [ ] **Step 2: Create the test file**
 
-  Create `SaaS_BasePlatform.Tests/Services/TenantServiceCreateUserTests.cs`:
+  Create `Prumo.Tests/Services/TenantServiceCreateUserTests.cs`:
 
   ```csharp
   using Microsoft.AspNetCore.Identity;
@@ -112,13 +112,13 @@
   using Microsoft.Extensions.Logging;
   using Microsoft.Extensions.Options;
   using NSubstitute;
-  using SaaS_BasePlatform.Application.DTOs.Tenants;
-  using SaaS_BasePlatform.Application.Services;
-  using SaaS_BasePlatform.Domain.Entities;
-  using SaaS_BasePlatform.Domain.Enums;
-  using SaaS_BasePlatform.Infrastructure.Data;
+  using Prumo.Application.DTOs.Tenants;
+  using Prumo.Application.Services;
+  using Prumo.Domain.Entities;
+  using Prumo.Domain.Enums;
+  using Prumo.Infrastructure.Data;
 
-  namespace SaaS_BasePlatform.Tests.Services;
+  namespace Prumo.Tests.Services;
 
   public class TenantServiceCreateUserTests
   {
@@ -205,7 +205,7 @@
 - [ ] **Step 3: Run tests — expect compile failure (TenantService doesn't have the new constructor yet)**
 
   ```bash
-  dotnet test SaaS_BasePlatform.Tests --filter "FullyQualifiedName~TenantServiceCreateUserTests" 2>&1 | head -20
+  dotnet test Prumo.Tests --filter "FullyQualifiedName~TenantServiceCreateUserTests" 2>&1 | head -20
   ```
   Expected: Build error — `TenantService` constructor doesn't accept `UserManager`. This confirms the tests are wired correctly.
 
@@ -214,11 +214,11 @@
 ## Task 4: Implement `CreateAndAddMemberAsync` in `TenantService`
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/Services/TenantService.cs`
+- Modify: `Prumo.Application/Services/TenantService.cs`
 
 - [ ] **Step 1: Add using directives and inject `UserManager`**
 
-  Open `SaaS_BasePlatform.Application/Services/TenantService.cs`.
+  Open `Prumo.Application/Services/TenantService.cs`.
 
   Add to the top-level usings:
   ```csharp
@@ -277,7 +277,7 @@
 - [ ] **Step 3: Run the tests**
 
   ```bash
-  dotnet test SaaS_BasePlatform.Tests --filter "FullyQualifiedName~TenantServiceCreateUserTests" -v normal
+  dotnet test Prumo.Tests --filter "FullyQualifiedName~TenantServiceCreateUserTests" -v normal
   ```
   Expected: All 3 tests PASS.
 
@@ -293,11 +293,11 @@
 ## Task 5: Add `POST /api/tenants/{tenantId}/users` endpoint
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Api/Controllers/TenantsController.cs`
+- Modify: `Prumo.Api/Controllers/TenantsController.cs`
 
 - [ ] **Step 1: Add the endpoint**
 
-  Open `SaaS_BasePlatform.Api/Controllers/TenantsController.cs` and add after the `AddMember` action:
+  Open `Prumo.Api/Controllers/TenantsController.cs` and add after the `AddMember` action:
 
   ```csharp
   [HttpPost("{tenantId:guid}/users")]
@@ -325,12 +325,12 @@
 - [ ] **Step 3: Commit backend changes**
 
   ```bash
-  git add SaaS_BasePlatform.Application/DTOs/Tenants/TenantDtos.cs \
-          SaaS_BasePlatform.Application/Services/ITenantService.cs \
-          SaaS_BasePlatform.Application/Services/TenantService.cs \
-          SaaS_BasePlatform.Api/Controllers/TenantsController.cs \
-          SaaS_BasePlatform.Tests/Services/TenantServiceCreateUserTests.cs \
-          SaaS_BasePlatform.Tests/SaaS_BasePlatform.Tests.csproj
+  git add Prumo.Application/DTOs/Tenants/TenantDtos.cs \
+          Prumo.Application/Services/ITenantService.cs \
+          Prumo.Application/Services/TenantService.cs \
+          Prumo.Api/Controllers/TenantsController.cs \
+          Prumo.Tests/Services/TenantServiceCreateUserTests.cs \
+          Prumo.Tests/Prumo.Tests.csproj
   git commit -m "feat: add tenant user creation endpoint and service method"
   ```
 

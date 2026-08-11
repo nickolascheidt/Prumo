@@ -1,4 +1,4 @@
-# SaaS Base Platform — Backend API
+# Prumo ERP — Backend API
 
 ASP.NET Core 10 REST API for a multi-tenant SaaS platform with role-based permissions, resource-level access control, accounts payable, and a financial core (Chart of Accounts + General Ledger).
 
@@ -25,11 +25,11 @@ Api → Application → Infrastructure → Domain
 
 | Project | Responsibility |
 |---|---|
-| `SaaS_BasePlatform.Domain` | Entities, enums, permission constants — no external dependencies |
-| `SaaS_BasePlatform.Application` | Services, DTOs, FluentValidation validators |
-| `SaaS_BasePlatform.Infrastructure` | EF Core DbContext, migrations, repositories, Redis cache |
-| `SaaS_BasePlatform.Api` | Controllers, middleware, DI wiring, configuration extensions |
-| `SaaS_BasePlatform.Tests` | Unit tests mirroring the production project structure |
+| `Prumo.Domain` | Entities, enums, permission constants — no external dependencies |
+| `Prumo.Application` | Services, DTOs, FluentValidation validators |
+| `Prumo.Infrastructure` | EF Core DbContext, migrations, repositories, Redis cache |
+| `Prumo.Api` | Controllers, middleware, DI wiring, configuration extensions |
+| `Prumo.Tests` | Unit tests mirroring the production project structure |
 
 ### Composition Root
 
@@ -55,10 +55,10 @@ Api → Application → Infrastructure → Domain
 dotnet restore
 
 # Apply database migrations
-dotnet ef database update -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api
+dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api
 
 # Run the API (listens on http://localhost:5201)
-dotnet run --project SaaS_BasePlatform.Api
+dotnet run --project Prumo.Api
 ```
 
 The API runs migrations and seeds initial data automatically on startup via `app.InitializeDatabaseAsync()`.
@@ -72,8 +72,8 @@ Key sections:
 ```json
 {
   "Jwt": {
-    "Issuer": "SaaS_BasePlatformApi",
-    "Audience": "SaaS_BasePlatformClient",
+    "Issuer": "PrumoApi",
+    "Audience": "PrumoClient",
     "ExpirationHours": 8
   },
   "ConnectionStrings": {
@@ -124,7 +124,7 @@ Use `IRepository<T>` / `IUnitOfWork` — do not inject `ApplicationDbContext` di
 2. Add service interface + implementation to `Application/Services/`
 3. Add DTOs and validators to `Application/DTOs/`
 4. Add EF configuration to `Infrastructure/Data/Configurations/`
-5. Create migration: `dotnet ef migrations add <Name> -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api`
+5. Create migration: `dotnet ef migrations add <Name> -p Prumo.Infrastructure -s Prumo.Api`
 6. Add a thin controller to `Api/Controllers/`
 7. Register permissions in `Domain/Authorization/Permissions.cs` and wire the policy in `AuthorizationConfiguration`
 

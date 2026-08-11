@@ -21,7 +21,7 @@ Extend the existing `AddMemberDialogComponent` with an inline "create" mode that
 
 ### New DTO
 
-File: `SaaS_BasePlatform.Application/DTOs/Tenant/CreateTenantUserDto.cs`
+File: `Prumo.Application/DTOs/Tenant/CreateTenantUserDto.cs`
 
 ```csharp
 public record CreateTenantUserDto(

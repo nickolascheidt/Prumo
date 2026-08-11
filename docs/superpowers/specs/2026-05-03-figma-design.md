@@ -107,7 +107,7 @@ SaaSBasePlatform Design
 ### Toolbar (fixed, 64px height)
 - Background: `gradient-primary` (`135deg #5e35b1 → #764ba2`)
 - Shadow: `0 2px 12px rgba(15,23,42,0.15)`
-- Left: hamburger toggle → logo icon (hub, 34×34px, `rgba(255,255,255,0.18)` bg, radius 9px) → "SaaS_BasePlatform" text (17px, 600 weight, white)
+- Left: hamburger toggle → logo icon (hub, 34×34px, `rgba(255,255,255,0.18)` bg, radius 9px) → "Prumo" text (17px, 600 weight, white)
 - Right: User trigger pill (44px height, `rgba(255,255,255,0.1)` bg, radius 999px) — avatar (34px circle, gradient-accent) + name/email + chevron
 
 ### Sidenav (260px wide, `color-surface` bg, `color-border` right border)
@@ -130,7 +130,7 @@ SaaSBasePlatform Design
 
 ### 1. Auth / Login (`/auth/login`)
 - Full-page centered card on gradient bg with decorative orbs
-- Card: logo icon + "SaaS_BasePlatform ERP" h1 + subtitle
+- Card: logo icon + "Prumo ERP" h1 + subtitle
 - Form fields: Email (mail_outline prefix), Senha (lock_outline prefix), Tenant slug (business prefix, optional)
 - Primary flat button "Entrar" with loading spinner state
 

@@ -13,50 +13,50 @@
 ## File Map
 
 ### New — Domain
-- `SaaS_BasePlatform.Domain/Enums/AccountType.cs`
-- `SaaS_BasePlatform.Domain/Enums/JournalEntryType.cs`
-- `SaaS_BasePlatform.Domain/Entities/Account.cs`
-- `SaaS_BasePlatform.Domain/Entities/JournalEntry.cs` — includes static `ValidateBalance()`
-- `SaaS_BasePlatform.Domain/Entities/JournalLine.cs`
-- `SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs`
+- `Prumo.Domain/Enums/AccountType.cs`
+- `Prumo.Domain/Enums/JournalEntryType.cs`
+- `Prumo.Domain/Entities/Account.cs`
+- `Prumo.Domain/Entities/JournalEntry.cs` — includes static `ValidateBalance()`
+- `Prumo.Domain/Entities/JournalLine.cs`
+- `Prumo.Domain/Entities/TenantGlSettings.cs`
 
 ### New — Application DTOs
-- `SaaS_BasePlatform.Application/DTOs/Finance/AccountDtos.cs`
-- `SaaS_BasePlatform.Application/DTOs/Finance/JournalDtos.cs`
-- `SaaS_BasePlatform.Application/DTOs/Finance/GlSettingsDtos.cs`
+- `Prumo.Application/DTOs/Finance/AccountDtos.cs`
+- `Prumo.Application/DTOs/Finance/JournalDtos.cs`
+- `Prumo.Application/DTOs/Finance/GlSettingsDtos.cs`
 
 ### New — Application Services
-- `SaaS_BasePlatform.Application/Services/IAccountService.cs`
-- `SaaS_BasePlatform.Application/Services/AccountService.cs`
-- `SaaS_BasePlatform.Application/Services/IJournalService.cs`
-- `SaaS_BasePlatform.Application/Services/JournalService.cs`
-- `SaaS_BasePlatform.Application/Services/ITenantGlSettingsService.cs`
-- `SaaS_BasePlatform.Application/Services/TenantGlSettingsService.cs`
-- `SaaS_BasePlatform.Application/Services/IGlPostingService.cs`
-- `SaaS_BasePlatform.Application/Services/GlPostingService.cs`
+- `Prumo.Application/Services/IAccountService.cs`
+- `Prumo.Application/Services/AccountService.cs`
+- `Prumo.Application/Services/IJournalService.cs`
+- `Prumo.Application/Services/JournalService.cs`
+- `Prumo.Application/Services/ITenantGlSettingsService.cs`
+- `Prumo.Application/Services/TenantGlSettingsService.cs`
+- `Prumo.Application/Services/IGlPostingService.cs`
+- `Prumo.Application/Services/GlPostingService.cs`
 
 ### New — Infrastructure
-- `SaaS_BasePlatform.Infrastructure/Data/Configurations/AccountConfiguration.cs`
-- `SaaS_BasePlatform.Infrastructure/Data/Configurations/JournalEntryConfiguration.cs`
-- `SaaS_BasePlatform.Infrastructure/Data/Configurations/JournalLineConfiguration.cs`
-- `SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`
-- `SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`
+- `Prumo.Infrastructure/Data/Configurations/AccountConfiguration.cs`
+- `Prumo.Infrastructure/Data/Configurations/JournalEntryConfiguration.cs`
+- `Prumo.Infrastructure/Data/Configurations/JournalLineConfiguration.cs`
+- `Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`
+- `Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`
 
 ### New — API Controllers
-- `SaaS_BasePlatform.Api/Controllers/ChartOfAccountsController.cs`
-- `SaaS_BasePlatform.Api/Controllers/GeneralLedgerController.cs`
+- `Prumo.Api/Controllers/ChartOfAccountsController.cs`
+- `Prumo.Api/Controllers/GeneralLedgerController.cs`
 
 ### New — Tests
-- `SaaS_BasePlatform.Tests/Domain/JournalEntryTests.cs`
-- `SaaS_BasePlatform.Tests/Services/GlPostingServiceTests.cs`
+- `Prumo.Tests/Domain/JournalEntryTests.cs`
+- `Prumo.Tests/Services/GlPostingServiceTests.cs`
 
 ### Modified
-- `SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs` — add 4 DbSets
-- `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs` — call ChartOfAccountsSeeder
-- `SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs` — register 4 new services
-- `SaaS_BasePlatform.Application/Services/AccountsPayableService.cs` — inject IGlPostingService, call PostApPaymentAsync
-- `SaaS_BasePlatform.Application/Services/IAccountsPayableService.cs` — add userId param to MarkEntryPaidAsync
-- `SaaS_BasePlatform.Api/Controllers/AccountsPayableEntriesController.cs` — pass CurrentUserId to MarkEntryPaidAsync
+- `Prumo.Infrastructure/Data/ApplicationDbContext.cs` — add 4 DbSets
+- `Prumo.Infrastructure/Data/DbInitializer.cs` — call ChartOfAccountsSeeder
+- `Prumo.Api/Configuration/DependencyInjectionConfiguration.cs` — register 4 new services
+- `Prumo.Application/Services/AccountsPayableService.cs` — inject IGlPostingService, call PostApPaymentAsync
+- `Prumo.Application/Services/IAccountsPayableService.cs` — add userId param to MarkEntryPaidAsync
+- `Prumo.Api/Controllers/AccountsPayableEntriesController.cs` — pass CurrentUserId to MarkEntryPaidAsync
 
 ---
 
@@ -77,13 +77,13 @@ Expected output: `Switched to a new branch 'feature/financial-core-phase1'`
 ## Task 2: Domain Enums
 
 **Files:**
-- Create: `SaaS_BasePlatform.Domain/Enums/AccountType.cs`
-- Create: `SaaS_BasePlatform.Domain/Enums/JournalEntryType.cs`
+- Create: `Prumo.Domain/Enums/AccountType.cs`
+- Create: `Prumo.Domain/Enums/JournalEntryType.cs`
 
 - [ ] **Step 1: Create AccountType.cs**
 
 ```csharp
-namespace SaaS_BasePlatform.Domain.Enums
+namespace Prumo.Domain.Enums
 {
     public enum AccountType
     {
@@ -99,7 +99,7 @@ namespace SaaS_BasePlatform.Domain.Enums
 - [ ] **Step 2: Create JournalEntryType.cs**
 
 ```csharp
-namespace SaaS_BasePlatform.Domain.Enums
+namespace Prumo.Domain.Enums
 {
     public enum JournalEntryType
     {
@@ -112,7 +112,7 @@ namespace SaaS_BasePlatform.Domain.Enums
 - [ ] **Step 3: Build to confirm no errors**
 
 ```bash
-dotnet build SaaS_BasePlatform.Domain
+dotnet build Prumo.Domain
 ```
 
 Expected: Build succeeded, 0 error(s).
@@ -120,7 +120,7 @@ Expected: Build succeeded, 0 error(s).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Domain/Enums/AccountType.cs SaaS_BasePlatform.Domain/Enums/JournalEntryType.cs
+git add Prumo.Domain/Enums/AccountType.cs Prumo.Domain/Enums/JournalEntryType.cs
 git commit -m "feat: add AccountType and JournalEntryType enums"
 ```
 
@@ -129,21 +129,21 @@ git commit -m "feat: add AccountType and JournalEntryType enums"
 ## Task 3: Domain Entities + Tests
 
 **Files:**
-- Create: `SaaS_BasePlatform.Domain/Entities/Account.cs`
-- Create: `SaaS_BasePlatform.Domain/Entities/JournalEntry.cs`
-- Create: `SaaS_BasePlatform.Domain/Entities/JournalLine.cs`
-- Create: `SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs`
-- Create: `SaaS_BasePlatform.Tests/Domain/JournalEntryTests.cs`
+- Create: `Prumo.Domain/Entities/Account.cs`
+- Create: `Prumo.Domain/Entities/JournalEntry.cs`
+- Create: `Prumo.Domain/Entities/JournalLine.cs`
+- Create: `Prumo.Domain/Entities/TenantGlSettings.cs`
+- Create: `Prumo.Tests/Domain/JournalEntryTests.cs`
 
 - [ ] **Step 1: Write failing tests for JournalEntry.ValidateBalance**
 
-Create `SaaS_BasePlatform.Tests/Domain/JournalEntryTests.cs`:
+Create `Prumo.Tests/Domain/JournalEntryTests.cs`:
 
 ```csharp
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Tests.Domain;
+namespace Prumo.Tests.Domain;
 
 public class JournalEntryTests
 {
@@ -212,9 +212,9 @@ Expected: Build error — `JournalEntry` and `JournalLine` types not found.
 - [ ] **Step 3: Create JournalLine.cs**
 
 ```csharp
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Domain.Entities
+namespace Prumo.Domain.Entities
 {
     public class JournalLine
     {
@@ -232,10 +232,10 @@ namespace SaaS_BasePlatform.Domain.Entities
 - [ ] **Step 4: Create JournalEntry.cs**
 
 ```csharp
-using SaaS_BasePlatform.Domain.Common;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Domain.Common;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Domain.Entities
+namespace Prumo.Domain.Entities
 {
     public class JournalEntry : EntityBase, ITenantScoped
     {
@@ -267,10 +267,10 @@ namespace SaaS_BasePlatform.Domain.Entities
 - [ ] **Step 5: Create Account.cs**
 
 ```csharp
-using SaaS_BasePlatform.Domain.Common;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Domain.Common;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Domain.Entities
+namespace Prumo.Domain.Entities
 {
     public class Account : EntityBase, ITenantScoped
     {
@@ -291,7 +291,7 @@ namespace SaaS_BasePlatform.Domain.Entities
 - [ ] **Step 6: Create TenantGlSettings.cs**
 
 ```csharp
-namespace SaaS_BasePlatform.Domain.Entities
+namespace Prumo.Domain.Entities
 {
     public class TenantGlSettings
     {
@@ -316,11 +316,11 @@ Expected: 4 tests passing.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Domain/Entities/Account.cs \
-        SaaS_BasePlatform.Domain/Entities/JournalEntry.cs \
-        SaaS_BasePlatform.Domain/Entities/JournalLine.cs \
-        SaaS_BasePlatform.Domain/Entities/TenantGlSettings.cs \
-        SaaS_BasePlatform.Tests/Domain/JournalEntryTests.cs
+git add Prumo.Domain/Entities/Account.cs \
+        Prumo.Domain/Entities/JournalEntry.cs \
+        Prumo.Domain/Entities/JournalLine.cs \
+        Prumo.Domain/Entities/TenantGlSettings.cs \
+        Prumo.Tests/Domain/JournalEntryTests.cs
 git commit -m "feat: add GL domain entities with balance validation"
 ```
 
@@ -329,14 +329,14 @@ git commit -m "feat: add GL domain entities with balance validation"
 ## Task 4: Application DTOs
 
 **Files:**
-- Create: `SaaS_BasePlatform.Application/DTOs/Finance/AccountDtos.cs`
-- Create: `SaaS_BasePlatform.Application/DTOs/Finance/JournalDtos.cs`
-- Create: `SaaS_BasePlatform.Application/DTOs/Finance/GlSettingsDtos.cs`
+- Create: `Prumo.Application/DTOs/Finance/AccountDtos.cs`
+- Create: `Prumo.Application/DTOs/Finance/JournalDtos.cs`
+- Create: `Prumo.Application/DTOs/Finance/GlSettingsDtos.cs`
 
 - [ ] **Step 1: Create AccountDtos.cs**
 
 ```csharp
-namespace SaaS_BasePlatform.Application.DTOs.Finance
+namespace Prumo.Application.DTOs.Finance
 {
     public record AccountDto(
         Guid Id,
@@ -374,9 +374,9 @@ namespace SaaS_BasePlatform.Application.DTOs.Finance
 - [ ] **Step 2: Create JournalDtos.cs**
 
 ```csharp
-using SaaS_BasePlatform.Domain.Common;
+using Prumo.Domain.Common;
 
-namespace SaaS_BasePlatform.Application.DTOs.Finance
+namespace Prumo.Application.DTOs.Finance
 {
     public record JournalLineDto(
         Guid Id,
@@ -454,7 +454,7 @@ namespace SaaS_BasePlatform.Application.DTOs.Finance
 - [ ] **Step 3: Create GlSettingsDtos.cs**
 
 ```csharp
-namespace SaaS_BasePlatform.Application.DTOs.Finance
+namespace Prumo.Application.DTOs.Finance
 {
     public record TenantGlSettingsDto(
         Guid TenantId,
@@ -474,7 +474,7 @@ namespace SaaS_BasePlatform.Application.DTOs.Finance
 - [ ] **Step 4: Build**
 
 ```bash
-dotnet build SaaS_BasePlatform.Application
+dotnet build Prumo.Application
 ```
 
 Expected: Build succeeded, 0 error(s).
@@ -482,7 +482,7 @@ Expected: Build succeeded, 0 error(s).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/DTOs/Finance/
+git add Prumo.Application/DTOs/Finance/
 git commit -m "feat: add Finance DTOs (accounts, journal, GL settings)"
 ```
 
@@ -491,15 +491,15 @@ git commit -m "feat: add Finance DTOs (accounts, journal, GL settings)"
 ## Task 5: Account Service
 
 **Files:**
-- Create: `SaaS_BasePlatform.Application/Services/IAccountService.cs`
-- Create: `SaaS_BasePlatform.Application/Services/AccountService.cs`
+- Create: `Prumo.Application/Services/IAccountService.cs`
+- Create: `Prumo.Application/Services/AccountService.cs`
 
 - [ ] **Step 1: Create IAccountService.cs**
 
 ```csharp
-using SaaS_BasePlatform.Application.DTOs.Finance;
+using Prumo.Application.DTOs.Finance;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public interface IAccountService
     {
@@ -516,12 +516,12 @@ namespace SaaS_BasePlatform.Application.Services
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
+using Prumo.Infrastructure.Data;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public class AccountService : IAccountService
     {
@@ -671,7 +671,7 @@ namespace SaaS_BasePlatform.Application.Services
 - [ ] **Step 3: Build**
 
 ```bash
-dotnet build SaaS_BasePlatform.Application
+dotnet build Prumo.Application
 ```
 
 Expected: Build succeeded. (Note: `_db.Accounts` and `_db.JournalLines` will cause errors until Task 8 adds DbSets — that is expected at this point. If you see only those two missing-member errors, continue.)
@@ -681,8 +681,8 @@ Expected: Build succeeded. (Note: `_db.Accounts` and `_db.JournalLines` will cau
 - [ ] **Step 4: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/Services/IAccountService.cs \
-        SaaS_BasePlatform.Application/Services/AccountService.cs
+git add Prumo.Application/Services/IAccountService.cs \
+        Prumo.Application/Services/AccountService.cs
 git commit -m "feat: add IAccountService and AccountService"
 ```
 
@@ -691,16 +691,16 @@ git commit -m "feat: add IAccountService and AccountService"
 ## Task 6: Journal Service
 
 **Files:**
-- Create: `SaaS_BasePlatform.Application/Services/IJournalService.cs`
-- Create: `SaaS_BasePlatform.Application/Services/JournalService.cs`
+- Create: `Prumo.Application/Services/IJournalService.cs`
+- Create: `Prumo.Application/Services/JournalService.cs`
 
 - [ ] **Step 1: Create IJournalService.cs**
 
 ```csharp
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Domain.Common;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Domain.Common;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public interface IJournalService
     {
@@ -724,13 +724,13 @@ namespace SaaS_BasePlatform.Application.Services
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Domain.Common;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Domain.Common;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
+using Prumo.Infrastructure.Data;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public class JournalService : IJournalService
     {
@@ -915,8 +915,8 @@ namespace SaaS_BasePlatform.Application.Services
 - [ ] **Step 3: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/Services/IJournalService.cs \
-        SaaS_BasePlatform.Application/Services/JournalService.cs
+git add Prumo.Application/Services/IJournalService.cs \
+        Prumo.Application/Services/JournalService.cs
 git commit -m "feat: add IJournalService and JournalService with balance validation"
 ```
 
@@ -925,15 +925,15 @@ git commit -m "feat: add IJournalService and JournalService with balance validat
 ## Task 7: GL Settings Service
 
 **Files:**
-- Create: `SaaS_BasePlatform.Application/Services/ITenantGlSettingsService.cs`
-- Create: `SaaS_BasePlatform.Application/Services/TenantGlSettingsService.cs`
+- Create: `Prumo.Application/Services/ITenantGlSettingsService.cs`
+- Create: `Prumo.Application/Services/TenantGlSettingsService.cs`
 
 - [ ] **Step 1: Create ITenantGlSettingsService.cs**
 
 ```csharp
-using SaaS_BasePlatform.Application.DTOs.Finance;
+using Prumo.Application.DTOs.Finance;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public interface ITenantGlSettingsService
     {
@@ -947,11 +947,11 @@ namespace SaaS_BasePlatform.Application.Services
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Infrastructure.Data;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Domain.Entities;
+using Prumo.Infrastructure.Data;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public class TenantGlSettingsService : ITenantGlSettingsService
     {
@@ -1023,8 +1023,8 @@ namespace SaaS_BasePlatform.Application.Services
 - [ ] **Step 3: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/Services/ITenantGlSettingsService.cs \
-        SaaS_BasePlatform.Application/Services/TenantGlSettingsService.cs
+git add Prumo.Application/Services/ITenantGlSettingsService.cs \
+        Prumo.Application/Services/TenantGlSettingsService.cs
 git commit -m "feat: add ITenantGlSettingsService and TenantGlSettingsService"
 ```
 
@@ -1033,21 +1033,21 @@ git commit -m "feat: add ITenantGlSettingsService and TenantGlSettingsService"
 ## Task 8: GL Posting Service + Tests
 
 **Files:**
-- Create: `SaaS_BasePlatform.Application/Services/IGlPostingService.cs`
-- Create: `SaaS_BasePlatform.Application/Services/GlPostingService.cs`
-- Create: `SaaS_BasePlatform.Tests/Services/GlPostingServiceTests.cs`
+- Create: `Prumo.Application/Services/IGlPostingService.cs`
+- Create: `Prumo.Application/Services/GlPostingService.cs`
+- Create: `Prumo.Tests/Services/GlPostingServiceTests.cs`
 
 - [ ] **Step 1: Write failing tests**
 
-Create `SaaS_BasePlatform.Tests/Services/GlPostingServiceTests.cs`:
+Create `Prumo.Tests/Services/GlPostingServiceTests.cs`:
 
 ```csharp
 using NSubstitute;
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Application.Services;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Application.Services;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Tests.Services;
+namespace Prumo.Tests.Services;
 
 public class GlPostingServiceTests
 {
@@ -1162,7 +1162,7 @@ Expected: Build error — `GlPostingService` type not found.
 - [ ] **Step 3: Create IGlPostingService.cs**
 
 ```csharp
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public interface IGlPostingService
     {
@@ -1177,10 +1177,10 @@ namespace SaaS_BasePlatform.Application.Services
 - [ ] **Step 4: Create GlPostingService.cs**
 
 ```csharp
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Application.Services
+namespace Prumo.Application.Services
 {
     public class GlPostingService : IGlPostingService
     {
@@ -1240,9 +1240,9 @@ Expected: 4 tests passing.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/Services/IGlPostingService.cs \
-        SaaS_BasePlatform.Application/Services/GlPostingService.cs \
-        SaaS_BasePlatform.Tests/Services/GlPostingServiceTests.cs
+git add Prumo.Application/Services/IGlPostingService.cs \
+        Prumo.Application/Services/GlPostingService.cs \
+        Prumo.Tests/Services/GlPostingServiceTests.cs
 git commit -m "feat: add IGlPostingService and GlPostingService with tests"
 ```
 
@@ -1251,20 +1251,20 @@ git commit -m "feat: add IGlPostingService and GlPostingService with tests"
 ## Task 9: EF Core Configurations + DbContext
 
 **Files:**
-- Create: `SaaS_BasePlatform.Infrastructure/Data/Configurations/AccountConfiguration.cs`
-- Create: `SaaS_BasePlatform.Infrastructure/Data/Configurations/JournalEntryConfiguration.cs`
-- Create: `SaaS_BasePlatform.Infrastructure/Data/Configurations/JournalLineConfiguration.cs`
-- Create: `SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs`
+- Create: `Prumo.Infrastructure/Data/Configurations/AccountConfiguration.cs`
+- Create: `Prumo.Infrastructure/Data/Configurations/JournalEntryConfiguration.cs`
+- Create: `Prumo.Infrastructure/Data/Configurations/JournalLineConfiguration.cs`
+- Create: `Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs`
+- Modify: `Prumo.Infrastructure/Data/ApplicationDbContext.cs`
 
 - [ ] **Step 1: Create AccountConfiguration.cs**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Domain.Entities;
 
-namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
+namespace Prumo.Infrastructure.Data.Configurations
 {
     public class AccountConfiguration : IEntityTypeConfiguration<Account>
     {
@@ -1295,9 +1295,9 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Domain.Entities;
 
-namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
+namespace Prumo.Infrastructure.Data.Configurations
 {
     public class JournalEntryConfiguration : IEntityTypeConfiguration<JournalEntry>
     {
@@ -1327,9 +1327,9 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Domain.Entities;
 
-namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
+namespace Prumo.Infrastructure.Data.Configurations
 {
     public class JournalLineConfiguration : IEntityTypeConfiguration<JournalLine>
     {
@@ -1360,9 +1360,9 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Domain.Entities;
 
-namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
+namespace Prumo.Infrastructure.Data.Configurations
 {
     public class TenantGlSettingsConfiguration : IEntityTypeConfiguration<TenantGlSettings>
     {
@@ -1394,7 +1394,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Configurations
 
 - [ ] **Step 5: Add DbSets to ApplicationDbContext**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs` and add these four lines after the existing `AccountsPayableEntries` DbSet:
+Open `Prumo.Infrastructure/Data/ApplicationDbContext.cs` and add these four lines after the existing `AccountsPayableEntries` DbSet:
 
 ```csharp
         // General Ledger
@@ -1407,7 +1407,7 @@ Open `SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs` and add the
 Also add the required using at the top of the file (if not already present via implicit usings):
 
 ```csharp
-using SaaS_BasePlatform.Domain.Entities;
+using Prumo.Domain.Entities;
 ```
 
 - [ ] **Step 6: Build entire solution**
@@ -1429,11 +1429,11 @@ Expected: All tests pass.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Data/Configurations/AccountConfiguration.cs \
-        SaaS_BasePlatform.Infrastructure/Data/Configurations/JournalEntryConfiguration.cs \
-        SaaS_BasePlatform.Infrastructure/Data/Configurations/JournalLineConfiguration.cs \
-        SaaS_BasePlatform.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs \
-        SaaS_BasePlatform.Infrastructure/Data/ApplicationDbContext.cs
+git add Prumo.Infrastructure/Data/Configurations/AccountConfiguration.cs \
+        Prumo.Infrastructure/Data/Configurations/JournalEntryConfiguration.cs \
+        Prumo.Infrastructure/Data/Configurations/JournalLineConfiguration.cs \
+        Prumo.Infrastructure/Data/Configurations/TenantGlSettingsConfiguration.cs \
+        Prumo.Infrastructure/Data/ApplicationDbContext.cs
 git commit -m "feat: add EF configurations and DbSets for GL entities"
 ```
 
@@ -1442,17 +1442,17 @@ git commit -m "feat: add EF configurations and DbSets for GL entities"
 ## Task 10: Chart of Accounts Seeder
 
 **Files:**
-- Create: `SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`
-- Modify: `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`
+- Create: `Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs`
+- Modify: `Prumo.Infrastructure/Data/DbInitializer.cs`
 
 - [ ] **Step 1: Create ChartOfAccountsSeeder.cs**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using SaaS_BasePlatform.Domain.Entities;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
 
-namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
+namespace Prumo.Infrastructure.Data.Seeders
 {
     public static class ChartOfAccountsSeeder
     {
@@ -1529,7 +1529,7 @@ namespace SaaS_BasePlatform.Infrastructure.Data.Seeders
 
 - [ ] **Step 2: Call the seeder from DbInitializer**
 
-Open `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`. Find the line that calls `TenantBootstrapSeeder.SeedAsync` inside `EnsureDefaultTenantAsync` and add the chart of accounts call immediately after it:
+Open `Prumo.Infrastructure/Data/DbInitializer.cs`. Find the line that calls `TenantBootstrapSeeder.SeedAsync` inside `EnsureDefaultTenantAsync` and add the chart of accounts call immediately after it:
 
 ```csharp
             await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
@@ -1547,7 +1547,7 @@ The full `EnsureDefaultTenantAsync` ending should look like:
 - [ ] **Step 3: Build**
 
 ```bash
-dotnet build SaaS_BasePlatform.Infrastructure
+dotnet build Prumo.Infrastructure
 ```
 
 Expected: Build succeeded, 0 error(s).
@@ -1555,8 +1555,8 @@ Expected: Build succeeded, 0 error(s).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs \
-        SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs
+git add Prumo.Infrastructure/Data/Seeders/ChartOfAccountsSeeder.cs \
+        Prumo.Infrastructure/Data/DbInitializer.cs
 git commit -m "feat: add ChartOfAccountsSeeder, call from DbInitializer"
 ```
 
@@ -1564,12 +1564,12 @@ git commit -m "feat: add ChartOfAccountsSeeder, call from DbInitializer"
 
 ## Task 11: EF Core Migration
 
-**Files:** Auto-generated under `SaaS_BasePlatform.Infrastructure/Migrations/`
+**Files:** Auto-generated under `Prumo.Infrastructure/Migrations/`
 
 - [ ] **Step 1: Add migration**
 
 ```bash
-dotnet ef migrations add AddFinancialCorePhase1 -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api
+dotnet ef migrations add AddFinancialCorePhase1 -p Prumo.Infrastructure -s Prumo.Api
 ```
 
 Expected: Migration file created, e.g. `20260428XXXXXX_AddFinancialCorePhase1.cs`.
@@ -1587,7 +1587,7 @@ If any are missing, check that the DbSets were added correctly in Task 9 Step 5.
 - [ ] **Step 3: Apply migration to the database**
 
 ```bash
-dotnet ef database update -p SaaS_BasePlatform.Infrastructure -s SaaS_BasePlatform.Api
+dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api
 ```
 
 Expected: Database updated successfully.
@@ -1595,7 +1595,7 @@ Expected: Database updated successfully.
 - [ ] **Step 4: Commit the migration**
 
 ```bash
-git add SaaS_BasePlatform.Infrastructure/Migrations/
+git add Prumo.Infrastructure/Migrations/
 git commit -m "feat: add EF migration AddFinancialCorePhase1"
 ```
 
@@ -1604,14 +1604,14 @@ git commit -m "feat: add EF migration AddFinancialCorePhase1"
 ## Task 12: DI Registration + AP Integration
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs`
-- Modify: `SaaS_BasePlatform.Application/Services/IAccountsPayableService.cs`
-- Modify: `SaaS_BasePlatform.Application/Services/AccountsPayableService.cs`
-- Modify: `SaaS_BasePlatform.Api/Controllers/AccountsPayableEntriesController.cs`
+- Modify: `Prumo.Api/Configuration/DependencyInjectionConfiguration.cs`
+- Modify: `Prumo.Application/Services/IAccountsPayableService.cs`
+- Modify: `Prumo.Application/Services/AccountsPayableService.cs`
+- Modify: `Prumo.Api/Controllers/AccountsPayableEntriesController.cs`
 
 - [ ] **Step 1: Register the four new services in DI**
 
-Open `SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs`. After the `// Accounts Payable` block, add:
+Open `Prumo.Api/Configuration/DependencyInjectionConfiguration.cs`. After the `// Accounts Payable` block, add:
 
 ```csharp
         // General Ledger
@@ -1621,11 +1621,11 @@ Open `SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs`. 
         services.AddScoped<IGlPostingService, GlPostingService>();
 ```
 
-Also add the needed using directives if not resolved via implicit usings — all four types are in `SaaS_BasePlatform.Application.Services`.
+Also add the needed using directives if not resolved via implicit usings — all four types are in `Prumo.Application.Services`.
 
 - [ ] **Step 2: Update IAccountsPayableService — add userId to MarkEntryPaidAsync**
 
-Open `SaaS_BasePlatform.Application/Services/IAccountsPayableService.cs`. Change the `MarkEntryPaidAsync` signature from:
+Open `Prumo.Application/Services/IAccountsPayableService.cs`. Change the `MarkEntryPaidAsync` signature from:
 
 ```csharp
 Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, MarkPaidRequestDto request, CancellationToken cancellationToken = default);
@@ -1639,7 +1639,7 @@ Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, Guid paidByUserId
 
 - [ ] **Step 3: Update AccountsPayableService — inject IGlPostingService and call it**
 
-Open `SaaS_BasePlatform.Application/Services/AccountsPayableService.cs`.
+Open `Prumo.Application/Services/AccountsPayableService.cs`.
 
 **3a.** Add the field and update the constructor:
 
@@ -1680,7 +1680,7 @@ Open `SaaS_BasePlatform.Application/Services/AccountsPayableService.cs`.
 
 - [ ] **Step 4: Update AccountsPayableEntriesController — pass CurrentUserId**
 
-Open `SaaS_BasePlatform.Api/Controllers/AccountsPayableEntriesController.cs`. Find the `MarkPaid` action and update the service call to pass `CurrentUserId`:
+Open `Prumo.Api/Controllers/AccountsPayableEntriesController.cs`. Find the `MarkPaid` action and update the service call to pass `CurrentUserId`:
 
 ```csharp
         [HttpPost("{id:guid}/mark-paid")]
@@ -1718,10 +1718,10 @@ Expected: All tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Api/Configuration/DependencyInjectionConfiguration.cs \
-        SaaS_BasePlatform.Application/Services/IAccountsPayableService.cs \
-        SaaS_BasePlatform.Application/Services/AccountsPayableService.cs \
-        SaaS_BasePlatform.Api/Controllers/AccountsPayableEntriesController.cs
+git add Prumo.Api/Configuration/DependencyInjectionConfiguration.cs \
+        Prumo.Application/Services/IAccountsPayableService.cs \
+        Prumo.Application/Services/AccountsPayableService.cs \
+        Prumo.Api/Controllers/AccountsPayableEntriesController.cs
 git commit -m "feat: wire DI for GL services, integrate GL posting into AP payment"
 ```
 
@@ -1730,8 +1730,8 @@ git commit -m "feat: wire DI for GL services, integrate GL posting into AP payme
 ## Task 13: Controllers
 
 **Files:**
-- Create: `SaaS_BasePlatform.Api/Controllers/ChartOfAccountsController.cs`
-- Create: `SaaS_BasePlatform.Api/Controllers/GeneralLedgerController.cs`
+- Create: `Prumo.Api/Controllers/ChartOfAccountsController.cs`
+- Create: `Prumo.Api/Controllers/GeneralLedgerController.cs`
 
 - [ ] **Step 1: Create ChartOfAccountsController.cs**
 
@@ -1739,12 +1739,12 @@ git commit -m "feat: wire DI for GL services, integrate GL posting into AP payme
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Application.Services;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Application.Services;
+using Prumo.Domain.Enums;
 using System.Security.Claims;
 
-namespace SaaS_BasePlatform.Api.Controllers
+namespace Prumo.Api.Controllers
 {
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/chart-of-accounts")]
@@ -1834,13 +1834,13 @@ namespace SaaS_BasePlatform.Api.Controllers
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SaaS_BasePlatform.Application.DTOs.Finance;
-using SaaS_BasePlatform.Application.Services;
-using SaaS_BasePlatform.Domain.Common;
-using SaaS_BasePlatform.Domain.Enums;
+using Prumo.Application.DTOs.Finance;
+using Prumo.Application.Services;
+using Prumo.Domain.Common;
+using Prumo.Domain.Enums;
 using System.Security.Claims;
 
-namespace SaaS_BasePlatform.Api.Controllers
+namespace Prumo.Api.Controllers
 {
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/general-ledger")]
@@ -1958,8 +1958,8 @@ Expected: All tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Api/Controllers/ChartOfAccountsController.cs \
-        SaaS_BasePlatform.Api/Controllers/GeneralLedgerController.cs
+git add Prumo.Api/Controllers/ChartOfAccountsController.cs \
+        Prumo.Api/Controllers/GeneralLedgerController.cs
 git commit -m "feat: add ChartOfAccountsController and GeneralLedgerController"
 ```
 
@@ -1986,7 +1986,7 @@ Expected: All tests pass. You should see at least 8 tests: the 4 existing domain
 - [ ] **Step 3: Start the API and verify startup**
 
 ```bash
-dotnet run --project SaaS_BasePlatform.Api
+dotnet run --project Prumo.Api
 ```
 
 Expected: Application starts without errors. Watch for:

@@ -33,7 +33,7 @@
 
 ### 2. Startup log suppression
 
-**File:** `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`
+**File:** `Prumo.Infrastructure/Data/DbInitializer.cs`
 
 Any `logger.LogInformation` call inside an "already exists" branch changes to `logger.LogDebug`. Affected branches:
 - Role already exists check
@@ -46,7 +46,7 @@ The `LogInformation` calls for *newly created* resources stay as-is.
 
 ### 3. "User" role cleanup
 
-**File:** `SaaS_BasePlatform.Infrastructure/Data/DbInitializer.cs`
+**File:** `Prumo.Infrastructure/Data/DbInitializer.cs`
 
 Add a one-time cleanup block at the top of `InitializeAsync`, before the role seeding loop:
 
@@ -71,7 +71,7 @@ No migration required — pure data cleanup at startup.
 
 #### 4a. New permission classes — `Permissions.cs`
 
-**File:** `SaaS_BasePlatform.Domain/Authorization/Permissions.cs`
+**File:** `Prumo.Domain/Authorization/Permissions.cs`
 
 Add two new static nested classes alongside the existing ones:
 

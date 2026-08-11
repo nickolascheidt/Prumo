@@ -1,0 +1,42 @@
+using Prumo.Domain.Enums;
+
+namespace Prumo.Application.DTOs.Tenants
+{
+    public record CreateTenantRequestDto(string Name, string Slug);
+
+    public record TenantDto(
+        Guid Id,
+        string Name,
+        string Slug,
+        Guid OwnerUserId,
+        DateTime CreatedAt);
+
+    public record TenantMembershipDto(
+        Guid TenantId,
+        string TenantName,
+        string TenantSlug,
+        TenantRole Role,
+        DateTime JoinedAt);
+
+    public record AddTenantMemberRequestDto(Guid UserId, TenantRole Role);
+
+    public record TenantMemberDto(
+        Guid UserId,
+        string Email,
+        string? FullName,
+        TenantRole Role,
+        DateTime JoinedAt);
+
+    public record CreateTenantUserDto(
+        string Email,
+        string Password,
+        string FullName,
+        string? Phone,
+        TenantRole Role);
+
+    public record UpdateMemberRoleDto(TenantRole Role);
+
+    public record TenantMemberRolesDto(Guid UserId, IReadOnlyList<string> Roles);
+
+    public record AssignFeatureRoleDto(string RoleName);
+}

@@ -22,9 +22,9 @@
 | `SaaSBasePlatform-Angular/src/app/modules/dashboard/dashboard.component.ts` | Modify — add HR tab |
 | `SaaSBasePlatform-Angular/src/app/modules/dashboard/hr/dashboard-hr.component.ts` | Create — HR summary tiles + recent payments |
 | `SaaSBasePlatform-Angular/src/app/modules/dashboard/hr/dashboard-hr.component.html` | Create |
-| `SaaS_BasePlatform.Application/Services/IPaymentPeriodService.cs` | Modify — add ListAllByTenantAsync |
-| `SaaS_BasePlatform.Application/Services/PaymentPeriodService.cs` | Modify — implement ListAllByTenantAsync |
-| `SaaS_BasePlatform.Api/Controllers/PaymentPeriodsController.cs` | Modify — add tenant-wide GET endpoint |
+| `Prumo.Application/Services/IPaymentPeriodService.cs` | Modify — add ListAllByTenantAsync |
+| `Prumo.Application/Services/PaymentPeriodService.cs` | Modify — implement ListAllByTenantAsync |
+| `Prumo.Api/Controllers/PaymentPeriodsController.cs` | Modify — add tenant-wide GET endpoint |
 | `SaaSBasePlatform-Angular/src/app/core/services/api.service.ts` | Modify — add getAllPaymentPeriods |
 | `SaaSBasePlatform-Angular/src/app/modules/hr/payment-periods/payment-periods.component.ts` | Create — read-only table of all periods |
 | `SaaSBasePlatform-Angular/src/app/app.routes.ts` | Modify — add hr dashboard child route + /hr/periodos |
@@ -227,15 +227,15 @@ git commit -m "feat: implement Finance dashboard with AP summary tiles and categ
 ## Task 3: Backend — ListAllByTenantAsync + tenant-wide payment periods endpoint
 
 **Files:**
-- Modify: `SaaS_BasePlatform.Application/Services/IPaymentPeriodService.cs`
-- Modify: `SaaS_BasePlatform.Application/Services/PaymentPeriodService.cs`
-- Modify: `SaaS_BasePlatform.Api/Controllers/PaymentPeriodsController.cs`
+- Modify: `Prumo.Application/Services/IPaymentPeriodService.cs`
+- Modify: `Prumo.Application/Services/PaymentPeriodService.cs`
+- Modify: `Prumo.Api/Controllers/PaymentPeriodsController.cs`
 
 The existing `PaymentPeriodsController` route is `api/tenants/{tenantId}/employees/{employeeId}/payment-periods`. A new action with an absolute route override provides `GET api/tenants/{tenantId}/payment-periods` without changing the controller class.
 
 - [ ] **Step 1: Add ListAllByTenantAsync to the service interface**
 
-Open `SaaS_BasePlatform.Application/Services/IPaymentPeriodService.cs`.
+Open `Prumo.Application/Services/IPaymentPeriodService.cs`.
 
 Add to the interface:
 
@@ -245,7 +245,7 @@ Add to the interface:
 
 - [ ] **Step 2: Implement ListAllByTenantAsync in PaymentPeriodService**
 
-Open `SaaS_BasePlatform.Application/Services/PaymentPeriodService.cs`.
+Open `Prumo.Application/Services/PaymentPeriodService.cs`.
 
 Add the method before `UpdateStatusAsync`:
 
@@ -265,7 +265,7 @@ Add the method before `UpdateStatusAsync`:
 
 - [ ] **Step 3: Add the tenant-wide GET endpoint to PaymentPeriodsController**
 
-Open `SaaS_BasePlatform.Api/Controllers/PaymentPeriodsController.cs`.
+Open `Prumo.Api/Controllers/PaymentPeriodsController.cs`.
 
 Add the following action before the existing `List` action. The `[HttpGet]` with an absolute path overrides the controller-level route for this action only:
 
@@ -284,7 +284,7 @@ Add the following action before the existing `List` action. The `[HttpGet]` with
 - [ ] **Step 4: Build to confirm no compile errors**
 
 ```bash
-dotnet build SaaS_BasePlatform.Api
+dotnet build Prumo.Api
 ```
 
 Expected: Build succeeded, 0 error(s)
@@ -306,9 +306,9 @@ After the existing `getPaymentPeriods` method (around line 543), add:
 - [ ] **Step 6: Commit**
 
 ```bash
-git add SaaS_BasePlatform.Application/Services/IPaymentPeriodService.cs
-git add SaaS_BasePlatform.Application/Services/PaymentPeriodService.cs
-git add SaaS_BasePlatform.Api/Controllers/PaymentPeriodsController.cs
+git add Prumo.Application/Services/IPaymentPeriodService.cs
+git add Prumo.Application/Services/PaymentPeriodService.cs
+git add Prumo.Api/Controllers/PaymentPeriodsController.cs
 git add SaaSBasePlatform-Angular/src/app/core/services/api.service.ts
 git commit -m "feat: add ListAllByTenantAsync and tenant-wide payment periods endpoint"
 ```

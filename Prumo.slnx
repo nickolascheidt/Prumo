@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Prumo.Api/Prumo.Api.csproj" />
+  <Project Path="Prumo.Application/Prumo.Application.csproj" />
+  <Project Path="Prumo.Domain/Prumo.Domain.csproj" />
+  <Project Path="Prumo.Infrastructure/Prumo.Infrastructure.csproj" />
+  <Project Path="Prumo.Tests/Prumo.Tests.csproj" />
+</Solution>
