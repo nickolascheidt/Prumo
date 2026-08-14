@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Prumo.Api.Attributes;
 using Prumo.Application.DTOs.Finance;
 using Prumo.Application.Services;
 using Prumo.Domain.Enums;
@@ -11,6 +12,7 @@ namespace Prumo.Api.Controllers
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/chart-of-accounts")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [TenantModule("ChartOfAccounts.Management")]
     public class ChartOfAccountsController : ControllerBase
     {
         private readonly IAccountService _service;

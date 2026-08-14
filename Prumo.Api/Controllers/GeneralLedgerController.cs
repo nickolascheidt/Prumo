@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Prumo.Api.Attributes;
 using Prumo.Application.DTOs.Finance;
 using Prumo.Application.Services;
 using Prumo.Domain.Common;
@@ -12,6 +13,7 @@ namespace Prumo.Api.Controllers
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/general-ledger")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [TenantModule("GeneralLedger.Management")]
     public class GeneralLedgerController : ControllerBase
     {
         private readonly IJournalService _journalService;
