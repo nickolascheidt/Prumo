@@ -1,6 +1,15 @@
 # Isolamento de tenant no backend — Fase 1 (plano de implementação)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> ## ✅ EXECUTADO EM 2026-08-13
+>
+> As 8 tasks estão feitas e mergeadas na `main`. Build limpo, **83 testes verdes**
+> (eram 63). Verificado contra Postgres real e contra a API viva — o registro do
+> que aconteceu, dos desvios e do que vem a seguir está em
+> **[Registro de execução](#registro-de-execução-2026-08-13)**, no fim deste arquivo.
+> Leia essa seção antes de agir sobre qualquer coisa acima: três detalhes do plano
+> estavam errados e um bug escapou dos testes.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Tornar impossível que um endpoint novo vaze dado de outro tenant ou autorize quem não devia, mesmo que o desenvolvedor esqueça toda a checagem.
 
@@ -39,7 +48,7 @@
 - Create: `Prumo.Api/Attributes/TenantModuleAttribute.cs`
 - Test: `Prumo.Tests/Api/TenantModuleAttributeTests.cs`
 
-- [ ] **Step 1: Dar ao projeto de testes acesso à API**
+- [x] **Step 1: Dar ao projeto de testes acesso à API**
 
 `Prumo.Tests` hoje referencia Application, Domain e Infrastructure, mas **não** a Api. Sem isso nada desta task compila. Em `Prumo.Tests/Prumo.Tests.csproj`, no `ItemGroup` de `ProjectReference`, adicione:
 
@@ -49,12 +58,12 @@
 
 Referenciar um projeto Web SDK traz o `FrameworkReference` do `Microsoft.AspNetCore.App` de forma transitiva, que é o que dá acesso a `DefaultHttpContext` e `AuthorizationFilterContext`.
 
-- [ ] **Step 2: Verificar que o projeto ainda compila**
+- [x] **Step 2: Verificar que o projeto ainda compila**
 
 Run: `dotnet build Prumo.Tests/Prumo.Tests.csproj`
 Expected: `0 Erro(s)`. Se falhar com tipo `DefaultHttpContext` não encontrado numa etapa posterior, acrescente também `<FrameworkReference Include="Microsoft.AspNetCore.App" />` num `ItemGroup` do mesmo csproj.
 
-- [ ] **Step 3: Escrever os testes que falham**
+- [x] **Step 3: Escrever os testes que falham**
 
 Crie `Prumo.Tests/Api/TenantModuleAttributeTests.cs`:
 
@@ -256,12 +265,12 @@ namespace Prumo.Tests.Api
 }
 ```
 
-- [ ] **Step 4: Rodar e confirmar que falha**
+- [x] **Step 4: Rodar e confirmar que falha**
 
 Run: `dotnet test --filter "FullyQualifiedName~TenantModuleAttributeTests"`
 Expected: falha de compilação — `TenantModuleAttribute` não existe.
 
-- [ ] **Step 5: Implementar o atributo**
+- [x] **Step 5: Implementar o atributo**
 
 Crie `Prumo.Api/Attributes/TenantModuleAttribute.cs`:
 
@@ -367,12 +376,12 @@ namespace Prumo.Api.Attributes
 }
 ```
 
-- [ ] **Step 6: Rodar e confirmar que passa**
+- [x] **Step 6: Rodar e confirmar que passa**
 
 Run: `dotnet test --filter "FullyQualifiedName~TenantModuleAttributeTests"`
 Expected: `Aprovado: 12` (8 fatos + 5 casos do Theory, menos sobreposição — o número exato importa menos que `Com falha: 0`).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Prumo.Api/Attributes/TenantModuleAttribute.cs Prumo.Tests/Api/TenantModuleAttributeTests.cs Prumo.Tests/Prumo.Tests.csproj
@@ -386,7 +395,7 @@ git commit -m "feat(security): add [TenantModule], the single tenant gate"
 **Files:**
 - Modify: `Prumo.Api/Controllers/EmployeesController.cs`, `WorkLogsController.cs`, `PaymentsController.cs`, `PaymentPeriodsController.cs`, `ChartOfAccountsController.cs`, `GeneralLedgerController.cs`, `AccountsPayableEntriesController.cs`, `AccountsPayableCategoriesController.cs`, `AccountsPayableReportsController.cs`
 
-- [ ] **Step 1: Adicionar o atributo em cada controller**
+- [x] **Step 1: Adicionar o atributo em cada controller**
 
 Em cada arquivo, acrescente `using Prumo.Api.Attributes;` e ponha o atributo junto dos demais atributos de classe. Mapeamento exato, conferido contra `TenantBootstrapSeeder.DefaultResources`:
 
@@ -416,12 +425,12 @@ Exemplo, em `EmployeesController.cs`:
 
 Os três controllers de Contas a Pagar dividem `AccountsPayable.Entries` porque o catálogo não tem recursos separados para categorias e relatórios. É decisão registrada no spec, não omissão.
 
-- [ ] **Step 2: Verificar compilação e suíte inteira**
+- [x] **Step 2: Verificar compilação e suíte inteira**
 
 Run: `dotnet build && dotnet test --nologo`
 Expected: `0 Erro(s)` e `Com falha: 0`. A suíte não exercita HTTP, então os 63 testes existentes continuam verdes.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add Prumo.Api/Controllers/
@@ -436,7 +445,7 @@ git commit -m "feat(security): declare the tenant module gate on all nine module
 - Modify: `Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs`
 - Test: `Prumo.Tests/Architecture/TenantCoverageTests.cs`
 
-- [ ] **Step 1: Expor os códigos do catálogo**
+- [x] **Step 1: Expor os códigos do catálogo**
 
 `DefaultResources` é `private static readonly`. O teste precisa dos códigos. Em `TenantBootstrapSeeder.cs`, logo abaixo da declaração de `DefaultResources`, acrescente:
 
@@ -451,7 +460,7 @@ git commit -m "feat(security): declare the tenant module gate on all nine module
 
 Se o arquivo ainda não tiver, acrescente `using System.Linq;` ao topo.
 
-- [ ] **Step 2: Escrever os testes que falham**
+- [x] **Step 2: Escrever os testes que falham**
 
 Crie `Prumo.Tests/Architecture/TenantCoverageTests.cs`:
 
@@ -555,12 +564,12 @@ namespace Prumo.Tests.Architecture
 }
 ```
 
-- [ ] **Step 3: Rodar e confirmar que passam**
+- [x] **Step 3: Rodar e confirmar que passam**
 
 Run: `dotnet test --filter "FullyQualifiedName~TenantCoverageTests"`
 Expected: `Com falha: 0`. Se o primeiro teste falhar, a mensagem nomeia a action descoberta — é o comportamento pretendido, não um defeito do teste.
 
-- [ ] **Step 4: Provar que o teste realmente pega o esquecimento**
+- [x] **Step 4: Provar que o teste realmente pega o esquecimento**
 
 Remova temporariamente `[TenantModule("HR.Employees")]` de `EmployeesController.cs`.
 
@@ -571,7 +580,7 @@ Recoloque o atributo e rode de novo. Expected: PASS.
 
 Este passo não é cerimônia: um teste de arquitetura que nunca foi visto falhando pode estar vazio por engano — por exemplo, se `Controllers()` retornar lista vazia por assembly errado, ele passa sem provar nada.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Prumo.Tests/Architecture/TenantCoverageTests.cs Prumo.Infrastructure/Data/Seeders/TenantBootstrapSeeder.cs
@@ -586,7 +595,7 @@ git commit -m "test(security): fail the build when a tenant-routed action is lef
 - Modify: `Prumo.Infrastructure/Data/ApplicationDbContext.cs:75-81`
 - Test: `Prumo.Tests/Infrastructure/TenantQueryFilterTests.cs`
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Crie `Prumo.Tests/Infrastructure/TenantQueryFilterTests.cs`:
 
@@ -656,12 +665,12 @@ namespace Prumo.Tests.Infrastructure
 }
 ```
 
-- [ ] **Step 2: Rodar e confirmar que o primeiro falha**
+- [x] **Step 2: Rodar e confirmar que o primeiro falha**
 
 Run: `dotnet test --filter "FullyQualifiedName~TenantQueryFilterTests"`
 Expected: `Without_a_resolved_tenant_scoped_entities_return_nothing` FALHA — hoje o filtro é fail-open e devolve as duas linhas. O segundo teste já passa.
 
-- [ ] **Step 3: Inverter o filtro**
+- [x] **Step 3: Inverter o filtro**
 
 Em `Prumo.Infrastructure/Data/ApplicationDbContext.cs`, no método `SetTenantQueryFilter<TEntity>`, troque:
 
@@ -686,12 +695,12 @@ por:
                 && e.TenantId == _tenantContext.TenantId);
 ```
 
-- [ ] **Step 4: Rodar a suíte inteira**
+- [x] **Step 4: Rodar a suíte inteira**
 
 Run: `dotnet test --nologo`
 Expected: `Com falha: 0`. Se algum teste existente quebrar, ele depende do comportamento fail-open — investigue antes de ajustar o teste, porque pode ser um vazamento real que só agora ficou visível.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Prumo.Infrastructure/Data/ApplicationDbContext.cs Prumo.Tests/Infrastructure/TenantQueryFilterTests.cs
@@ -707,7 +716,7 @@ git commit -m "fix(security): make the global tenant query filter fail closed"
 - Delete: `Prumo.Api/appsettings.ConnectionStrings.json`
 - Modify: `README.md`, `CLAUDE.md`
 
-- [ ] **Step 1: Fazer o factory ler a configuração**
+- [x] **Step 1: Fazer o factory ler a configuração**
 
 Substitua o conteúdo de `Prumo.Infrastructure/Data/ApplicationDbContextFactory.cs`:
 
@@ -756,12 +765,12 @@ Se `Microsoft.Extensions.Configuration.Json` não estiver referenciado em `Prumo
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
 ```
 
-- [ ] **Step 2: Provar que o `dotnet ef` continua funcionando**
+- [x] **Step 2: Provar que o `dotnet ef` continua funcionando**
 
 Run: `dotnet ef migrations list -p Prumo.Infrastructure -s Prumo.Api`
 Expected: lista as migrations existentes sem erro. Isso prova que o factory acha a configuração.
 
-- [ ] **Step 3: Apagar o arquivo morto e corrigir a documentação**
+- [x] **Step 3: Apagar o arquivo morto e corrigir a documentação**
 
 ```bash
 git rm Prumo.Api/appsettings.ConnectionStrings.json
@@ -775,7 +784,7 @@ Base config is in `appsettings.json`, including `ConnectionStrings:DefaultConnec
 
 Em `CLAUDE.md`, na seção *Configuration files*, remova a menção a `appsettings.ConnectionStrings.json`.
 
-- [ ] **Step 4: Rodar a suíte e commitar**
+- [x] **Step 4: Rodar a suíte e commitar**
 
 Run: `dotnet test --nologo`
 Expected: `Com falha: 0`
@@ -793,7 +802,7 @@ git commit -m "fix(config): make the design-time factory read configuration, dro
 - Modify: `Prumo.Infrastructure/Data/DbInitializer.cs`
 - Create: uma migration de backfill
 
-- [ ] **Step 1: Escrever o teste de regressão que falha**
+- [x] **Step 1: Escrever o teste de regressão que falha**
 
 Acrescente a `Prumo.Tests/Infrastructure/TenantQueryFilterTests.cs` — ou crie `Prumo.Tests/Infrastructure/SeederIdempotenceTests.cs` com os mesmos `using` da Task 4 mais `using Prumo.Infrastructure.Data.Seeders;`:
 
@@ -835,7 +844,7 @@ Acrescente a `Prumo.Tests/Infrastructure/TenantQueryFilterTests.cs` — ou crie 
 Run: `dotnet test --filter "Re_running_the_bootstrap_seeder"`
 Expected: FALHA. É o achado (a) do item 14 do backlog, reproduzido.
 
-- [ ] **Step 2: Apagar o re-seed de startup**
+- [x] **Step 2: Apagar o re-seed de startup**
 
 Em `Prumo.Infrastructure/Data/DbInitializer.cs`:
 
@@ -844,7 +853,7 @@ Em `Prumo.Infrastructure/Data/DbInitializer.cs`:
 
 O bootstrap continua rodando onde deve: em `TenantService.CreateAsync`, uma vez por tenant, no nascimento dele.
 
-- [ ] **Step 3: Ajustar o teste ao novo contrato**
+- [x] **Step 3: Ajustar o teste ao novo contrato**
 
 O teste do Step 1 provava um bug no seeder. Com o re-seed apagado, o seeder em si continua idempotente-mas-ressuscitador — ele só não é mais chamado repetidamente. Troque a asserção final por uma que descreva o contrato real:
 
@@ -861,7 +870,7 @@ O teste do Step 1 provava um bug no seeder. Com o re-seed apagado, o seeder em s
 Run: `dotnet test --filter "Re_running_the_bootstrap_seeder"`
 Expected: PASS.
 
-- [ ] **Step 4: Criar a migration de backfill do catálogo**
+- [x] **Step 4: Criar a migration de backfill do catálogo**
 
 Run: `dotnet ef migrations add BackfillTenantResources -p Prumo.Infrastructure -s Prumo.Api`
 
@@ -885,7 +894,7 @@ Run: `dotnet ef migrations script -p Prumo.Infrastructure -s Prumo.Api | Select-
 
 Ajuste colunas e valores de `Name`, `Description`, `Module` e `DisplayOrder` para bater com o que está em `TenantBootstrapSeeder.DefaultResources`. No `Down`, deixe vazio com um comentário: remover recursos apagaria em cascata os grants que os admins criaram depois, o que é pior que a migration ser irreversível.
 
-- [ ] **Step 5: Verificar contra um Postgres real**
+- [x] **Step 5: Verificar contra um Postgres real**
 
 ```bash
 docker run -d --name prumo-pg-verify -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -p 5432:5432 postgres:16
@@ -902,7 +911,7 @@ Expected: mesma contagem para todos os tenants.
 
 > Nota: a base se chama `SaaSBasePlatformDb` até o item 12 unificar os nomes; use o nome que estiver em `appsettings.json`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Prumo.Infrastructure/Data/DbInitializer.cs Prumo.Infrastructure/Migrations/ Prumo.Tests/Infrastructure/
@@ -916,7 +925,7 @@ git commit -m "fix(security): stop the startup re-seed from resurrecting revoked
 **Files:**
 - Modify: `Prumo.Infrastructure/Data/DbInitializer.cs:166-194`
 
-- [ ] **Step 1: Trocar a senha chumbada por configuração**
+- [x] **Step 1: Trocar a senha chumbada por configuração**
 
 `DbInitializer.InitializeAsync` precisa de acesso a `IConfiguration` e ao ambiente. Se a assinatura ainda não os recebe, acrescente os parâmetros e atualize a chamada em `Program.cs`/`DatabaseConfiguration`.
 
@@ -971,18 +980,18 @@ Substitua o bloco de criação do admin (por volta das linhas 166-194) por:
                 }
 ```
 
-- [ ] **Step 2: Registrar a senha de desenvolvimento em user secrets**
+- [x] **Step 2: Registrar a senha de desenvolvimento em user secrets**
 
 ```bash
 dotnet user-secrets set "Seed:AdminPassword" "Admin@123" --project Prumo.Api
 ```
 
-- [ ] **Step 3: Provar que a senha sumiu do repositório**
+- [x] **Step 3: Provar que a senha sumiu do repositório**
 
 Run: `git grep -n "Admin@123" -- . ":(exclude)docs"`
 Expected: **nenhuma saída.**
 
-- [ ] **Step 4: Rodar a suíte e commitar**
+- [x] **Step 4: Rodar a suíte e commitar**
 
 Run: `dotnet test --nologo`
 Expected: `Com falha: 0`
@@ -999,7 +1008,7 @@ git commit -m "fix(security): stop hardcoding and logging the seeded admin passw
 **Files:**
 - Modify: `Prumo.Api/Controllers/TenantsController.cs`
 
-- [ ] **Step 1: Restringir a criação de tenant**
+- [x] **Step 1: Restringir a criação de tenant**
 
 Em `TenantsController.cs`, na action `Create` (por volta da linha 31), acrescente o atributo de role:
 
@@ -1012,7 +1021,7 @@ Em `TenantsController.cs`, na action `Create` (por volta da linha 31), acrescent
 
 Hoje qualquer usuário autenticado cria tenant. Como tenant é vendido, só o master admin cria.
 
-- [ ] **Step 2: Adicionar o endpoint de suporte auditado**
+- [x] **Step 2: Adicionar o endpoint de suporte auditado**
 
 No mesmo controller:
 
@@ -1034,7 +1043,7 @@ No mesmo controller:
         }
 ```
 
-- [ ] **Step 3: Implementar o método no serviço**
+- [x] **Step 3: Implementar o método no serviço**
 
 Em `Prumo.Application/Services/ITenantService.cs`, acrescente à interface:
 
@@ -1083,7 +1092,7 @@ Em `Prumo.Application/Services/TenantService.cs`:
 
 Confira os nomes reais das propriedades de `PermissionAuditLog` em `Prumo.Domain/Entities/PermissionAuditLog.cs` e ajuste — se algum campo não existir, use os equivalentes em vez de criar campos novos.
 
-- [ ] **Step 4: Escrever o teste**
+- [x] **Step 4: Escrever o teste**
 
 Crie `Prumo.Tests/Services/TenantSupportAccessTests.cs`, usando o mesmo padrão `NewDb` de `TenantRoleServiceTests`:
 
@@ -1131,7 +1140,7 @@ O construtor é `TenantService(ApplicationDbContext db, UserManager<ApplicationU
 
 Requer `using Microsoft.AspNetCore.Identity;` e `using NSubstitute;`. É o mesmo padrão de `ResourcePermissionTenantTests.MockUserManager`.
 
-- [ ] **Step 5: Rodar tudo e commitar**
+- [x] **Step 5: Rodar tudo e commitar**
 
 Run: `dotnet build && dotnet test --nologo`
 Expected: `0 Erro(s)`, `Com falha: 0`
@@ -1145,16 +1154,16 @@ git commit -m "feat(security): restrict tenant creation and add audited support 
 
 ## Verificação final da fase 1
 
-- [ ] **Suíte completa**
+- [x] **Suíte completa**
 
 Run: `dotnet build && dotnet test --nologo`
 Expected: `0 Erro(s)`, `Com falha: 0`, e o total **acima** de 63 — os testes novos precisam aparecer.
 
-- [ ] **Prova de que o teste de arquitetura morde**
+- [x] **Prova de que o teste de arquitetura morde**
 
 Remova qualquer `[TenantModule]` de um controller, rode `dotnet test`, veja falhar nomeando a action, e recoloque.
 
-- [ ] **Verificação manual contra a API viva**
+- [x] **Verificação manual contra a API viva**
 
 Reinicie a API (o processo em `localhost:5201` roda binário antigo) e faça logout/login — as chaves do `localStorage` mudaram para `prumo_*` no rename, então o navegador precisa limpar o estado velho. Depois:
 
@@ -1178,3 +1187,130 @@ Custo de deixar como está: o startup continua fazendo algumas leituras a mais. 
 ## O que esta fase deliberadamente NÃO faz
 
 Nada é removido. Os ~87 `IgnoreQueryFilters`, as checagens `CanAccess`/`CanManage` por action e o `[RequireResourceAccess]` do `PermissionsController` continuam todos no lugar, como redundância — para que qualquer quebra tenha origem identificável. A remoção é a fase 2 e vira um plano separado, escrito só depois desta estar de pé e rodada de verdade.
+
+---
+
+# Registro de execução (2026-08-13)
+
+Executado numa sessão só, task a task, com TDD de verdade: cada teste foi visto
+falhando pelo motivo certo antes da implementação existir.
+
+## Resultado
+
+**13 commits**, build com `0 Erro(s)`, **83 testes aprovados / 0 falhas** (a suíte
+tinha 63 antes). Mergeado na `main`.
+
+| Task | Commit | O que entrega |
+|---|---|---|
+| 1 | `8394900` | `[TenantModule]`, o gate único |
+| 2 | `963e480` | o atributo declarado nos 9 controllers (fecha o item 13) |
+| 3 | `357ad0d` | teste de arquitetura que quebra o build |
+| 4 | `ed54259` | filtro global fail-closed (item 10) |
+| 5 | `45a9da2` | factory lendo configuração, arquivo morto apagado (item 12) |
+| 6 | `a12de2a` | re-seed de startup removido + migration de backfill |
+| 7 | `7ed7048` | senha do admin por configuração, fora do log |
+| 8 | `88e7e19` | criação de tenant restrita + suporte auditado |
+| extra | `4203a15` | **segunda via do bug do re-seed** — ver abaixo |
+
+## O bug que os testes não pegaram
+
+A Task 6 removeu o `EnsureTenantBootstrapAsync`, como o plano mandava. **Não bastou.**
+`EnsureDefaultTenantAsync` chamava `TenantBootstrapSeeder` e `ChartOfAccountsSeeder`
+**fora** do ramo `if (tenant == null)`, então o tenant `default` continuava sendo
+re-semeado a cada boot e o grant revogado voltava assim mesmo.
+
+Os 83 testes passavam com o bug vivo. Quem pegou foi o passo 4 da verificação
+manual — revogar um grant de verdade e reiniciar a API. Corrigido movendo as duas
+chamadas para dentro do ramo de criação.
+
+**Lição para a fase 2:** nenhum teste exercita o `DbInitializer`. Enquanto isso
+continuar assim, mudança em semeadura precisa de verificação manual — ou de um
+teste de integração que suba o initializer, que é uma lacuna que vale fechar.
+
+## Três coisas que o plano errou
+
+1. **Pacotes faltando (Task 5).** O plano previu `Microsoft.Extensions.Configuration.Json`,
+   mas `AddEnvironmentVariables` exige `...Configuration.EnvironmentVariables` e o
+   `IHostEnvironment` da Task 7 exige `...Hosting.Abstractions`. Ambos acrescentados
+   ao `Prumo.Infrastructure.csproj`.
+2. **Teste do seeder passava por vacuidade (Task 6).** O snippet do plano não semeia
+   a role Identity `Administrador`, e sem ela o `TenantBootstrapSeeder` não concede
+   `ResourcePermission` nenhum — o teste "passaria" sem provar nada. O teste real
+   cria a role antes.
+3. **`PermissionAuditLog` não tem os campos que o plano supôs (Task 8).** Não existe
+   `UserId`/`Details`/`CreatedAt`; a entidade é modelada para grants de role/permissão
+   (`RoleId`, `RoleName`, `PermissionId`, `PermissionName`, `PerformedByUserId`,
+   `PerformedByUserEmail`, `PerformedAt`, `Reason`). O log de suporte usa sentinelas
+   legíveis (`Action = "SUPPORT_ACCESS_GRANTED"`, `PermissionName = "SupportAccess"`).
+   **Fica em aberto:** essas linhas aparecem na consulta de audit log junto com grants
+   de permissão de verdade. Se incomodar, o certo é uma entidade de auditoria própria.
+
+Também: a Task 5 manda editar o `CLAUDE.md`, mas ele é **gitignored** — a edição vale
+localmente e nunca entra em commit.
+
+## Verificação (o que foi provado, e como)
+
+**Teste de arquitetura morde.** Removido o `[TenantModule]` do `EmployeesController`
+e depois do `PaymentsController`; falhou nas duas vezes nomeando as 5 actions
+descobertas de cada um.
+
+**Backfill, contra Postgres real.** Estado pré-backfill montado de propósito: tenant
+A com zero recursos, tenant B com um recurso pré-existente de nome diferente do
+catálogo. Depois da migration: ambos com **12 recursos**, o recurso do B **manteve o
+nome e não duplicou** (o `NOT EXISTS` funciona), acentuação intacta, e **zero**
+`ResourcePermissions` criados.
+
+**API viva** (`localhost:5201`):
+
+| Cenário | Resultado |
+|---|---|
+| Sem tenant selecionado → tenant próprio | 403 (mudança deliberada) |
+| Tenant A selecionado → tenant A | 200 |
+| Tenant A selecionado → tenant B | 403 |
+| Sem token | 401 |
+| Grant revogado, depois de restart | 403 |
+
+**Senha do admin.** O admin foi criado com a senha vinda de user secrets, e
+`Admin@123` tem zero ocorrências no log inteiro — antes saía num banner em nível
+Info, com sink para tabela.
+
+### Como testar revogação de grant sem se enganar
+
+**Não use o admin.** `GetUserPermissionForResourceAsync` devolve `Full` direto para
+a role global `Administrador` e para Owner/Admin do tenant — o acesso deles não vem
+de grant nenhum, então revogar não muda nada e parece que o fix falhou. Use um
+Member com feature role:
+
+```
+POST /api/tenants/{id}/users            {"Email":"...","Password":"...","FullName":"...","Phone":null,"Role":0}
+POST /api/tenants/{id}/members/{uid}/roles  {"RoleName":"RH"}
+```
+
+### Ressalva da verificação
+
+Rodou contra **Postgres 16**, seguindo a receita deste plano — mas o
+`docker-compose.yml` do repo fixa **17-alpine**. O SQL do backfill não tem nada
+sensível a versão (`gen_random_uuid()` é nativo desde o PG 13), então o resultado
+vale; ainda assim, o certo é usar `docker compose up -d` na raiz do backend, que já
+sobe Postgres e Redis nas versões corretas e com volume, em vez dos `docker run`
+avulsos que esta sessão usou.
+
+## Próximos passos
+
+1. **Refazer a verificação do backfill em cima do `docker compose`** (PG 17, com
+   volume). Barato, e remove a única ressalva acima.
+2. **Decidir o desvio do spec** — mover as roles globais do Identity e o catálogo de
+   `Permission` para migration ficou fora desta fase. A justificativa está na seção
+   anterior deste arquivo; segue esperando decisão do Nickolas.
+3. **Decidir o formato do log de auditoria do support-access** (item 3 dos erros do
+   plano, acima).
+4. **Teste de integração do `DbInitializer`** — a lacuna que deixou o bug do re-seed
+   passar. Vale fechar antes da fase 2, que mexe em muito mais coisa.
+5. **Escrever o plano da fase 2**: remover os ~87 `IgnoreQueryFilters`, as checagens
+   `CanAccess`/`CanManage` por action e o `[RequireResourceAccess]` do
+   `PermissionsController`, agora que a rede de segurança está de pé.
+6. **Frontend** — nada foi tocado. O gate agora nega de verdade na API; vale conferir
+   se alguma tela dependia de endpoint que respondia 200 por engano.
+7. **Pass de infra** (`2026-08-11-infra-rename-pass.md`) — só depois desta fase, e
+   exige `az login` do usuário. Acrescentar o `docker-compose.yml` à lista: ainda usa
+   nomes pré-rename (`saasbase-postgres`, `saasbase-redis`).
