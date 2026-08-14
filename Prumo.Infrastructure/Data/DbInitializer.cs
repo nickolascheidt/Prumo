@@ -295,6 +295,12 @@ namespace Prumo.Infrastructure.Data
                 });
                 await context.SaveChangesAsync();
                 logger.LogInformation("✓ Tenant 'default' criado para o usuário admin");
+
+                // Semeia SÓ no nascimento do tenant. Reaplicar isso a cada startup
+                // ressuscitava grants revogados — ver SeederIdempotenceTests. Tenants
+                // que já existem são cobertos pela migration de backfill.
+                await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
+                await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
             }
             else
             {
@@ -312,9 +318,6 @@ namespace Prumo.Infrastructure.Data
                     await context.SaveChangesAsync();
                 }
             }
-
-            await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
-            await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
         }
 
     }
