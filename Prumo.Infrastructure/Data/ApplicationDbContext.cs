@@ -74,10 +74,15 @@ namespace Prumo.Infrastructure.Data
 
         private void SetTenantQueryFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantScoped
         {
+            // Fail-closed: sem tenant resolvido não volta linha nenhuma. O construtor sem
+            // ITenantContext (usado pelo ApplicationDbContextFactory em design-time) deixa
+            // _tenantContext nulo e portanto filtra tudo — inofensivo, porque design-time só
+            // roda migration e migration não faz query. Quem precisa ler cross-tenant de
+            // propósito usa IgnoreQueryFilters() explicitamente.
             modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
-                _tenantContext == null
-                || !_tenantContext.HasTenant
-                || e.TenantId == _tenantContext.TenantId);
+                _tenantContext != null
+                && _tenantContext.HasTenant
+                && e.TenantId == _tenantContext.TenantId);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
