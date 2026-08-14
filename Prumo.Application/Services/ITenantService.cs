@@ -18,5 +18,6 @@ namespace Prumo.Application.Services
         Task<UserLookupDto?> LookupUserByEmailAsync(string email, CancellationToken ct = default);
         Task<TenantMemberDto> CreateAndAddMemberAsync(Guid tenantId, CreateTenantUserDto dto, CancellationToken ct = default);
         Task UpdateMemberRoleAsync(Guid tenantId, Guid userId, TenantRole newRole, CancellationToken ct = default);
+        Task<bool> GrantSupportAccessAsync(Guid tenantId, Guid masterAdminUserId, CancellationToken ct = default);
     }
 }

@@ -29,11 +29,28 @@ namespace Prumo.Api.Controllers
             Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         [HttpPost]
+        [Authorize(Roles = "Administrador")]
         [ProducesResponseType(typeof(TenantDto), StatusCodes.Status201Created)]
         public async Task<ActionResult<TenantDto>> Create([FromBody] CreateTenantRequestDto request, CancellationToken ct)
         {
             var tenant = await _tenantService.CreateAsync(CurrentUserId, request, ct);
             return CreatedAtAction(nameof(GetById), new { tenantId = tenant.Id }, tenant);
+        }
+
+        /// <summary>
+        /// Insere o master admin como membro de um tenant que ele não criou, para suporte.
+        /// Não existe bypass da checagem de associação: um bypass reintroduziria o vazamento
+        /// cross-tenant que o trabalho de RBAC removeu, e seria um caminho que o teste de
+        /// arquitetura não consegue ver. Aqui o acesso vira uma linha no banco, auditada.
+        /// </summary>
+        [HttpPost("{tenantId:guid}/support-access")]
+        [Authorize(Roles = "Administrador")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GrantSupportAccess(Guid tenantId, CancellationToken ct)
+        {
+            var granted = await _tenantService.GrantSupportAccessAsync(tenantId, CurrentUserId, ct);
+            return granted ? NoContent() : NotFound();
         }
 
         [HttpGet("me")]
