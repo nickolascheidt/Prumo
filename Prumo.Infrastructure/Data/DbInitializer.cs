@@ -109,9 +109,10 @@ namespace Prumo.Infrastructure.Data
                     }
                 }
 
-                // Tenant-scoped role permissions and resources are now seeded per-tenant
-                // via TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
-                await EnsureTenantBootstrapAsync(context, logger);
+                // Tenant-scoped role permissions and resources are seeded per-tenant via
+                // TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
+                // Reaplicar isso no startup ressuscitava grants revogados — ver
+                // SeederIdempotenceTests. Tenants antigos são cobertos pela migration de backfill.
 
                 // Backfill: convert legacy global feature-role assignments to per-tenant rows.
                 var masterRoleId = (await roleManager.FindByNameAsync(Permissions.Roles.MasterAdmin))?.Id;
@@ -295,21 +296,5 @@ namespace Prumo.Infrastructure.Data
             await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
         }
 
-        private static async Task EnsureTenantBootstrapAsync(
-            ApplicationDbContext context,
-            ILogger logger)
-        {
-            var tenantIds = await context.Tenants
-                .IgnoreQueryFilters()
-                .Select(t => t.Id)
-                .ToListAsync();
-
-            foreach (var tenantId in tenantIds)
-            {
-                await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenantId);
-            }
-
-            logger.LogInformation("✓ Bootstrap de recursos/permissoes reaplicado para {Count} tenant(s)", tenantIds.Count);
-        }
     }
 }
