@@ -108,6 +108,56 @@ namespace Prumo.Application.Services
             await _db.SaveChangesAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Insere o master admin como membro de um tenant que ele não criou, para suporte.
+        /// Não existe bypass da checagem de associação: um bypass reintroduziria o vazamento
+        /// cross-tenant que o trabalho de RBAC removeu, e seria um caminho que o teste de
+        /// arquitetura não consegue ver. Aqui o acesso vira uma linha no banco, auditada.
+        /// </summary>
+        public async Task<bool> GrantSupportAccessAsync(
+            Guid tenantId, Guid masterAdminUserId, CancellationToken ct = default)
+        {
+            var tenantExists = await _db.Tenants
+                .IgnoreQueryFilters()
+                .AnyAsync(t => t.Id == tenantId, ct);
+
+            if (!tenantExists) return false;
+
+            var alreadyMember = await _db.TenantUsers
+                .IgnoreQueryFilters()
+                .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == masterAdminUserId, ct);
+
+            if (alreadyMember) return true;
+
+            _db.TenantUsers.Add(new TenantUser
+            {
+                TenantId = tenantId,
+                UserId = masterAdminUserId,
+                Role = TenantRole.Admin
+            });
+
+            // PermissionAuditLog é modelado para grants de role/permissão, então os campos
+            // de role e permissão recebem sentinelas legíveis em vez de ids inventados —
+            // o que importa registrar aqui é quem entrou, em qual tenant e quando.
+            var admin = await _userManager.FindByIdAsync(masterAdminUserId.ToString());
+            _db.PermissionAuditLogs.Add(new PermissionAuditLog
+            {
+                TenantId = tenantId,
+                RoleId = Guid.Empty,
+                RoleName = "TenantRole.Admin",
+                PermissionId = Guid.Empty,
+                PermissionName = "SupportAccess",
+                Action = "SUPPORT_ACCESS_GRANTED",
+                PerformedByUserId = masterAdminUserId,
+                PerformedByUserEmail = admin?.Email ?? masterAdminUserId.ToString(),
+                PerformedAt = DateTime.UtcNow,
+                Reason = $"Master admin {masterAdminUserId} inseriu-se como Admin do tenant {tenantId} para suporte."
+            });
+
+            await _db.SaveChangesAsync(ct);
+            return true;
+        }
+
         public async Task RemoveMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
         {
             var membership = await _db.TenantUsers

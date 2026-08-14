@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Prumo.Api\Prumo.Api.csproj" />
     <ProjectReference Include="..\Prumo.Application\Prumo.Application.csproj" />
     <ProjectReference Include="..\Prumo.Domain\Prumo.Domain.csproj" />
     <ProjectReference Include="..\Prumo.Infrastructure\Prumo.Infrastructure.csproj" />

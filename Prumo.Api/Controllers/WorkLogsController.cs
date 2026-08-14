@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Prumo.Api.Attributes;
 using Prumo.Application.DTOs.HR;
 using Prumo.Application.Services;
 using Prumo.Domain.Enums;
@@ -11,6 +12,7 @@ namespace Prumo.Api.Controllers
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/employees/{employeeId:guid}/worklogs")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [TenantModule("HR.WorkLogs")]
     public class WorkLogsController : ControllerBase
     {
         private readonly IWorkLogService _service;

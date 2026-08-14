@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Prumo.Api.Attributes;
 using Prumo.Application.DTOs.AccountsPayable;
 using Prumo.Application.Services;
 using Prumo.Domain.Enums;
@@ -11,6 +12,7 @@ namespace Prumo.Api.Controllers
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/accounts-payable/categories")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [TenantModule("AccountsPayable.Entries")]
     public class AccountsPayableCategoriesController : ControllerBase
     {
         private readonly IAccountsPayableService _service;

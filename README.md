@@ -65,7 +65,7 @@ The API runs migrations and seeds initial data automatically on startup via `app
 
 ## Configuration
 
-Base config is in `appsettings.json`. Connection strings are kept in `appsettings.ConnectionStrings.json`. Environment overlays: `appsettings.Development.json`, `appsettings.Production.json`, `appsettings.Demo.json`.
+Base config is in `appsettings.json`, including `ConnectionStrings:DefaultConnection`. Environment overlays: `appsettings.Development.json`, `appsettings.Production.json`, `appsettings.Demo.json`. In Production the connection string must come from the environment (`ConnectionStrings__DefaultConnection`) — the file ships a placeholder on purpose, so a missing variable fails at startup instead of silently falling back.
 
 Key sections:
 

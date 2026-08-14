@@ -501,6 +501,44 @@ com dado de negócio, contra 2 arquivos de tela administrativa.
 
 ---
 
+## 14. Achados da sessão de design de 2026-08-11
+
+> Levantados ao desenhar o pacote 10+12+13. Os dois primeiros são **bugs ativos**,
+> não riscos teóricos. O design completo está em
+> `docs/superpowers/specs/2026-08-11-backend-tenant-isolation-design.md`.
+
+**(a) O seeder ressuscita grants revogados a cada startup.** ⚠️ bug ativo.
+`DbInitializer.EnsureTenantBootstrapAsync` percorre *todos* os tenants no boot e
+reaplica o `TenantBootstrapSeeder` inteiro — inclusive `ResourcePermissions`
+(`Administrador` ganha `Full` em tudo; cada role de módulo ganha `Full` no módulo
+dela). Um admin revoga o acesso do RH a `employees`, alguém reinicia a API, e o
+grant volta como `Full`. **Revogação não sobrevive a um restart.** O seeder checa
+`exists` antes de inserir, então não distingue "nunca concedido" de "revogado" —
+ambos são ausência de linha. *Tratado no design (seção 3): a função é apagada.*
+
+**(b) Senha do admin chumbada e logada em texto puro.** ⚠️ bug ativo.
+`admin@SBP.com` / `Admin@123` no `DbInitializer`, e a senha sai em log nível Info.
+O Serilog tem sink para tabela — em produção isso deposita a credencial do admin
+master no armazenamento de log, não só no repo. *Tratado no design (seção 3).*
+
+**(c) `POST /api/tenants` sem checagem de role.** Só `[Authorize]`. Qualquer
+usuário autenticado cria tenant à vontade. No modelo em que tenant é vendido, é
+furo de segurança e de negócio. *Tratado no design (seção 4).*
+
+**(d) O middleware aceita o claim `tenant_id` sem reconferir associação.** Só o
+caminho do header `X-Tenant-Id` chama `IsMemberAsync`. Quem for removido de um
+tenant mantém o `TenantContext` daquele tenant até o token expirar — até 8h de
+defasagem na revogação. *Tratado no design (seção 1, passo 4).*
+
+**(e) Worktrees obsoletos** em `.worktrees/` ainda com a estrutura pré-rename
+(`SaaS_BasePlatform.*`). Não afetam a `main`. Higiene, fora do design.
+
+**(f) `NU1903` de severidade alta** em `System.Security.Cryptography.Xml` 10.0.7 e
+`Microsoft.OpenApi` 2.0.0, mais o bundle inicial do Angular estourando o budget em
+419 kB. Higiene, fora do design.
+
+---
+
 ## Ordem sugerida
 
 > **Atualizado em 2026-08-06.** Decisão do Nickolas: atacar segurança primeiro, e
@@ -513,9 +551,11 @@ com dado de negócio, contra 2 arquivos de tela administrativa.
 > controllers de módulo.
 
 1. **Pacote de segurança do backend — itens 10 + 13 + 12** — um design só.
-   *(em brainstorming; spec ainda não escrito)*
-2. **Rename** — quanto mais código escrever, mais caro fica. *(bloqueado: falta o
-   nome; o Nickolas quer uma sessão de brainstorm de nome)*
+   *(spec **escrito e aprovado** em 2026-08-11:
+   `docs/superpowers/specs/2026-08-11-backend-tenant-isolation-design.md`.
+   Próximo passo é o plano de implementação da fase 1; a fase 2, de limpeza,
+   vira um plano separado depois.)*
+2. ~~**Rename**~~ — ✅ **feito em 2026-08-11.** O sistema é **Prumo**. Ver item 7.
 3. **Pacote RBAC** — itens 2, 3, 4 e 5 se tocam, fazer juntos.
    *(desbloqueado em 2026-08-06: a explicação Owner/Admin/Member vs feature roles
    foi dada e entendida — ver a tabela no item 5)*

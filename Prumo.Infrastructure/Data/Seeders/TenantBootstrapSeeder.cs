@@ -136,6 +136,13 @@ namespace Prumo.Infrastructure.Data.Seeders
             },
         };
 
+        /// <summary>
+        /// Códigos do catálogo padrão. Existe para o teste de arquitetura poder provar
+        /// que todo [TenantModule] declara um recurso que realmente existe.
+        /// </summary>
+        public static IReadOnlyList<string> DefaultResourceCodes =>
+            DefaultResources.Select(r => r.Code).ToList();
+
         public static async Task SeedAsync(ApplicationDbContext db, Guid tenantId, CancellationToken cancellationToken = default)
         {
             // Resources

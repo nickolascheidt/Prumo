@@ -3,7 +3,9 @@ using Prumo.Domain.Entities;
 using Prumo.Infrastructure.Data.Seeders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Prumo.Infrastructure.Data
@@ -21,6 +23,8 @@ namespace Prumo.Infrastructure.Data
                 var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
                 var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
                 var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var environment = services.GetRequiredService<IHostEnvironment>();
 
                 logger.LogInformation("=== Iniciando inicialização do banco de dados ===");
 
@@ -109,9 +113,10 @@ namespace Prumo.Infrastructure.Data
                     }
                 }
 
-                // Tenant-scoped role permissions and resources are now seeded per-tenant
-                // via TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
-                await EnsureTenantBootstrapAsync(context, logger);
+                // Tenant-scoped role permissions and resources are seeded per-tenant via
+                // TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
+                // Reaplicar isso no startup ressuscitava grants revogados — ver
+                // SeederIdempotenceTests. Tenants antigos são cobertos pela migration de backfill.
 
                 // Backfill: convert legacy global feature-role assignments to per-tenant rows.
                 var masterRoleId = (await roleManager.FindByNameAsync(Permissions.Roles.MasterAdmin))?.Id;
@@ -164,6 +169,25 @@ namespace Prumo.Infrastructure.Data
                 }
 
                 // Criar usuário admin
+                var seedPassword = configuration["Seed:AdminPassword"];
+                var isDevelopment = environment.IsDevelopment() || environment.IsEnvironment("Demo");
+
+                if (string.IsNullOrWhiteSpace(seedPassword))
+                {
+                    if (isDevelopment)
+                    {
+                        logger.LogWarning(
+                            "Admin não criado: defina Seed:AdminPassword (user secrets) para semear o admin local.");
+                        logger.LogInformation("=== Inicialização concluída ===");
+                        return;
+                    }
+
+                    throw new InvalidOperationException(
+                        "Seed:AdminPassword não configurada. Em Production o admin master nunca é criado "
+                        + "com senha padrão — forneça Seed__AdminPassword por variável de ambiente ou "
+                        + "remova o seeding de admin deste ambiente.");
+                }
+
                 logger.LogInformation("Criando usuário administrador...");
                 adminUser = new ApplicationUser
                 {
@@ -175,22 +199,20 @@ namespace Prumo.Infrastructure.Data
                     CreatedAt = DateTime.UtcNow
                 };
 
-                var result = await userManager.CreateAsync(adminUser, "Admin@123");
+                var result = await userManager.CreateAsync(adminUser, seedPassword);
 
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Administrador");
                     await EnsureDefaultTenantAsync(context, adminUser, logger);
-                    logger.LogInformation("✓✓✓ Usuário admin criado com sucesso! ✓✓✓");
-                    logger.LogInformation("═══════════════════════════════════════");
-                    logger.LogInformation("  Email: admin@SBP.com");
-                    logger.LogInformation("  Senha: Admin@123");
-                    logger.LogInformation("═══════════════════════════════════════");
+                    // A senha NUNCA vai para o log: o Serilog tem sink para tabela, e isso
+                    // depositaria a credencial do admin master no armazenamento de log.
+                    logger.LogInformation("✓ Usuário admin criado: {Email}", adminUser.Email);
                 }
                 else
                 {
                     var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    logger.LogError($"✗✗✗ Erro ao criar usuário admin: {errors}");
+                    logger.LogError("✗ Erro ao criar usuário admin: {Errors}", errors);
                 }
 
                 logger.LogInformation("=== Inicialização concluída ===");
@@ -273,6 +295,12 @@ namespace Prumo.Infrastructure.Data
                 });
                 await context.SaveChangesAsync();
                 logger.LogInformation("✓ Tenant 'default' criado para o usuário admin");
+
+                // Semeia SÓ no nascimento do tenant. Reaplicar isso a cada startup
+                // ressuscitava grants revogados — ver SeederIdempotenceTests. Tenants
+                // que já existem são cobertos pela migration de backfill.
+                await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
+                await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
             }
             else
             {
@@ -290,26 +318,7 @@ namespace Prumo.Infrastructure.Data
                     await context.SaveChangesAsync();
                 }
             }
-
-            await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
-            await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
         }
 
-        private static async Task EnsureTenantBootstrapAsync(
-            ApplicationDbContext context,
-            ILogger logger)
-        {
-            var tenantIds = await context.Tenants
-                .IgnoreQueryFilters()
-                .Select(t => t.Id)
-                .ToListAsync();
-
-            foreach (var tenantId in tenantIds)
-            {
-                await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenantId);
-            }
-
-            logger.LogInformation("✓ Bootstrap de recursos/permissoes reaplicado para {Count} tenant(s)", tenantIds.Count);
-        }
     }
 }
