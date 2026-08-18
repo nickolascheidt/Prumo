@@ -1314,3 +1314,102 @@ avulsos que esta sessão usou.
 7. **Pass de infra** (`2026-08-11-infra-rename-pass.md`) — só depois desta fase, e
    exige `az login` do usuário. Acrescentar o `docker-compose.yml` à lista: ainda usa
    nomes pré-rename (`saasbase-postgres`, `saasbase-redis`).
+
+# Registro de verificação (2026-08-18)
+
+Fechados os passos 1, 2 e 3 da lista acima; a numeração abaixo é a de lá.
+
+## Passo 6 — smoke test do frontend (a dívida mais antiga, aberta desde 2026-08-05)
+
+API em `localhost:5201` contra o `docker compose` do repo, frontend em `localhost:4200`,
+dirigido por Playwright.
+
+**O menu popula.** Como `admin@SBP.com` no tenant BiomePampa, os 12 itens aparecem nos 5
+grupos (Principal, Contas a Pagar, Financeiro, RH, Administração). O fix `73dc458` +
+`22aba79` está validado na UI — era a dívida de verificação em aberto.
+
+**O menu gateia.** Criado um Member só com a feature role `RH`: ele vê Dashboard + os 4
+itens de RH + Tenant, e **não** vê Financeiro, Contas a Pagar nem as telas de permissão.
+
+**Nada regrediu com a fase 1.** As 12 telas foram abertas uma a uma; o log da API registra
+**62 respostas, todas 200**, zero 403/500 vindos do browser. Nenhuma tela dependia de
+endpoint que respondia 200 por engano.
+
+**As feature roles agora negam na API, não só no menu** — o pagamento do item 13, medido
+com o Member acima:
+
+| Requisição (Member só com RH) | Resultado |
+|---|---|
+| `GET /tenants/{A}/employees` | 200 |
+| `GET /tenants/{A}/chart-of-accounts` | 403 |
+| `GET /tenants/{A}/accounts-payable/entries` | 403 |
+| `GET /tenants/{B}/employees` (cross-tenant) | 403 |
+| `POST /tenants/{A}/users` (escalonamento) | 403 |
+| `POST /tenants/{A}/members/{self}/roles` (auto-promoção) | 403 |
+
+A matriz do gate também foi reproduzida 5/5 (sem token 401, sem tenant 403, próprio 200,
+cross-tenant 403, token inválido 401).
+
+### Dois achados
+
+1. **Item 4 do backlog confirmado vivo, e é mais amplo que "contagem".** O dashboard do
+   Member mostra `Roles atribuídas: 0` e "Nenhuma role atribuída" — mas ele **tem** a role
+   RH, provada pelo menu, pela aba RH e pelo 200 em `/employees`. Não é só o contador: o
+   card inteiro de roles vem vazio.
+2. **O item "Tenant" aparece no menu de um Member simples.** Não é falha de segurança — a
+   leitura de `/members` devolve 200 (dentro do tenant), e toda escrita dá 403. É verruga
+   de UX: o grupo "Administração" fica visível para quem não administra nada.
+
+Cosmético: no header, o chip do usuário sobrepõe o avatar quando o nome é longo.
+
+## Passo 1 — backfill em PG 17, sob `docker compose`
+
+Some a ressalva de "rodou em PG 16 avulso". Base descartável `PrumoBackfillVerify` no
+Postgres **17.9** do compose, migrada até `AddTenantUserRoles`, estado pré-backfill montado
+à mão (tenant A com 0 recursos; tenant B com 1 recurso de `Code` do catálogo mas `Name`,
+rota e `DisplayOrder` customizados), depois `dotnet ef database update`.
+
+| Asserção | Resultado |
+|---|---|
+| Tenant A: 0 → 12 recursos | ✅ |
+| Tenant B: 1 → 12 recursos | ✅ |
+| `Name`/rota/ordem customizados do B preservados | ✅ (o `NOT EXISTS` funciona) |
+| Duplicatas de `(TenantId, Code)` | 0 |
+| `ResourcePermissions` criados | 0 |
+| Acentuação (`Funcionários`, `Gestão de Permissões`, …) | intacta |
+
+## Passo 4 — teste do DbInitializer
+
+`Prumo.Tests/Infrastructure/DbInitializerReseedTests.cs`, 2 testes. Suíte: **85 aprovados,
+0 falhas**, 677 ms — eram 83, e a duração não mudou.
+
+`EnsureDefaultTenantAsync` passou de `private` para `internal` (`InternalsVisibleTo` no
+`Prumo.Infrastructure.csproj`). **A lógica não mudou** — o diff do `DbInitializer.cs` é a
+palavra-chave e um comentário.
+
+**Por que não é o teste de integração que o passo 4 pedia:** o `InitializeAsync` inteiro
+chama `MigrateAsync`, que exige provider relacional, e as migrations são
+Postgres-específicas (`gen_random_uuid()`, `NOW() AT TIME ZONE`). Pior, o `catch` dele
+engole a exceção — um teste in-memory do `InitializeAsync` passaria **por vacuidade**.
+Cobrir aquilo exige Testcontainers, que traria dependência nova e Docker obrigatório no CI.
+Decisão do Nickolas em 2026-08-18: alvejar `EnsureDefaultTenantAsync`, que é onde o bug
+morava, e deixar o resto documentado como lacuna.
+
+**O teste foi visto falhando pelo motivo certo.** Com o bug `4203a15` reintroduzido — as
+duas chamadas de seeder movidas para fora do ramo `if (tenant == null)` — ele falha com
+"O grant revogado voltou depois de um restart". Restaurado o código, volta a passar. Não é
+teste que passa por construção.
+
+O segundo teste cobre a outra forma de erro no mesmo método: dois boots não podem duplicar
+o tenant `default` nem a associação do admin.
+
+## Ainda em aberto desta lista
+
+Passos 2 e 3 (desvio do spec das roles de Identity; formato do log de auditoria do
+support-access) seguem esperando decisão. O passo 5 — o plano da fase 2 — continua o
+próximo trabalho grande, e agora tem a rede de segurança verificada embaixo dele.
+
+Fora da lista, achado do build de hoje: `NU1903` de severidade **alta** em
+`System.Security.Cryptography.Xml` 10.0.7 (3 advisories, no `Prumo.Application` e no
+`Prumo.Tests`) e `Microsoft.OpenApi` 2.0.0 (no `Prumo.Api`). Não está em nenhum item do
+backlog.

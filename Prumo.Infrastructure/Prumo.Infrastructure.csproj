@@ -25,4 +25,8 @@
     <ProjectReference Include="..\Prumo.Domain\Prumo.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Prumo.Tests" />
+  </ItemGroup>
+
 </Project>

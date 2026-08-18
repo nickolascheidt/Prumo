@@ -267,7 +267,14 @@ namespace Prumo.Infrastructure.Data
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        private static async Task EnsureDefaultTenantAsync(
+        /// <summary>
+        /// Garante o tenant 'default' e a associação do admin. Semeia SÓ no nascimento
+        /// do tenant — reaplicar os seeders a cada boot ressuscitava grants revogados
+        /// (bug 4203a15). `internal` para que DbInitializerReseedTests possa provar isso;
+        /// o `InitializeAsync` inteiro não é testável em memória porque chama
+        /// `MigrateAsync`, que exige provider relacional.
+        /// </summary>
+        internal static async Task EnsureDefaultTenantAsync(
             ApplicationDbContext context,
             ApplicationUser owner,
             ILogger logger)
