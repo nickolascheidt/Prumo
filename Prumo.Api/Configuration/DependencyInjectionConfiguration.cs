@@ -3,7 +3,6 @@ using Prumo.Domain.Common;
 using Prumo.Infrastructure.Authorization;
 using Prumo.Infrastructure.Data;
 using Prumo.Infrastructure.Multitenancy;
-using Prumo.Infrastructure.Repositories;
 using Prumo.Infrastructure.Services;
 using FluentValidation;
 using System.Reflection;
@@ -14,10 +13,6 @@ public static class DependencyInjectionConfiguration
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // Register Repositories
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
-
         // Register Services
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPermissionService, PermissionService>();
