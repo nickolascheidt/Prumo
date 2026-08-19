@@ -44,7 +44,15 @@ depois reescrever. Fazer a limpeza antes deixa o resto da semana em terreno limp
 apertar, é o que mais dói ter começado. Se você preferir garantir as telas primeiro, a
 ordem alternativa é 2 → 3 → 1, e o custo é retrabalho em `TenantService`.
 
-Plano detalhado: `2026-08-18-phase2-data-access-cleanup.md`.
+**O que a auditoria de 2026-08-18 mudou neste bloco:** os 22 sites das entidades sem
+`TenantId` foram lidos um a um e **não há vazamento** — todo caminho faz o join pelo pai ou
+tem guard antes. Então a fase 2 **não conserta bug**, troca disciplina por estrutura. E não
+precisa de migration: as 4 entidades órfãs (`WorkLog`, `Payment`, `PaymentPeriod`,
+`JournalLine`) ganham **query filter por navegação**, que o próprio EF já pede em 4 avisos
+de startup. Verificado num spike: o EF aceita e o aviso some.
+
+Plano detalhado: `2026-08-18-phase2-data-access-cleanup.md` — 10 tasks, ~86
+`IgnoreQueryFilters` para ~8, e um teste de arquitetura que impede a limpeza de se desfazer.
 
 ### 2. Item 4 — as roles do usuário aparecerem
 
