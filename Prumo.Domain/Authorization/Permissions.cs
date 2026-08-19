@@ -96,6 +96,18 @@ namespace Prumo.Domain.Authorization
             {
                 Funcionario, Cliente, RH, Financeiro, ContasAPagar
             };
+
+            /// <summary>
+            /// Toda role canônica, incluindo o master admin. É a lista que a tela de
+            /// "Permissões por Role" configura — o master admin entra porque as
+            /// RolePermissions dele são reais e valem para os endpoints gateados por
+            /// policy. Existe para o frontend não chumbar nomes de role; foi assim que
+            /// a role fantasma "Usuario" sobreviveu por meses.
+            /// </summary>
+            public static readonly IReadOnlyList<string> All = new[]
+            {
+                MasterAdmin, Funcionario, Cliente, RH, Financeiro, ContasAPagar
+            };
         }
 
         /// <summary>

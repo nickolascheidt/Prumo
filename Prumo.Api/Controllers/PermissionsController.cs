@@ -50,6 +50,18 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
+        /// Listar as roles canônicas que a tela de "Permissões por Role" configura.
+        /// Existe para o frontend parar de chumbar nomes de role — foi assim que a role
+        /// fantasma "Usuario" sobreviveu, e que RH/Financeiro/ContasAPagar nunca
+        /// apareceram na tela.
+        /// </summary>
+        [HttpGet("roles")]
+        [RequireResourceAccess("permissions", PermissionLevel.Read)]
+        [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+        public ActionResult<IReadOnlyList<string>> GetRoles()
+            => Ok(Permissions.Roles.All);
+
+        /// <summary>
         /// Obter permissões de uma role específica
         /// </summary>
         [HttpGet("roles/{roleName}")]

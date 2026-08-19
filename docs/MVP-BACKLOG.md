@@ -28,50 +28,66 @@ daquele tenant, não mais gating.
 
 ---
 
-## 1. Botão "Abrir painel admin" não faz nada
+## 1. Botão "Abrir painel admin" não faz nada — ✅ FEITO em 2026-08-18
 
-**Causa:** `dashboard-overview.component.html:60` aponta para `routerLink="/admin"`,
+**Causa era:** `dashboard-overview.component.html:60` apontava para `routerLink="/admin"`,
 e essa rota não existe no `app.routes.ts` — só existem `/admin/permissions`,
 `/admin/users-roles`, `/admin/tenant` e `/admin/members`. Existe um
 `modules/admin/admin-panel.component.ts` órfão, nunca registrado em rota nenhuma.
 
-**Esforço:** 1 linha (apontar para uma rota que existe) ou registrar o componente órfão.
-**Prioridade:** baixa — o Nickolas disse que por ora não precisa.
+**Feito:** o link passou a apontar para `/admin/permissions`. O componente órfão **não**
+foi registrado de propósito — o próprio HTML dele diz "Integração com backend pendente",
+e `dashboard/admin` é outro placeholder ("Dashboards administrativos em breve"). Registrar
+qualquer um dos dois entregaria uma página morta. Verificado no browser: o clique navega.
 
-## 2. Role "Usuario" fantasma na tela de Permissões por Role
+## 2. Role "Usuario" fantasma na tela de Permissões por Role — ✅ FEITO em 2026-08-18
 
-**Causa:** `permissions-management.component.ts:49` tem a lista chumbada no front:
+**Causa era:** `permissions-management.component.ts:49` tinha a lista chumbada no front:
 
 ```ts
 readonly availableRoles: string[] = ['Administrador', 'Funcionario', 'Cliente', 'Usuario'];
 ```
 
-As roles reais do backend (`Permissions.Roles`, em
-`Prumo.Domain/Authorization/Permissions.cs:85`) são:
-`Administrador`, `Funcionario`, `Cliente`, `RH`, `Financeiro`, `ContasAPagar`.
+As roles reais do backend (`Permissions.Roles`) são: `Administrador`, `Funcionario`,
+`Cliente`, `RH`, `Financeiro`, `ContasAPagar`. Ou seja: além de `Usuario` não existir,
+**faltavam três roles** na tela (RH, Financeiro, ContasAPagar).
 
-Ou seja: além de `Usuario` não existir, **faltam três roles** na tela (RH,
-Financeiro, ContasAPagar). Apagar `Usuario` da lista resolve o sintoma e mantém
-o problema — o certo é buscar do backend.
+**O bloqueio declarado aqui estava errado.** Este item nunca dependeu do item 3: a linha
+entrou em `42dd62a` (2026-03-09) e nunca mais foi tocada, e desde `b2046cd` (2026-06-20)
+já existia `GET /tenants/{id}/assignable-roles`, que a tela *Roles por Usuário* consome.
 
-**Bloqueio:** não existe endpoint de listar roles (ver item 3).
-**Esforço:** pequeno, depois do item 3.
+**Feito, pela raiz e não pelo sintoma** (apagar só o `Usuario` deixaria as três roles
+faltando): `Permissions.Roles.All` no Domain + `GET /api/permissions/roles` no
+`PermissionsController`, e o componente passou a buscar de lá. Três testes em
+`Prumo.Tests/Domain/CanonicalRolesTests.cs` travam a lista, inclusive um que quebra se
+`All` e `AssignableFeatureRoles` divergirem.
+
+**Por que `Administrador` entra na lista e `assignable-roles` não serviu:** aquele endpoint
+devolve só as roles que um admin de tenant pode *atribuir* a membros, e de propósito exclui
+o master admin. Mas esta tela configura `RolePermission`, e as do `Administrador` são reais
+— o `PermissionAuthorizationHandler` lê os claims `permission` montados a partir delas.
+Tirar o master daqui removeria funcionalidade de verdade. (O bypass do master em
+`ResourcePermissionService` é do *outro* sistema, o de `ResourcePermission` por recurso.)
 
 ## 3. Não existe tela (nem API) para criar role
 
-**Causa:** confirmado — não há `RolesController`. Nenhum endpoint de
-listar/criar/excluir role. O único parecido é
-`GET /api/tenants/{tenantId}/assignable-roles`, que devolve a lista fixa de
-`Permissions.Roles.AssignableFeatureRoles`.
+**Causa:** confirmado — não há `RolesController`. Nenhum endpoint de **criar/excluir**
+role. Para *listar* já existem dois, ambos devolvendo listas fixas do Domain:
+`GET /api/tenants/{tenantId}/assignable-roles` (`AssignableFeatureRoles`, sem o master) e
+`GET /api/permissions/roles` (`Roles.All`, com o master — acrescentado em 2026-08-18 pelo
+item 2).
 
 **O que precisa:**
-- Backend: `RolesController` com listar / criar / excluir.
+- Backend: criar / excluir role. A listagem já está resolvida.
 - Definir o que acontece com as `ResourcePermissions` de uma role recém-criada
   (nasce sem nenhuma? herda de um template?).
+- Decidir o que acontece com as listas fixas do Domain quando roles viram dado: hoje
+  `Roles.All` é `readonly` e testado; com criação dinâmica ele vira consulta ao Identity,
+  e `CanonicalRolesTests` muda de sentido.
 - Frontend: página nova. Decisão do Nickolas: **página separada**, não embutida
   na tela de Permissões por Role.
 
-**Esforço:** médio. É o item que destrava o item 2.
+**Esforço:** médio. **Já não bloqueia o item 2** — aquele foi fechado em 2026-08-18.
 
 ## 4. Contagem de roles por usuário sempre mostra 0
 
@@ -123,12 +139,13 @@ tela que mostra os dados do tenant.
 **Esforço:** médio.
 **➡️ AÇÃO: explicar isso melhor amanhã antes de implementar.**
 
-## 6. Botão "Configurações" no menu do usuário
+## 6. Botão "Configurações" no menu do usuário — ✅ FEITO em 2026-08-18
 
-**Causa:** `layout.component.html:25` — `<button mat-menu-item>` sem nenhum
+**Causa era:** `layout.component.html:25` — `<button mat-menu-item>` sem nenhum
 `(click)`. Decisão: **ocultar**, não precisa fazer nada no MVP.
 
-**Esforço:** trivial, 4 linhas.
+**Feito:** removido, com um comentário no lugar dizendo por quê. O menu do usuário agora
+tem só "Trocar Tenant" e "Sair", conferido no browser.
 
 ## 7. Renomear o sistema — ✅ FEITO em 2026-08-11
 
@@ -550,16 +567,21 @@ defasagem na revogação. *Tratado no design (seção 1, passo 4).*
 > derrubar os ~87 `IgnoreQueryFilters` e levar o `[RequireResourceAccess]` aos 9
 > controllers de módulo.
 
-1. **Pacote de segurança do backend — itens 10 + 13 + 12** — um design só.
-   *(spec **escrito e aprovado** em 2026-08-11:
-   `docs/superpowers/specs/2026-08-11-backend-tenant-isolation-design.md`.
-   Próximo passo é o plano de implementação da fase 1; a fase 2, de limpeza,
-   vira um plano separado depois.)*
+1. ~~**Pacote de segurança do backend — itens 10 + 13 + 12**~~ — ✅ **fase 1 feita,
+   mergeada e verificada de ponta a ponta** (2026-08-13, verificação fechada em
+   2026-08-18). Spec em
+   `docs/superpowers/specs/2026-08-11-backend-tenant-isolation-design.md`; o registro
+   do que foi entregue e do que foi provado está no fim de
+   `docs/superpowers/plans/2026-08-11-tenant-isolation-phase1.md`. **A fase 2, de
+   limpeza (~87 `IgnoreQueryFilters` + checagens redundantes), ainda não tem plano
+   escrito — é o próximo trabalho grande.**
 2. ~~**Rename**~~ — ✅ **feito em 2026-08-11.** O sistema é **Prumo**. Ver item 7.
-3. **Pacote RBAC** — itens 2, 3, 4 e 5 se tocam, fazer juntos.
+3. ~~**Quick wins** — itens 1 e 6~~ — ✅ **feitos em 2026-08-18**, junto com o item 2.
+4. **Pacote RBAC** — sobraram os itens **3, 4 e 5**; o item 2 saiu na frente em
+   2026-08-18 porque não estava bloqueado como este documento dizia.
    *(desbloqueado em 2026-08-06: a explicação Owner/Admin/Member vs feature roles
-   foi dada e entendida — ver a tabela no item 5)*
-4. **Quick wins** — itens 1 e 6, entram em qualquer momento.
+   foi dada e entendida — ver a tabela no item 5. O item 5 segue marcado
+   CONVERSAR ANTES: falta decidir o formato da tela fundida.)*
 5. **Cadastro + e-mail** (item 8) — maior, e com decisão de produto pendente.
 6. **Item 11** — portão antes de subir para produção. É trabalho de DevOps, corre
    em paralelo com o resto.
