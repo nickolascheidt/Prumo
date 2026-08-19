@@ -79,11 +79,14 @@ item 2).
 
 **O que precisa:**
 - Backend: criar / excluir role. A listagem já está resolvida.
-- Definir o que acontece com as `ResourcePermissions` de uma role recém-criada
-  (nasce sem nenhuma? herda de um template?).
+- **✅ DECIDIDO em 2026-08-18: role nova nasce vazia** — zero `Permission` e zero
+  `ResourcePermission`. O admin concede depois, na tela de Permissões por Role. É
+  fail-closed, combina com a fase 1, e não inventa acesso que ninguém pediu. O custo
+  aceito é que a role precisa passar por duas telas para ficar útil.
 - Decidir o que acontece com as listas fixas do Domain quando roles viram dado: hoje
   `Roles.All` é `readonly` e testado; com criação dinâmica ele vira consulta ao Identity,
-  e `CanonicalRolesTests` muda de sentido.
+  e `CanonicalRolesTests` muda de sentido. **É aqui que o desvio do spec (roles no seeder
+  vs migration) volta à mesa — decidido em 2026-08-18 esperar este item.**
 - Frontend: página nova. Decisão do Nickolas: **página separada**, não embutida
   na tela de Permissões por Role.
 
@@ -137,7 +140,35 @@ continuou aparecendo quando tudo o mais sumiu). Remover é ok, mas some a única
 tela que mostra os dados do tenant.
 
 **Esforço:** médio.
-**➡️ AÇÃO: explicar isso melhor amanhã antes de implementar.**
+**✅ DECIDIDO em 2026-08-18 — uma tela só, com linha expansível.** Não fica mais
+esperando conversa.
+
+A lista de membros vira a única tela. O **cargo** (Owner/Admin/Member) é um dropdown
+na própria linha; as **feature roles** ficam num painel que abre ao expandir a linha.
+`/admin/members` e `/admin/tenant` somem, e o menu fica com uma entrada só. Os dados
+do tenant (nome/slug) descem para um rodapé editável na mesma tela, para não perder
+a única tela que os mostrava.
+
+```
+MEMBROS                              [+ Adicionar membro]
+
+  Nome            Email           Cargo        Desde
+▾ Nickolas        nick@x.com      [Owner  ▾]   27/04
+   └─ Chaves de módulo:
+      [✓] RH   [ ] Financeiro   [ ] ContasAPagar
+      [ ] Funcionario  [ ] Cliente
+
+▸ Maria           maria@x.com     [Member ▾]   05/05
+
+Dados do tenant: BiomePampa (bmp)      [editar]
+```
+
+Por que este formato: mantém os **dois níveis** visíveis (o risco levantado acima),
+é o menor número de cliques, e o `[+ Adicionar membro]` daqui é exatamente o ponto
+de entrada que o item 8 vai reusar para convidar por e-mail.
+
+**Dependência:** precisa do item 4 antes — a linha só consegue mostrar as chaves sem
+N+1 se o `TenantMemberDto` já trouxer as roles.
 
 ## 6. Botão "Configurações" no menu do usuário — ✅ FEITO em 2026-08-18
 
@@ -215,11 +246,28 @@ O maior item, e o único que não é trabalho de uma tarde.
 - Telas: cadastro, "confirme seu e-mail", esqueci a senha, nova senha
 - `SignIn.RequireConfirmedEmail = true`
 
-**Decisão de produto (encaminhada):** quem se cadastra sozinho não pertence a
-tenant nenhum — e usuário sem tenant vê menu vazio. A inclinação do Nickolas é
-**abrir uma tela de "aguardando convite para um tenant"** depois do cadastro
-confirmado. Falta fechar: quem convida? é por link, ou o admin do tenant adiciona
-pelo e-mail? (o `GET /tenants/users/lookup` por e-mail já existe e ajudaria aqui).
+**✅ DECISÃO DE PRODUTO FECHADA em 2026-08-18.** Quem se cadastra sozinho não
+pertence a tenant nenhum e cai numa tela de **"aguardando convite para um tenant"**
+depois de confirmar o e-mail.
+
+**Como se entra num tenant: o admin adiciona pelo e-mail.** Sem link com token.
+O admin digita o e-mail no `[+ Adicionar membro]` da tela de membros (item 5); se a
+conta já existe, entra direto; se não, fica um **convite pendente** que se resolve
+sozinho quando a pessoa se cadastrar com aquele e-mail. O `GET /tenants/users/lookup`
+já existe e é a peça de busca.
+
+Por que não link com token: o link seria superfície de segurança nova (geração,
+expiração, revogação, reuso) num sistema cujo diferencial é justamente o isolamento
+de tenant ter sido auditado. Adicionando por e-mail, **o e-mail é só notificação, não
+mecanismo de autorização** — se o envio falhar, ninguém entra em tenant nenhum por
+engano; a pessoa só não é avisada. Isso também deixa o serviço de notificação (abaixo)
+ser best-effort, o que é o que permite ele ser assíncrono.
+
+**✅ E-mail sai do monolito.** Decidido em 2026-08-18 que a infraestrutura de e-mail
+não vira `IEmailSender` dentro da API: vira um **serviço de notificação separado**,
+consumindo fila, com container e deploy próprios no repo de DevOps. Ver a seção
+"Serviço de notificação" no roteiro
+`docs/superpowers/plans/2026-08-18-roadmap-pos-fase1.md`.
 
 ## 9. Limpeza
 
