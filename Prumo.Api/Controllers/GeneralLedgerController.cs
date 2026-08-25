@@ -36,7 +36,6 @@ namespace Prumo.Api.Controllers
         private async Task<TenantRole?> GetRoleAsync(Guid tenantId, CancellationToken ct) =>
             await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
 
-        private static bool CanAccess(TenantRole? role) => role.HasValue;
         private static bool CanManage(TenantRole? role) => role is TenantRole.Owner or TenantRole.Admin;
 
         [HttpGet("entries")]
@@ -45,7 +44,6 @@ namespace Prumo.Api.Controllers
         public async Task<ActionResult<PagedResult<JournalEntryListItemDto>>> ListEntries(
             Guid tenantId, [FromQuery] JournalEntryQueryDto query, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             return Ok(await _journalService.ListEntriesAsync(tenantId, query, ct));
         }
 
@@ -56,7 +54,6 @@ namespace Prumo.Api.Controllers
         public async Task<ActionResult<JournalEntryDto>> GetEntry(
             Guid tenantId, Guid id, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             var entry = await _journalService.GetEntryAsync(tenantId, id, ct);
             return entry == null ? NotFound() : Ok(entry);
         }
@@ -81,7 +78,6 @@ namespace Prumo.Api.Controllers
             [FromQuery] DateTime? from, [FromQuery] DateTime? to,
             CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             return Ok(await _journalService.GetAccountStatementAsync(tenantId, accountId, from, to, ct));
         }
 
@@ -91,7 +87,6 @@ namespace Prumo.Api.Controllers
         public async Task<ActionResult<TenantGlSettingsDto>> GetSettings(
             Guid tenantId, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             return Ok(await _settingsService.GetSettingsAsync(tenantId, ct));
         }
 

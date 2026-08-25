@@ -30,7 +30,6 @@ namespace Prumo.Api.Controllers
         private async Task<TenantRole?> GetRoleAsync(Guid tenantId, CancellationToken ct) =>
             await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
 
-        private static bool CanAccess(TenantRole? role) => role.HasValue;
         private static bool CanManage(TenantRole? role) => role is TenantRole.Owner or TenantRole.Admin;
 
         [HttpGet("/api/tenants/{tenantId:guid}/payment-periods")]
@@ -39,7 +38,6 @@ namespace Prumo.Api.Controllers
         public async Task<ActionResult<IReadOnlyList<PaymentPeriodSummaryDto>>> ListAll(
             Guid tenantId, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             return Ok(await _service.ListAllByTenantAsync(tenantId, ct));
         }
 
@@ -49,7 +47,6 @@ namespace Prumo.Api.Controllers
         public async Task<ActionResult<IReadOnlyList<PaymentPeriodSummaryDto>>> List(
             Guid tenantId, Guid employeeId, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             return Ok(await _service.ListByEmployeeAsync(tenantId, employeeId, ct));
         }
 
@@ -60,7 +57,6 @@ namespace Prumo.Api.Controllers
         public async Task<ActionResult<PaymentPeriodDto>> GetById(
             Guid tenantId, Guid employeeId, Guid id, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
             var period = await _service.GetByIdAsync(tenantId, id, ct);
             return period == null ? NotFound() : Ok(period);
         }
