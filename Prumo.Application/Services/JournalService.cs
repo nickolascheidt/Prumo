@@ -21,9 +21,7 @@ namespace Prumo.Application.Services
         public async Task<PagedResult<JournalEntryListItemDto>> ListEntriesAsync(
             Guid tenantId, JournalEntryQueryDto query, CancellationToken ct = default)
         {
-            var q = _db.JournalEntries
-                .IgnoreQueryFilters()
-                .Where(e => e.TenantId == tenantId);
+            var q = _db.JournalEntries.AsQueryable();
 
             if (query.From.HasValue) q = q.Where(e => e.Date >= DateTime.SpecifyKind(query.From.Value, DateTimeKind.Utc));
             if (query.To.HasValue)   q = q.Where(e => e.Date <= DateTime.SpecifyKind(query.To.Value, DateTimeKind.Utc));
@@ -54,10 +52,9 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid entryId, CancellationToken ct = default)
         {
             var entry = await _db.JournalEntries
-                .IgnoreQueryFilters()
                 .Include(e => e.Lines)
                     .ThenInclude(l => l.Account)
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == entryId, ct);
+                .FirstOrDefaultAsync(e => e.Id == entryId, ct);
 
             return entry == null ? null : ToDto(entry);
         }
@@ -77,8 +74,7 @@ namespace Prumo.Application.Services
 
             var accountIds = request.Lines.Select(l => l.AccountId).Distinct().ToList();
             var accounts = await _db.Accounts
-                .IgnoreQueryFilters()
-                .Where(a => a.TenantId == tenantId && accountIds.Contains(a.Id))
+                .Where(a => accountIds.Contains(a.Id))
                 .ToListAsync(ct);
 
             foreach (var lineDto in request.Lines)
@@ -131,8 +127,7 @@ namespace Prumo.Application.Services
             CancellationToken ct = default)
         {
             var account = await _db.Accounts
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.TenantId == tenantId && a.Id == accountId, ct)
+                .FirstOrDefaultAsync(a => a.Id == accountId, ct)
                 ?? throw new KeyNotFoundException("Account not found.");
 
             var query = _db.JournalLines
