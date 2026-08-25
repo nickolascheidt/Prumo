@@ -15,7 +15,7 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<EmployeeDto>> ListAsync(
             Guid tenantId, bool includeInactive = false, CancellationToken ct = default)
         {
-            var query = _db.Employees.IgnoreQueryFilters().Where(e => e.TenantId == tenantId);
+            var query = _db.Employees.AsQueryable();
             if (!includeInactive) query = query.Where(e => e.IsActive);
             return await query.OrderBy(e => e.FullName).Select(e => ToDto(e)).ToListAsync(ct);
         }
@@ -23,8 +23,7 @@ namespace Prumo.Application.Services
         public async Task<EmployeeDto?> GetAsync(
             Guid tenantId, Guid employeeId, CancellationToken ct = default)
         {
-            var e = await _db.Employees.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == employeeId, ct);
+            var e = await _db.Employees.FirstOrDefaultAsync(e => e.Id == employeeId, ct);
             return e == null ? null : ToDto(e);
         }
 
@@ -41,8 +40,7 @@ namespace Prumo.Application.Services
             if (!Enum.IsDefined(typeof(HrPaymentMethod), request.PreferredPaymentMethod))
                 throw new ArgumentException($"Invalid PaymentMethod: {request.PreferredPaymentMethod}.");
 
-            var cpfTaken = await _db.Employees.IgnoreQueryFilters()
-                .AnyAsync(e => e.TenantId == tenantId && e.CPF == cpf, ct);
+            var cpfTaken = await _db.Employees.AnyAsync(e => e.CPF == cpf, ct);
             if (cpfTaken)
                 throw new InvalidOperationException($"An employee with CPF '{cpf}' already exists.");
 
@@ -73,8 +71,7 @@ namespace Prumo.Application.Services
         public async Task<EmployeeDto> UpdateAsync(
             Guid tenantId, Guid employeeId, UpdateEmployeeRequestDto request, CancellationToken ct = default)
         {
-            var employee = await _db.Employees.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == employeeId, ct)
+            var employee = await _db.Employees.FirstOrDefaultAsync(e => e.Id == employeeId, ct)
                 ?? throw new KeyNotFoundException("Employee not found.");
 
             var fullName = (request.FullName ?? string.Empty).Trim();
@@ -108,8 +105,7 @@ namespace Prumo.Application.Services
         public async Task DeactivateAsync(
             Guid tenantId, Guid employeeId, CancellationToken ct = default)
         {
-            var employee = await _db.Employees.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == employeeId, ct)
+            var employee = await _db.Employees.FirstOrDefaultAsync(e => e.Id == employeeId, ct)
                 ?? throw new KeyNotFoundException("Employee not found.");
             employee.IsActive = false;
             await _db.SaveChangesAsync(ct);
