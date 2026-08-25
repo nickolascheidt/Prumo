@@ -64,6 +64,12 @@ namespace Prumo.Infrastructure.Authorization
                 .Select(ur => ur.RoleId)
                 .ToListAsync(cancellationToken);
 
+            // Cross-tenant de propósito: este método roda dentro de GenerateJwtToken
+            // (AuthService), em POST /tenants/select e no login — o TenantContext ainda
+            // está vazio porque o middleware o preenche pelo claim `tenant_id`, que é o
+            // que o token sendo emitido ainda não tem. Sem o bypass o filtro fail-closed
+            // devolveria zero, e o token sairia sem permissão nenhuma. O tenantId vem do
+            // parâmetro e é filtrado no Where. Mesmo motivo de TenantRoleService.
             var tenantRoleIds = await _context.TenantUserRoles
                 .IgnoreQueryFilters()
                 .Where(tur => tur.TenantId == tenantId && tur.UserId == userId)
@@ -73,6 +79,8 @@ namespace Prumo.Infrastructure.Authorization
             var roleIds = globalRoleIds.Concat(tenantRoleIds).Distinct().ToList();
             if (roleIds.Count == 0) return Array.Empty<string>();
 
+            // Cross-tenant de propósito, mesmo motivo da query acima: emissão de token sem
+            // TenantContext resolvido. Sem isto o token sai com zero permissões.
             return await _context.RolePermissions
                 .IgnoreQueryFilters()
                 .Where(rp => rp.TenantId == tenantId && roleIds.Contains(rp.RoleId))
