@@ -14,14 +14,15 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<string>> GetTenantRoleNamesAsync(
             Guid userId, Guid tenantId, CancellationToken ct = default)
         {
-            // Cross-tenant de propósito: este método roda durante a emissão do token, em
-            // POST /tenants/select e no login, quando o TenantContext ainda está vazio —
-            // o middleware o preenche pelo claim `tenant_id`, que é justamente o que o
-            // token sendo emitido ainda não tem. TenantUserRole é ITenantScoped, então sem
-            // este bypass o filtro fail-closed devolveria lista vazia e o usuário receberia
-            // um token sem feature role nenhuma (o bug 73dc458, menu vazio). O tenantId vem
-            // do parâmetro e é filtrado no Where abaixo.
-            // Coberto por TenantRoleServiceTenantlessTests.
+            // Este método roda durante a emissão do token, em POST /tenants/select e no
+            // login, quando o TenantContext ainda está vazio: o middleware o preenche pelo
+            // claim `tenant_id`, que é justamente o que o token sendo emitido ainda não
+            // tem. TenantUserRole é ITenantScoped, então sem o bypass o filtro fail-closed
+            // devolveria lista vazia e o usuário receberia um token sem feature role
+            // nenhuma — o bug 73dc458, menu vazio.
+            //
+            // Logo: cross-tenant de propósito. O tenantId vem do parâmetro e é filtrado no
+            // Where abaixo. Coberto por TenantRoleServiceTenantlessTests.
             return await _db.TenantUserRoles
                 .IgnoreQueryFilters()
                 .Where(tur => tur.TenantId == tenantId && tur.UserId == userId)
