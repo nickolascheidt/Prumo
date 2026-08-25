@@ -15,8 +15,8 @@ namespace Prumo.Application.Services
         public async Task<PaymentPeriodDto> GenerateAsync(
             Guid tenantId, GeneratePaymentPeriodRequestDto request, CancellationToken ct = default)
         {
-            var employee = await _db.Employees.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == request.EmployeeId, ct)
+            var employee = await _db.Employees
+                .FirstOrDefaultAsync(e => e.Id == request.EmployeeId, ct)
                 ?? throw new KeyNotFoundException("Employee not found.");
 
             var startDate = DateTime.SpecifyKind(request.StartDate.Date, DateTimeKind.Utc);
@@ -25,7 +25,7 @@ namespace Prumo.Application.Services
             if (startDate >= endDate)
                 throw new ArgumentException("StartDate must be before EndDate.");
 
-            var duplicate = await _db.PaymentPeriods.IgnoreQueryFilters()
+            var duplicate = await _db.PaymentPeriods
                 .AnyAsync(p => p.EmployeeId == request.EmployeeId
                             && p.StartDate == startDate
                             && p.EndDate   == endDate, ct);
@@ -33,7 +33,7 @@ namespace Prumo.Application.Services
                 throw new InvalidOperationException(
                     "A payment period for this employee and date range already exists.");
 
-            var workLogs = await _db.WorkLogs.IgnoreQueryFilters()
+            var workLogs = await _db.WorkLogs
                 .Where(w => w.EmployeeId == request.EmployeeId
                          && w.WorkDate >= startDate
                          && w.WorkDate <= endDate
@@ -70,21 +70,22 @@ namespace Prumo.Application.Services
         public async Task<PaymentPeriodDto?> GetByIdAsync(
             Guid tenantId, Guid periodId, CancellationToken ct = default)
         {
-            var period = await _db.PaymentPeriods.IgnoreQueryFilters()
+            var period = await _db.PaymentPeriods
                 .Include(p => p.Employee)
                 .Include(p => p.WorkLogs)
-                .FirstOrDefaultAsync(p => p.Id == periodId && p.Employee.TenantId == tenantId, ct);
+                .FirstOrDefaultAsync(p => p.Id == periodId, ct);
             return period == null ? null : ToDto(period);
         }
 
         public async Task<IReadOnlyList<PaymentPeriodSummaryDto>> ListByEmployeeAsync(
             Guid tenantId, Guid employeeId, CancellationToken ct = default)
         {
-            var exists = await _db.Employees.IgnoreQueryFilters()
-                .AnyAsync(e => e.TenantId == tenantId && e.Id == employeeId, ct);
+            // Guard de semântica, não de tenant: sem ele, pedir períodos de um employee de
+            // outro tenant devolveria 200 com lista vazia em vez de 404.
+            var exists = await _db.Employees.AnyAsync(e => e.Id == employeeId, ct);
             if (!exists) throw new KeyNotFoundException("Employee not found.");
 
-            return await _db.PaymentPeriods.IgnoreQueryFilters()
+            return await _db.PaymentPeriods
                 .Include(p => p.Employee)
                 .Where(p => p.EmployeeId == employeeId)
                 .OrderByDescending(p => p.StartDate)
@@ -96,9 +97,7 @@ namespace Prumo.Application.Services
             Guid tenantId, CancellationToken ct = default)
         {
             var periods = await _db.PaymentPeriods
-                .IgnoreQueryFilters()
                 .Include(p => p.Employee)
-                .Where(p => p.Employee.TenantId == tenantId)
                 .OrderByDescending(p => p.StartDate)
                 .ToListAsync(ct);
             return periods.Select(p => ToSummaryDto(p)).ToList();
@@ -107,9 +106,9 @@ namespace Prumo.Application.Services
         public async Task UpdateStatusAsync(
             Guid tenantId, Guid periodId, PaymentStatus status, CancellationToken ct = default)
         {
-            var period = await _db.PaymentPeriods.IgnoreQueryFilters()
+            var period = await _db.PaymentPeriods
                 .Include(p => p.Employee)
-                .FirstOrDefaultAsync(p => p.Id == periodId && p.Employee.TenantId == tenantId, ct)
+                .FirstOrDefaultAsync(p => p.Id == periodId, ct)
                 ?? throw new KeyNotFoundException("Payment period not found.");
             period.Status = status;
             await _db.SaveChangesAsync(ct);
@@ -118,17 +117,17 @@ namespace Prumo.Application.Services
         public async Task DeleteAsync(
             Guid tenantId, Guid periodId, CancellationToken ct = default)
         {
-            var period = await _db.PaymentPeriods.IgnoreQueryFilters()
+            var period = await _db.PaymentPeriods
                 .Include(p => p.Employee)
                 .Include(p => p.Payment)
-                .FirstOrDefaultAsync(p => p.Id == periodId && p.Employee.TenantId == tenantId, ct)
+                .FirstOrDefaultAsync(p => p.Id == periodId, ct)
                 ?? throw new KeyNotFoundException("Payment period not found.");
 
             if (period.Payment != null)
                 throw new InvalidOperationException(
                     "Cannot delete a payment period that has an associated payment.");
 
-            await _db.WorkLogs.IgnoreQueryFilters()
+            await _db.WorkLogs
                 .Where(w => w.PaymentPeriodId == periodId)
                 .ExecuteUpdateAsync(s => s.SetProperty(w => w.PaymentPeriodId, (Guid?)null), ct);
 
