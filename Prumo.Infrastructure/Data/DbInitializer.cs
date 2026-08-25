@@ -36,6 +36,9 @@ namespace Prumo.Infrastructure.Data
                 var legacyUserRole = await roleManager.FindByNameAsync("User");
                 if (legacyUserRole != null)
                 {
+                    // cross-tenant de propósito: limpeza da role legada "User" em TODOS os
+                    // tenants, no startup e sem TenantContext. Filtrar por tenant aqui
+                    // deixaria lixo para trás em todos os outros.
                     var legacyRps = context.RolePermissions
                         .IgnoreQueryFilters()
                         .Where(rp => rp.RoleId == legacyUserRole.Id);
@@ -239,6 +242,9 @@ namespace Prumo.Infrastructure.Data
                 if (roleName == Domain.Authorization.Permissions.Roles.MasterAdmin)
                     continue;
 
+                // cross-tenant de propósito: o backfill precisa descobrir TODOS os tenants
+                // de que o usuário participa. TenantUser nem é ITenantScoped, então esta
+                // chamada também não contorna nada — some quando o backfill sair.
                 var tenantIds = await context.TenantUsers
                     .IgnoreQueryFilters()
                     .Where(tu => tu.UserId == userId)
@@ -247,6 +253,9 @@ namespace Prumo.Infrastructure.Data
 
                 foreach (var tenantId in tenantIds)
                 {
+                    // cross-tenant de propósito: o backfill percorre vários tenants numa
+                    // volta só, sem TenantContext. Sem o bypass a checagem não acharia a
+                    // linha existente e o backfill duplicaria as concessões.
                     var exists = await context.TenantUserRoles
                         .IgnoreQueryFilters()
                         .AnyAsync(tur => tur.TenantId == tenantId
@@ -281,6 +290,8 @@ namespace Prumo.Infrastructure.Data
         {
             const string defaultSlug = "default";
 
+            // cross-tenant de propósito: procurar o tenant "default" é o passo que decide
+            // se ele precisa ser criado — não existe tenant resolvido antes disso.
             var tenant = await context.Tenants
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(t => t.Slug == defaultSlug);
@@ -311,6 +322,9 @@ namespace Prumo.Infrastructure.Data
             }
             else
             {
+                // cross-tenant de propósito: startup sem TenantContext. Sem o bypass a
+                // checagem daria falso e o seeder recriaria a associação do owner a cada
+                // boot — a mesma classe de bug do 4203a15.
                 var membershipExists = await context.TenantUsers
                     .IgnoreQueryFilters()
                     .AnyAsync(tu => tu.TenantId == tenant.Id && tu.UserId == owner.Id);

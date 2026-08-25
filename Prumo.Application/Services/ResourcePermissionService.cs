@@ -308,8 +308,7 @@ namespace Prumo.Application.Services
 
             var tenantRoleIds = _tenantContext.HasTenant
                 ? await _context.TenantUserRoles
-                    .IgnoreQueryFilters()
-                    .Where(tur => tur.TenantId == _tenantContext.TenantId!.Value && tur.UserId == userId)
+                    .Where(tur => tur.UserId == userId)
                     .Select(tur => tur.RoleId)
                     .ToListAsync()
                 : new List<Guid>();
@@ -322,7 +321,6 @@ namespace Prumo.Application.Services
             if (!_tenantContext.HasTenant) return false;
             var tenantId = _tenantContext.TenantId!.Value;
             var role = await _context.TenantUsers
-                .IgnoreQueryFilters()
                 .Where(tu => tu.TenantId == tenantId && tu.UserId == userId)
                 .Select(tu => (TenantRole?)tu.Role)
                 .FirstOrDefaultAsync();

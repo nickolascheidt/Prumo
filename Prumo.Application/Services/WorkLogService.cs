@@ -16,7 +16,7 @@ namespace Prumo.Application.Services
         {
             await RequireEmployeeAsync(tenantId, employeeId, ct);
 
-            var q = _db.WorkLogs.IgnoreQueryFilters()
+            var q = _db.WorkLogs
                 .Include(w => w.Employee)
                 .Where(w => w.EmployeeId == employeeId);
 
@@ -32,17 +32,17 @@ namespace Prumo.Application.Services
         public async Task<WorkLogDto?> GetByIdAsync(
             Guid tenantId, Guid workLogId, CancellationToken ct = default)
         {
-            var w = await _db.WorkLogs.IgnoreQueryFilters()
+            var w = await _db.WorkLogs
                 .Include(w => w.Employee)
-                .FirstOrDefaultAsync(w => w.Id == workLogId && w.Employee.TenantId == tenantId, ct);
+                .FirstOrDefaultAsync(w => w.Id == workLogId, ct);
             return w == null ? null : ToDto(w);
         }
 
         public async Task<WorkLogDto> CreateAsync(
             Guid tenantId, CreateWorkLogRequestDto request, CancellationToken ct = default)
         {
-            var employee = await _db.Employees.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == request.EmployeeId, ct)
+            var employee = await _db.Employees
+                .FirstOrDefaultAsync(e => e.Id == request.EmployeeId, ct)
                 ?? throw new KeyNotFoundException("Employee not found.");
 
             if (!employee.IsActive)
@@ -53,7 +53,7 @@ namespace Prumo.Application.Services
 
             var workDate = DateTime.SpecifyKind(request.WorkDate.Date, DateTimeKind.Utc);
 
-            var duplicate = await _db.WorkLogs.IgnoreQueryFilters()
+            var duplicate = await _db.WorkLogs
                 .AnyAsync(w => w.EmployeeId == request.EmployeeId && w.WorkDate == workDate, ct);
             if (duplicate)
                 throw new InvalidOperationException(
@@ -80,9 +80,9 @@ namespace Prumo.Application.Services
         public async Task<WorkLogDto> UpdateAsync(
             Guid tenantId, Guid workLogId, UpdateWorkLogRequestDto request, CancellationToken ct = default)
         {
-            var workLog = await _db.WorkLogs.IgnoreQueryFilters()
+            var workLog = await _db.WorkLogs
                 .Include(w => w.Employee)
-                .FirstOrDefaultAsync(w => w.Id == workLogId && w.Employee.TenantId == tenantId, ct)
+                .FirstOrDefaultAsync(w => w.Id == workLogId, ct)
                 ?? throw new KeyNotFoundException("WorkLog not found.");
 
             if (workLog.PaymentPeriodId.HasValue)
@@ -96,7 +96,7 @@ namespace Prumo.Application.Services
 
             if (workDate != workLog.WorkDate)
             {
-                var duplicate = await _db.WorkLogs.IgnoreQueryFilters()
+                var duplicate = await _db.WorkLogs
                     .AnyAsync(w => w.EmployeeId == workLog.EmployeeId
                                 && w.WorkDate == workDate
                                 && w.Id != workLogId, ct);
@@ -117,9 +117,9 @@ namespace Prumo.Application.Services
         public async Task DeleteAsync(
             Guid tenantId, Guid workLogId, CancellationToken ct = default)
         {
-            var workLog = await _db.WorkLogs.IgnoreQueryFilters()
+            var workLog = await _db.WorkLogs
                 .Include(w => w.Employee)
-                .FirstOrDefaultAsync(w => w.Id == workLogId && w.Employee.TenantId == tenantId, ct)
+                .FirstOrDefaultAsync(w => w.Id == workLogId, ct)
                 ?? throw new KeyNotFoundException("WorkLog not found.");
 
             if (workLog.PaymentPeriodId.HasValue)
@@ -130,10 +130,15 @@ namespace Prumo.Application.Services
             await _db.SaveChangesAsync(ct);
         }
 
+        /// <summary>
+        /// Não é mais a proteção de tenant — desde a fase 2 o filtro por navegação em
+        /// WorkLog cuida disso. Continua existindo pela semântica de erro: sem este guard,
+        /// pedir horas de um employee de outro tenant devolveria 200 com lista vazia em vez
+        /// de 404, vazando a informação de que o employee não existe *para você*.
+        /// </summary>
         private async Task RequireEmployeeAsync(Guid tenantId, Guid employeeId, CancellationToken ct)
         {
-            var exists = await _db.Employees.IgnoreQueryFilters()
-                .AnyAsync(e => e.TenantId == tenantId && e.Id == employeeId, ct);
+            var exists = await _db.Employees.AnyAsync(e => e.Id == employeeId, ct);
             if (!exists) throw new KeyNotFoundException("Employee not found.");
         }
 

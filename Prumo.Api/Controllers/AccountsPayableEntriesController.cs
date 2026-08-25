@@ -33,7 +33,6 @@ namespace Prumo.Api.Controllers
         private async Task<TenantRole?> GetRoleAsync(Guid tenantId, CancellationToken ct) =>
             await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
 
-        private static bool CanAccess(TenantRole? role) => role.HasValue;
 
         private static bool CanManageCategories(TenantRole? role) =>
             role is TenantRole.Owner or TenantRole.Admin;
@@ -46,7 +45,6 @@ namespace Prumo.Api.Controllers
             [FromQuery] EntryListQueryDto query,
             CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
             var result = await _service.ListEntriesAsync(tenantId, query, ct);
             return Ok(result);
@@ -58,7 +56,6 @@ namespace Prumo.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<EntryDto>> GetById(Guid tenantId, Guid id, CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
             var entry = await _service.GetEntryAsync(tenantId, id, ct);
             return entry == null ? NotFound() : Ok(entry);
@@ -72,7 +69,6 @@ namespace Prumo.Api.Controllers
             [FromBody] CreateEntryRequestDto request,
             CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
             var entry = await _service.CreateEntryAsync(tenantId, CurrentUserId, request, ct);
             return CreatedAtAction(nameof(GetById), new { tenantId, id = entry.Id }, entry);
@@ -88,7 +84,6 @@ namespace Prumo.Api.Controllers
             [FromBody] UpdateEntryRequestDto request,
             CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
             var entry = await _service.UpdateEntryAsync(tenantId, id, request, ct);
             return Ok(entry);
@@ -104,7 +99,6 @@ namespace Prumo.Api.Controllers
             [FromBody] MarkPaidRequestDto request,
             CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
             var entry = await _service.MarkEntryPaidAsync(tenantId, id, CurrentUserId, request, ct);
             return Ok(entry);
@@ -120,7 +114,6 @@ namespace Prumo.Api.Controllers
             [FromBody] CancelEntryRequestDto request,
             CancellationToken ct)
         {
-            if (!CanAccess(await GetRoleAsync(tenantId, ct))) return Forbid();
 
             var entry = await _service.CancelEntryAsync(tenantId, id, request, ct);
             return Ok(entry);
@@ -135,7 +128,6 @@ namespace Prumo.Api.Controllers
             CancellationToken ct)
         {
             var role = await GetRoleAsync(tenantId, ct);
-            if (!CanAccess(role)) return Forbid();
 
             var response = await _service.BulkCreateAsync(
                 tenantId,

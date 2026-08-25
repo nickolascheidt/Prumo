@@ -147,6 +147,9 @@ namespace Prumo.Infrastructure.Data.Seeders
         {
             // Resources
             var existingCodes = await db.Resources
+                // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                 .IgnoreQueryFilters()
                 .Where(r => r.TenantId == tenantId)
                 .Select(r => r.Code)
@@ -198,6 +201,9 @@ namespace Prumo.Infrastructure.Data.Seeders
                     if (!permissionByName.TryGetValue(permName, out var permissionId)) continue;
 
                     var exists = await db.RolePermissions
+                        // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                        // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                        // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                         .IgnoreQueryFilters()
                         .AnyAsync(rp =>
                             rp.TenantId == tenantId &&
@@ -223,6 +229,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             if (rolesByName.TryGetValue("Administrador", out var adminRoleId))
             {
                 var tenantResources = await db.Resources
+                    // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                    // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                    // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                     .IgnoreQueryFilters()
                     .Where(r => r.TenantId == tenantId)
                     .Select(r => r.Id)
@@ -231,6 +240,9 @@ namespace Prumo.Infrastructure.Data.Seeders
                 foreach (var resourceId in tenantResources)
                 {
                     var exists = await db.ResourcePermissions
+                        // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                        // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                        // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                         .IgnoreQueryFilters()
                         .AnyAsync(rp =>
                             rp.TenantId == tenantId &&
@@ -265,6 +277,9 @@ namespace Prumo.Infrastructure.Data.Seeders
                 if (!rolesByName.TryGetValue(roleName, out var moduleRoleId)) continue;
 
                 var moduleResources = await db.Resources
+                    // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                    // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                    // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                     .IgnoreQueryFilters()
                     .Where(r => r.TenantId == tenantId && r.Module == moduleName)
                     .Select(r => r.Id)
@@ -273,6 +288,9 @@ namespace Prumo.Infrastructure.Data.Seeders
                 foreach (var resourceId in moduleResources)
                 {
                     var exists = await db.ResourcePermissions
+                        // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                        // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                        // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                         .IgnoreQueryFilters()
                         .AnyAsync(rp =>
                             rp.TenantId == tenantId &&

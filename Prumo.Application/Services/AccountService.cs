@@ -18,9 +18,7 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<AccountDto>> ListAccountsAsync(
             Guid tenantId, bool includeInactive = false, CancellationToken ct = default)
         {
-            var query = _db.Accounts
-                .IgnoreQueryFilters()
-                .Where(a => a.TenantId == tenantId);
+            var query = _db.Accounts.AsQueryable();
 
             if (!includeInactive)
                 query = query.Where(a => a.IsActive);
@@ -35,8 +33,7 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid accountId, CancellationToken ct = default)
         {
             var account = await _db.Accounts
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.TenantId == tenantId && a.Id == accountId, ct);
+                .FirstOrDefaultAsync(a => a.Id == accountId, ct);
             return account == null ? null : ToDto(account);
         }
 
@@ -52,8 +49,7 @@ namespace Prumo.Application.Services
                 throw new ArgumentException($"Invalid account type: {request.Type}.");
 
             var codeTaken = await _db.Accounts
-                .IgnoreQueryFilters()
-                .AnyAsync(a => a.TenantId == tenantId && a.Code == code, ct);
+                .AnyAsync(a => a.Code == code, ct);
             if (codeTaken)
                 throw new InvalidOperationException($"An account with code '{code}' already exists.");
 
@@ -79,8 +75,7 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid accountId, UpdateAccountRequestDto request, CancellationToken ct = default)
         {
             var account = await _db.Accounts
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.TenantId == tenantId && a.Id == accountId, ct)
+                .FirstOrDefaultAsync(a => a.Id == accountId, ct)
                 ?? throw new KeyNotFoundException("Account not found.");
 
             var code = (request.Code ?? string.Empty).Trim();
@@ -94,8 +89,7 @@ namespace Prumo.Application.Services
             if (!string.Equals(account.Code, code, StringComparison.Ordinal))
             {
                 var codeTaken = await _db.Accounts
-                    .IgnoreQueryFilters()
-                    .AnyAsync(a => a.TenantId == tenantId && a.Id != accountId && a.Code == code, ct);
+                    .AnyAsync(a => a.Id != accountId && a.Code == code, ct);
                 if (codeTaken)
                     throw new InvalidOperationException($"An account with code '{code}' already exists.");
             }
@@ -118,8 +112,7 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid accountId, CancellationToken ct = default)
         {
             var account = await _db.Accounts
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.TenantId == tenantId && a.Id == accountId, ct)
+                .FirstOrDefaultAsync(a => a.Id == accountId, ct)
                 ?? throw new KeyNotFoundException("Account not found.");
 
             var hasLines = await _db.JournalLines
@@ -134,8 +127,7 @@ namespace Prumo.Application.Services
         private async Task ValidateParentAsync(Guid tenantId, Guid parentId, CancellationToken ct)
         {
             var parent = await _db.Accounts
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(a => a.TenantId == tenantId && a.Id == parentId && a.IsActive, ct)
+                .FirstOrDefaultAsync(a => a.Id == parentId && a.IsActive, ct)
                 ?? throw new KeyNotFoundException("Parent account not found.");
             if (parent.IsAnalytic)
                 throw new InvalidOperationException("Cannot use an analytic account as parent.");

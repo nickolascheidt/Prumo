@@ -63,8 +63,7 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid accountId, string label, CancellationToken ct)
         {
             var exists = await _db.Accounts
-                .IgnoreQueryFilters()
-                .AnyAsync(a => a.TenantId == tenantId && a.Id == accountId && a.IsAnalytic && a.IsActive, ct);
+                .AnyAsync(a => a.Id == accountId && a.IsAnalytic && a.IsActive, ct);
             if (!exists)
                 throw new KeyNotFoundException($"{label} not found or is not an active analytic account.");
         }

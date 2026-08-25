@@ -27,9 +27,7 @@ namespace Prumo.Application.Services
 
         public async Task<IReadOnlyList<CategoryDto>> ListCategoriesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken = default)
         {
-            var query = _db.AccountsPayableCategories
-                .IgnoreQueryFilters()
-                .Where(c => c.TenantId == tenantId);
+            var query = _db.AccountsPayableCategories.AsQueryable();
 
             if (!includeInactive)
                 query = query.Where(c => c.IsActive);
@@ -47,8 +45,7 @@ namespace Prumo.Application.Services
                 throw new ArgumentException("Category name is required.", nameof(request));
 
             var nameTaken = await _db.AccountsPayableCategories
-                .IgnoreQueryFilters()
-                .AnyAsync(c => c.TenantId == tenantId && c.Name == name, cancellationToken);
+                .AnyAsync(c => c.Name == name, cancellationToken);
             if (nameTaken)
                 throw new InvalidOperationException($"A category named '{name}' already exists.");
 
@@ -69,8 +66,7 @@ namespace Prumo.Application.Services
         public async Task<CategoryDto> UpdateCategoryAsync(Guid tenantId, Guid categoryId, UpdateCategoryRequestDto request, CancellationToken cancellationToken = default)
         {
             var category = await _db.AccountsPayableCategories
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == categoryId, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == categoryId, cancellationToken)
                 ?? throw new KeyNotFoundException("Category not found.");
 
             var name = (request.Name ?? string.Empty).Trim();
@@ -80,8 +76,7 @@ namespace Prumo.Application.Services
             if (!string.Equals(category.Name, name, StringComparison.Ordinal))
             {
                 var nameTaken = await _db.AccountsPayableCategories
-                    .IgnoreQueryFilters()
-                    .AnyAsync(c => c.TenantId == tenantId && c.Id != categoryId && c.Name == name, cancellationToken);
+                    .AnyAsync(c => c.Id != categoryId && c.Name == name, cancellationToken);
                 if (nameTaken)
                     throw new InvalidOperationException($"A category named '{name}' already exists.");
             }
@@ -98,8 +93,7 @@ namespace Prumo.Application.Services
         public async Task DeactivateCategoryAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken = default)
         {
             var category = await _db.AccountsPayableCategories
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == categoryId, cancellationToken)
+                .FirstOrDefaultAsync(c => c.Id == categoryId, cancellationToken)
                 ?? throw new KeyNotFoundException("Category not found.");
 
             if (!category.IsActive) return;
@@ -150,8 +144,7 @@ namespace Prumo.Application.Services
         {
             var today = DateTime.UtcNow.Date;
             return await _db.AccountsPayableEntries
-                .IgnoreQueryFilters()
-                .Where(e => e.TenantId == tenantId && e.Id == entryId)
+                .Where(e => e.Id == entryId)
                 .Select(e => new EntryDto(
                     e.Id,
                     e.Description,
@@ -205,8 +198,7 @@ namespace Prumo.Application.Services
             ValidateEntryFields(request.Description, request.Amount);
 
             var entry = await _db.AccountsPayableEntries
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == entryId, cancellationToken)
+                .FirstOrDefaultAsync(e => e.Id == entryId, cancellationToken)
                 ?? throw new KeyNotFoundException("Entry not found.");
 
             if (entry.Status == AccountsPayableStatus.Cancelled)
@@ -232,8 +224,7 @@ namespace Prumo.Application.Services
         public async Task<EntryDto> MarkEntryPaidAsync(Guid tenantId, Guid entryId, Guid paidByUserId, MarkPaidRequestDto request, CancellationToken cancellationToken = default)
         {
             var entry = await _db.AccountsPayableEntries
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == entryId, cancellationToken)
+                .FirstOrDefaultAsync(e => e.Id == entryId, cancellationToken)
                 ?? throw new KeyNotFoundException("Entry not found.");
 
             entry.MarkPaid(request.PaidAt, request.PaymentMethod);
@@ -250,8 +241,7 @@ namespace Prumo.Application.Services
         public async Task<EntryDto> CancelEntryAsync(Guid tenantId, Guid entryId, CancelEntryRequestDto request, CancellationToken cancellationToken = default)
         {
             var entry = await _db.AccountsPayableEntries
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == entryId, cancellationToken)
+                .FirstOrDefaultAsync(e => e.Id == entryId, cancellationToken)
                 ?? throw new KeyNotFoundException("Entry not found.");
 
             entry.Cancel(request.Reason, DateTime.UtcNow);
@@ -271,8 +261,6 @@ namespace Prumo.Application.Services
                 throw new ArgumentException($"Bulk request exceeds the maximum of {MaxBulkLines} lines.", nameof(request));
 
             var existingCategories = await _db.AccountsPayableCategories
-                .IgnoreQueryFilters()
-                .Where(c => c.TenantId == tenantId)
                 .ToListAsync(cancellationToken);
 
             var byId = existingCategories.ToDictionary(c => c.Id);
@@ -374,9 +362,7 @@ namespace Prumo.Application.Services
 
         public async Task<SummaryResponseDto> GetSummaryAsync(Guid tenantId, SummaryQueryDto query, CancellationToken cancellationToken = default)
         {
-            var baseQuery = _db.AccountsPayableEntries
-                .IgnoreQueryFilters()
-                .Where(e => e.TenantId == tenantId);
+            var baseQuery = _db.AccountsPayableEntries.AsQueryable();
 
             var from = ToUtc(query.From);
             var to = ToUtc(query.To);
@@ -460,9 +446,7 @@ namespace Prumo.Application.Services
 
         private IQueryable<AccountsPayableEntry> BuildEntriesQuery(Guid tenantId, EntryListQueryDto query)
         {
-            var q = _db.AccountsPayableEntries
-                .IgnoreQueryFilters()
-                .Where(e => e.TenantId == tenantId);
+            var q = _db.AccountsPayableEntries.AsQueryable();
 
             var from = ToUtc(query.From);
             var to = ToUtc(query.To);
@@ -526,8 +510,7 @@ namespace Prumo.Application.Services
         private async Task<AccountsPayableCategory?> GetActiveCategoryAsync(Guid tenantId, Guid categoryId, CancellationToken ct)
         {
             return await _db.AccountsPayableCategories
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == categoryId && c.IsActive, ct);
+                .FirstOrDefaultAsync(c => c.Id == categoryId && c.IsActive, ct);
         }
 
         private static CategoryDto ToCategoryDto(AccountsPayableCategory c) =>

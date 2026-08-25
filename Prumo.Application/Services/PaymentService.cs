@@ -18,11 +18,10 @@ namespace Prumo.Application.Services
             if (!Enum.IsDefined(typeof(HrPaymentMethod), request.PaymentMethod))
                 throw new ArgumentException($"Invalid PaymentMethod: {request.PaymentMethod}.");
 
-            var period = await _db.PaymentPeriods.IgnoreQueryFilters()
+            var period = await _db.PaymentPeriods
                 .Include(p => p.Employee)
                 .Include(p => p.Payment)
-                .FirstOrDefaultAsync(p => p.Id == request.PaymentPeriodId
-                                       && p.Employee.TenantId == tenantId, ct)
+                .FirstOrDefaultAsync(p => p.Id == request.PaymentPeriodId, ct)
                 ?? throw new KeyNotFoundException("Payment period not found.");
 
             if (period.Payment != null)
@@ -56,20 +55,19 @@ namespace Prumo.Application.Services
         public async Task<PaymentDto?> GetByIdAsync(
             Guid tenantId, Guid paymentId, CancellationToken ct = default)
         {
-            var p = await _db.Payments.IgnoreQueryFilters()
+            var p = await _db.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
-                .FirstOrDefaultAsync(p => p.Id == paymentId && p.Employee.TenantId == tenantId, ct);
+                .FirstOrDefaultAsync(p => p.Id == paymentId, ct);
             return p == null ? null : ToDto(p);
         }
 
         public async Task<IReadOnlyList<PaymentDto>> ListRecentAsync(
             Guid tenantId, int count = 20, CancellationToken ct = default)
         {
-            return await _db.Payments.IgnoreQueryFilters()
+            return await _db.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
-                .Where(p => p.Employee.TenantId == tenantId)
                 .OrderByDescending(p => p.PaymentDate)
                 .Take(Math.Min(count, 100))
                 .Select(p => ToDto(p))
@@ -79,11 +77,12 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<PaymentDto>> ListByEmployeeAsync(
             Guid tenantId, Guid employeeId, CancellationToken ct = default)
         {
-            var exists = await _db.Employees.IgnoreQueryFilters()
-                .AnyAsync(e => e.TenantId == tenantId && e.Id == employeeId, ct);
+            // Guard de semântica, não de tenant: sem ele, pedir pagamentos de um employee
+            // de outro tenant devolveria 200 com lista vazia em vez de 404.
+            var exists = await _db.Employees.AnyAsync(e => e.Id == employeeId, ct);
             if (!exists) throw new KeyNotFoundException("Employee not found.");
 
-            return await _db.Payments.IgnoreQueryFilters()
+            return await _db.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaidByUser)
                 .Where(p => p.EmployeeId == employeeId)
@@ -95,10 +94,10 @@ namespace Prumo.Application.Services
         public async Task DeleteAsync(
             Guid tenantId, Guid paymentId, CancellationToken ct = default)
         {
-            var payment = await _db.Payments.IgnoreQueryFilters()
+            var payment = await _db.Payments
                 .Include(p => p.Employee)
                 .Include(p => p.PaymentPeriod)
-                .FirstOrDefaultAsync(p => p.Id == paymentId && p.Employee.TenantId == tenantId, ct)
+                .FirstOrDefaultAsync(p => p.Id == paymentId, ct)
                 ?? throw new KeyNotFoundException("Payment not found.");
 
             payment.PaymentPeriod.Status = PaymentStatus.Pending;
