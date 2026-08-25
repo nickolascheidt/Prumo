@@ -56,6 +56,36 @@ namespace Prumo.Infrastructure.Data
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
             ApplyTenantQueryFilters(modelBuilder);
+            ApplyNavigationTenantQueryFilters(modelBuilder);
+        }
+
+        /// <summary>
+        /// WorkLog, Payment, PaymentPeriod e JournalLine não carregam TenantId — o dono do
+        /// tenant é o pai (Employee ou JournalEntry). Sem estes filtros o isolamento delas
+        /// depende de todo service lembrar do join, e o próprio EF avisa disso no startup
+        /// (PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning), pedindo
+        /// "matching query filters for both entities". Isto é esse matching filter.
+        ///
+        /// Não dá para reusar SetTenantQueryFilter: aquele exige ITenantScoped, e o ponto
+        /// aqui é justamente que estas entidades não têm a coluna.
+        /// </summary>
+        private void ApplyNavigationTenantQueryFilters(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<WorkLog>().HasQueryFilter(w =>
+                _tenantContext != null && _tenantContext.HasTenant
+                && w.Employee.TenantId == _tenantContext.TenantId);
+
+            modelBuilder.Entity<Payment>().HasQueryFilter(p =>
+                _tenantContext != null && _tenantContext.HasTenant
+                && p.Employee.TenantId == _tenantContext.TenantId);
+
+            modelBuilder.Entity<PaymentPeriod>().HasQueryFilter(p =>
+                _tenantContext != null && _tenantContext.HasTenant
+                && p.Employee.TenantId == _tenantContext.TenantId);
+
+            modelBuilder.Entity<JournalLine>().HasQueryFilter(l =>
+                _tenantContext != null && _tenantContext.HasTenant
+                && l.JournalEntry.TenantId == _tenantContext.TenantId);
         }
 
         private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
