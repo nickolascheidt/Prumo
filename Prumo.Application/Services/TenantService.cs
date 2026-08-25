@@ -27,7 +27,6 @@ namespace Prumo.Application.Services
                 throw new ArgumentException("Slug is required");
 
             var slugTaken = await _db.Tenants
-                .IgnoreQueryFilters()
                 .AnyAsync(t => t.Slug == slug, cancellationToken);
             if (slugTaken)
                 throw new InvalidOperationException($"Slug '{slug}' is already in use");
@@ -58,7 +57,6 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<TenantMembershipDto>> GetUserMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             return await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .Where(tu => tu.UserId == userId)
                 .Select(tu => new TenantMembershipDto(
                     tu.TenantId,
@@ -71,21 +69,20 @@ namespace Prumo.Application.Services
 
         public async Task<TenantDto?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken = default)
         {
-            var t = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+            var t = await _db.Tenants.FirstOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
             return t == null ? null : new TenantDto(t.Id, t.Name, t.Slug, t.OwnerUserId, t.CreatedAt);
         }
 
         public async Task<TenantDto?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)
         {
             slug = slug.Trim().ToLowerInvariant();
-            var t = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Slug == slug, cancellationToken);
+            var t = await _db.Tenants.FirstOrDefaultAsync(x => x.Slug == slug, cancellationToken);
             return t == null ? null : new TenantDto(t.Id, t.Name, t.Slug, t.OwnerUserId, t.CreatedAt);
         }
 
         public async Task<IReadOnlyList<TenantMemberDto>> GetMembersAsync(Guid tenantId, CancellationToken cancellationToken = default)
         {
             return await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .Where(tu => tu.TenantId == tenantId)
                 .Select(tu => new TenantMemberDto(
                     tu.UserId,
@@ -99,7 +96,6 @@ namespace Prumo.Application.Services
         public async Task AddMemberAsync(Guid tenantId, Guid userId, TenantRole role, CancellationToken cancellationToken = default)
         {
             var exists = await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, cancellationToken);
             if (exists)
                 throw new InvalidOperationException("User is already a member of this tenant");
@@ -118,13 +114,11 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid masterAdminUserId, CancellationToken ct = default)
         {
             var tenantExists = await _db.Tenants
-                .IgnoreQueryFilters()
                 .AnyAsync(t => t.Id == tenantId, ct);
 
             if (!tenantExists) return false;
 
             var alreadyMember = await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == masterAdminUserId, ct);
 
             if (alreadyMember) return true;
@@ -161,7 +155,6 @@ namespace Prumo.Application.Services
         public async Task RemoveMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
         {
             var membership = await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, cancellationToken);
             if (membership == null) return;
 
@@ -175,14 +168,12 @@ namespace Prumo.Application.Services
         public async Task<bool> IsMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
         {
             return await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, cancellationToken);
         }
 
         public async Task<TenantRole?> GetUserRoleAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
         {
             var membership = await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, cancellationToken);
             return membership?.Role;
         }
@@ -225,7 +216,6 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid userId, TenantRole newRole, CancellationToken ct = default)
         {
             var member = await _db.TenantUsers
-                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, ct)
                 ?? throw new KeyNotFoundException("Member not found.");
 
