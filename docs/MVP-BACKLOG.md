@@ -292,6 +292,17 @@ consumindo fila, com container e deploy próprios no repo de DevOps. Ver a seç�
 
 ## 10. O filtro global de tenant é fail-open — e já vazou uma vez
 
+> ✅ **FECHADO.** Fase 1 (2026-08-13) tornou o filtro fail-closed. Fase 2
+> (2026-08-25) colheu o resultado: **86 → 18 `IgnoreQueryFilters`**, e as 4
+> entidades sem coluna `TenantId` (`WorkLog`, `Payment`, `PaymentPeriod`,
+> `JournalLine`) ganharam **query filter por navegação** — sem migration, sem
+> desnormalizar a coluna. Os 4 avisos
+> `PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning` do
+> startup foram a 0. Os 18 que sobram são cross-tenant de propósito
+> (startup/seeders e emissão de token), cada um comentado, e
+> `DataAccessHygieneTests` quebra o build se aparecer um sem justificativa.
+> Plano: `docs/superpowers/plans/2026-08-18-phase2-data-access-cleanup.md`.
+
 **Causa:** `Prumo.Infrastructure/Data/ApplicationDbContext.cs:77-80`:
 
 ```csharp
@@ -526,6 +537,18 @@ o README e o CLAUDE.md.
 
 > Item novo, levantado em 2026-08-06 ao mapear o raio do item 10.
 
+> ✅ **FECHADO.** Fase 1 pôs `[TenantModule]` nos 9 controllers de módulo, com
+> `TenantCoverageTests` quebrando o build se uma action sob `{tenantId}` ficar
+> descoberta. Fase 2 (2026-08-25) removeu as **23 checagens `CanAccess`** que o
+> gate já fazia, mantendo as **19 `CanManage`** — cargo administrativo, que o
+> `[TenantModule]` nunca checa. Medido na API viva: com cargo rebaixado a
+> Member, ler funcionários dá 200 e criar categoria dá 403.
+>
+> **Continua aberto, como item próprio:** o `[RequireResourceAccess]` do
+> `PermissionsController`. Aquele controller não tem `{tenantId}` na rota, então
+> tirar o atributo o deixaria sem gate nenhum; converter a rota quebra 7 chamadas
+> do `api.service.ts`. Decidir junto com o item 3.
+
 **Causa:** `[RequireResourceAccess]` — o atributo que consulta as
 `ResourcePermissions`, ou seja, a máquina inteira de feature roles — é usado em
 **um único controller**, o `PermissionsController` (5 actions). Em nenhum módulo
@@ -601,6 +624,35 @@ defasagem na revogação. *Tratado no design (seção 1, passo 4).*
 **(f) `NU1903` de severidade alta** em `System.Security.Cryptography.Xml` 10.0.7 e
 `Microsoft.OpenApi` 2.0.0, mais o bundle inicial do Angular estourando o budget em
 419 kB. Higiene, fora do design.
+
+---
+
+## 15. `ArgumentException` não é mapeada — validação de negócio devolve 500
+
+> Achado em 2026-08-25, durante a verificação da fase 2. **Não é regressão** — o
+> `ExceptionHandlingMiddleware` está intocado desde antes.
+
+`Prumo.Api/Middleware/ExceptionHandlingMiddleware.cs` mapeia `ValidationException`,
+`KeyNotFoundException`, `UnauthorizedAccessException` e `InvalidOperationException`.
+**`ArgumentException` não está na lista** e cai no 500 padrão.
+
+Vários services validam com `ArgumentException`: `AccountsPayableService`
+("Category name is required.", "Description is required."), `EmployeeService`
+("CPF is required.", "HourlyRate must be greater than zero."), `AccountService`
+("Account code is required."), `JournalService`, `PaymentPeriodService`
+("StartDate must be before EndDate.").
+
+**Reproduzido:** `POST /api/tenants/{id}/accounts-payable/categories` com
+`{"name":""}` → **500**, e o log registra `Unhandled exception: Category name is
+required.` Deveria ser **400**.
+
+O impacto é maior do que parece: o frontend trata 400 mostrando a mensagem ao
+usuário, e 500 como falha genérica. Hoje toda validação de negócio dessas aparece
+como erro do sistema.
+
+**Correção:** um `case ArgumentException:` devolvendo 400, junto do
+`InvalidOperationException`. É de uma linha; o que falta é decidir se a mensagem
+da exceção vai para o corpo da resposta (as atuais são seguras, mas vira contrato).
 
 ---
 
