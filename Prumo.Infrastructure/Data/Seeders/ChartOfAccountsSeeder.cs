@@ -40,6 +40,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             ApplicationDbContext db, Guid tenantId, CancellationToken ct = default)
         {
             var hasAccounts = await db.Accounts
+                // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
+                // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
+                // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
                 .IgnoreQueryFilters()
                 .AnyAsync(a => a.TenantId == tenantId, ct);
             if (hasAccounts) return;
