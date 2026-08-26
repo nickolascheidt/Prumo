@@ -1,6 +1,4 @@
-using Prumo.Api.Authorization;
 using Prumo.Domain.Authorization;
-using Prumo.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -52,19 +50,11 @@ public static class AuthenticationConfiguration
                     JwtBearerDefaults.AuthenticationScheme)
                 .RequireAuthenticatedUser()
                 .Build();
-
-            foreach (var permission in Permissions.GetAllPermissions())
-            {
-                options.AddPolicy(permission, policy =>
-                {
-                    policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
-                    policy.RequireAuthenticatedUser();
-                    policy.Requirements.Add(new PermissionRequirement(permission));
-                });
-            }
         });
 
-        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        // As policies por permissão saíram no item 3B. Uma era registrada por string do
+        // catálogo, e nenhum endpoint jamais as consumiu (zero [Authorize(Policy=...)]);
+        // quem gateia é [TenantModule] contra ResourcePermission.
 
         return services;
     }

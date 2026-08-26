@@ -15,7 +15,6 @@ public static class DependencyInjectionConfiguration
     {
         // Register Services
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IResourcePermissionService, ResourcePermissionService>();
 
         // Multi-tenancy

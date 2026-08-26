@@ -37,14 +37,6 @@ namespace Prumo.Infrastructure.Data
                 var legacyUserRole = await roleManager.FindByNameAsync("User");
                 if (legacyUserRole != null)
                 {
-                    // cross-tenant de propósito: limpeza da role legada "User" em TODOS os
-                    // tenants, no startup e sem TenantContext. Filtrar por tenant aqui
-                    // deixaria lixo para trás em todos os outros.
-                    var legacyRps = context.RolePermissions
-                        .IgnoreQueryFilters()
-                        .Where(rp => rp.RoleId == legacyUserRole.Id);
-                    context.RolePermissions.RemoveRange(legacyRps);
-                    await context.SaveChangesAsync();
                     await roleManager.DeleteAsync(legacyUserRole);
                     logger.LogInformation("✓ Role legada 'User' removida");
                 }
@@ -85,35 +77,6 @@ namespace Prumo.Infrastructure.Data
                     else
                     {
                         logger.LogDebug($"✓ Role '{roleName}' já existe");
-                    }
-                }
-
-                // Criar permissões se não existirem
-                logger.LogInformation("Criando permissões...");
-                var allPermissions = Permissions.GetAllPermissions();
-                var permissionMap = new Dictionary<string, Permission>();
-
-                foreach (var permissionName in allPermissions)
-                {
-                    var existingPermission = await context.Permissions
-                        .FirstOrDefaultAsync(p => p.Name == permissionName);
-
-                    if (existingPermission == null)
-                    {
-                        var permission = new Permission
-                        {
-                            Name = permissionName,
-                            Description = $"Permissão: {permissionName}",
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        context.Permissions.Add(permission);
-                        await context.SaveChangesAsync();
-                        permissionMap[permissionName] = permission;
-                        logger.LogInformation($"✓ Permissão '{permissionName}' criada");
-                    }
-                    else
-                    {
-                        permissionMap[permissionName] = existingPermission;
                     }
                 }
 

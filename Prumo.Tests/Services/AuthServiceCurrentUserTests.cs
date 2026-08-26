@@ -35,7 +35,6 @@ namespace Prumo.Tests.Services
         {
             public required AuthService Service { get; init; }
             public required ApplicationUser User { get; init; }
-            public required IPermissionService Permissions { get; init; }
         }
 
         private static Fixture MakeFixture(
@@ -56,12 +55,6 @@ namespace Prumo.Tests.Services
             userManager.FindByIdAsync(user.Id.ToString()).Returns(user);
             userManager.GetRolesAsync(user).Returns(globalRoles.ToList() as IList<string>);
 
-            var permissions = Substitute.For<IPermissionService>();
-            permissions.GetUserPermissionsAsync(user.Id, Arg.Any<CancellationToken>())
-                .Returns(Array.Empty<string>());
-            permissions.GetUserPermissionsForTenantAsync(user.Id, tenantId, Arg.Any<CancellationToken>())
-                .Returns(new[] { "employees.view" });
-
             var tenantRoles = Substitute.For<ITenantRoleService>();
             tenantRoles.GetEffectiveRoleNamesAsync(
                     user.Id, tenantId, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -71,11 +64,10 @@ namespace Prumo.Tests.Services
                 userManager,
                 MakeSignInManager(userManager),
                 Substitute.For<IConfiguration>(),
-                permissions,
                 Substitute.For<ITenantService>(),
                 tenantRoles);
 
-            return new Fixture { Service = service, User = user, Permissions = permissions };
+            return new Fixture { Service = service, User = user };
         }
 
         [Fact]
