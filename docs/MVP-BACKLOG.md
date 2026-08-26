@@ -87,10 +87,58 @@ item 2).
   `Roles.All` é `readonly` e testado; com criação dinâmica ele vira consulta ao Identity,
   e `CanonicalRolesTests` muda de sentido. **É aqui que o desvio do spec (roles no seeder
   vs migration) volta à mesa — decidido em 2026-08-18 esperar este item.**
-- Frontend: página nova. Decisão do Nickolas: **página separada**, não embutida
-  na tela de Permissões por Role.
+- Frontend: ~~página nova, **separada**, não embutida na tela de Permissões por Role~~
+  — **decisão revertida em 2026-08-26**, ver abaixo.
 
 **Esforço:** médio. **Já não bloqueia o item 2** — aquele foi fechado em 2026-08-18.
+
+---
+
+### Decisões de 2026-08-26 — e o achado que as motivou
+
+**O achado, verificado:** existem **três** sistemas de permissão, e **só um gateia**.
+
+| Sistema | Guarda | Quem gateia com isso |
+|---|---|---|
+| `ResourcePermission` | Role × Recurso → `None/Read/Write/Full` | **tudo**: menu, guards de rota e a API via `[TenantModule]` |
+| `RolePermission` + catálogo `Permissions.cs` | Role × string (`employees.edit`) | **nada** |
+| `TenantUserRole` | quem tem qual role no tenant | quais módulos aparecem |
+
+O `RolePermission` não é subutilizado, está **desconectado**: **zero** controllers usam
+`[Authorize(Policy=…)]` (os 32 `[Authorize]` são por role ou só autenticação), e no
+frontend o `hasPermission()` existe mas **ninguém o chama**. As policies são registradas
+no startup (`AuthenticationConfiguration.cs:58`) e o `PermissionAuthorizationHandler`
+existe, mas nada os consome. **Logo, a tela "Permissões por Role" configura hoje um
+sistema que não tem efeito em autorização nenhuma.**
+
+**Consequência prática que motivou a pergunta do Nickolas** ("como faço um funcionário
+que vê mas não edita?"): esse caso **já é expressável** — é `ResourcePermission` de nível
+`Read`, porque o `[TenantModule]` infere o nível do verbo (`GET`→`Read`,
+`POST/PUT/PATCH`→`Write`, `DELETE`→`Full`). O endpoint que concede já existe
+(`POST /api/resources/assign`, com `roleId`+`resourceId`+`Level`). **Falta só a tela.**
+
+**Decisão 1 — aposentar o `RolePermission`.** Fica um sistema só, o de níveis. Saem o
+catálogo de ~40 permission strings, as policies, o handler e o `CanonicalRolesTests`.
+
+**Decisão 2 — a tela "Permissões por Role" vira "Roles"** e ganha criar/excluir +
+a grade Recurso × Nível. **Isto reverte a decisão de 2026-08-18** ("página separada"),
+e o motivo da reversão é o achado acima: separar as telas só fazia sentido enquanto se
+acreditava que os dois sistemas eram ambos reais. Com um só, são a mesma tela.
+
+**Decisão 3 — fatiar em 3A e 3B**, porque a aposentadoria toca dois lugares perigosos:
+o `AuthService.cs:280` chama `GetUserPermissionsForTenantAsync` **dentro da emissão do
+token** (é onde a fase 2 quase quebrou o login), e o `PermissionAuditLog` é modelado em
+torno de `PermissionId`/`PermissionName` — precisa ser **remodelado** para auditar
+Recurso × Nível, não simplesmente apagado.
+
+- **3A (aditivo, primeiro):** criar/excluir role + grade Recurso × Nível. Nada é
+  removido, login e auditoria não são tocados. No fim, a role "só leitura" já funciona.
+- **3B (limpeza, depois):** aposentar `RolePermission` + catálogo + policies + handler,
+  remodelar o audit log, e converter o `PermissionsController` — que é o único usuário de
+  `[RequireResourceAccess]` e já estava marcado como pendência desde a fase 2.
+
+**Alcance medido:** 28 arquivos citam `RolePermission`, mas **12 são migrations**
+(histórico, não se toca) — o código vivo são ~14 arquivos, mais o frontend.
 
 ## 4. Contagem de roles por usuário sempre mostra 0
 
