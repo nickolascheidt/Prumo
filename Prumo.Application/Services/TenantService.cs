@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Prumo.Application.DTOs.Auth;
 using Prumo.Application.DTOs.Tenants;
+using Prumo.Domain.Authorization;
 using Prumo.Domain.Entities;
 using Prumo.Domain.Enums;
 using Prumo.Infrastructure.Data;
@@ -82,6 +83,13 @@ namespace Prumo.Application.Services
 
         public async Task<IReadOnlyList<TenantMemberDto>> GetMembersAsync(Guid tenantId, CancellationToken cancellationToken = default)
         {
+            // As feature roles vêm na mesma query, como subconsulta correlacionada. Buscá-las
+            // por membro seria N+1 — e é a razão de a tela de roles nunca as ter mostrado.
+            var masterAdminRoleId = await _db.Roles
+                .Where(r => r.Name == Permissions.Roles.MasterAdmin)
+                .Select(r => (Guid?)r.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
             return await _db.TenantUsers
                 .Where(tu => tu.TenantId == tenantId)
                 .Select(tu => new TenantMemberDto(
@@ -89,7 +97,13 @@ namespace Prumo.Application.Services
                     tu.User.Email!,
                     tu.User.FullName,
                     tu.Role,
-                    tu.JoinedAt))
+                    tu.JoinedAt,
+                    _db.TenantUserRoles
+                        .Where(tur => tur.TenantId == tenantId && tur.UserId == tu.UserId)
+                        .Select(tur => tur.Role.Name!)
+                        .ToList(),
+                    masterAdminRoleId != null
+                        && _db.UserRoles.Any(ur => ur.UserId == tu.UserId && ur.RoleId == masterAdminRoleId)))
                 .ToListAsync(cancellationToken);
         }
 
@@ -209,7 +223,11 @@ namespace Prumo.Application.Services
             _db.TenantUsers.Add(new TenantUser { TenantId = tenantId, UserId = user.Id, Role = dto.Role });
             await _db.SaveChangesAsync(ct);
 
-            return new TenantMemberDto(user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow);
+            // Membro recém-criado: nasce sem feature role nenhuma, e o master admin é
+            // global — quem acabou de ser criado aqui nunca o é.
+            return new TenantMemberDto(
+                user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow,
+                Array.Empty<string>(), false);
         }
 
         public async Task UpdateMemberRoleAsync(
