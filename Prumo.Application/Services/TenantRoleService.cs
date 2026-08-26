@@ -42,12 +42,24 @@ namespace Prumo.Application.Services
             Guid tenantId, Guid userId, string roleName,
             Guid? grantedByUserId = null, CancellationToken ct = default)
         {
-            if (!Permissions.Roles.AssignableFeatureRoles.Contains(roleName))
+            // Atribuível = canônica da lista do Domain, ou role criada por ESTE tenant.
+            // O filtro por tenant não é decoração: sem ele um Owner conseguiria conceder
+            // a role de outro tenant só sabendo o nome dela, e com homônimas a resolução
+            // por nome pegaria a linha errada.
+            // cross-tenant: ApplicationRole não é ITenantScoped (as canônicas têm
+            // TenantId nulo e precisam valer em todo tenant); o filtro é o Where abaixo.
+            var role = await _db.Roles.FirstOrDefaultAsync(
+                r => r.Name == roleName && (r.TenantId == null || r.TenantId == tenantId), ct);
+
+            var isCanonicalAssignable =
+                role is not null && role.TenantId == null &&
+                Permissions.Roles.AssignableFeatureRoles.Contains(roleName);
+
+            var isOwnedByThisTenant = role is not null && role.TenantId == tenantId;
+
+            if (role is null || (!isCanonicalAssignable && !isOwnedByThisTenant))
                 throw new InvalidOperationException(
                     $"'{roleName}' is not an assignable tenant feature role.");
-
-            var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == roleName, ct)
-                ?? throw new InvalidOperationException($"Role '{roleName}' does not exist.");
 
             // Cross-tenant de propósito: o TenantsController não usa [TenantModule] — ele
             // gateia por GetUserRoleAsync(tenantId da ROTA), enquanto o TenantContext vem

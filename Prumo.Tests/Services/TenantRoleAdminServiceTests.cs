@@ -137,6 +137,37 @@ namespace Prumo.Tests.Services
         }
 
         [Fact]
+        public async Task Uma_role_criada_pelo_tenant_pode_ser_concedida_a_um_membro()
+        {
+            using var db = NewDb(TenantA, nameof(Uma_role_criada_pelo_tenant_pode_ser_concedida_a_um_membro));
+            var admin = ServiceOver(db);
+            var roles = new TenantRoleService(db);
+
+            await admin.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+
+            var userId = Guid.NewGuid();
+            await roles.AssignFeatureRoleAsync(TenantA, userId, "Leitura");
+
+            var concedidas = await roles.GetTenantRoleNamesAsync(userId, TenantA);
+            Assert.Contains("Leitura", concedidas);
+        }
+
+        [Fact]
+        public async Task Nao_deixa_conceder_a_role_de_outro_tenant()
+        {
+            using var db = NewDb(TenantA, nameof(Nao_deixa_conceder_a_role_de_outro_tenant));
+            var admin = ServiceOver(db);
+            var roles = new TenantRoleService(db);
+
+            // A role existe, mas pertence ao tenant A.
+            await admin.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+
+            // O tenant B não pode concedê-la só por saber o nome.
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => roles.AssignFeatureRoleAsync(TenantB, Guid.NewGuid(), "Leitura"));
+        }
+
+        [Fact]
         public async Task Nao_deixa_recriar_uma_role_do_sistema()
         {
             using var db = NewDb(TenantA, nameof(Nao_deixa_recriar_uma_role_do_sistema));
