@@ -911,3 +911,89 @@ o deploy for para um Postgres mais velho, o índice precisa de outra estratégia
 migration mexe num índice **do Identity**, então vale ler o SQL gerado antes de aplicar;
 (c) `PermissionLevel` chega como string — a Task 6 normaliza, e ignorar isso repetiria o
 bug pela quarta vez.
+
+---
+
+## Registro de execução (2026-08-26)
+
+Backend na branch `feature/item3a-tenant-roles` (6 commits), frontend direto na `main`
+do repo Angular (2 commits). Suíte backend **110** (eram 101), build de produção do
+Angular limpo, `check-tokens.sh` limpo.
+
+### O objetivo foi cumprido, e está medido
+
+```
+GET  /tenants/{id}/employees  -> 200   (nível Ler passa)
+POST /tenants/{id}/employees  -> 403   (nível Ler recusa escrita)
+```
+
+Um membro cuja única chave é a role "Leitura", com `Read` em `HR.Employees`. É
+literalmente o "funcionário que vê as coisas mas não pode editar nada" que originou
+o item.
+
+### O bug que só a API viva pegou
+
+Criar a role funcionava, listá-la como atribuível funcionava — e **atribuí-la a um
+membro devolvia 400**. `TenantRoleService.AssignFeatureRoleAsync` ainda validava contra
+a lista fixa `Permissions.Roles.AssignableFeatureRoles`. **O plano mandou corrigir a
+listagem e esqueceu a atribuição.** Build verde, 108 testes verdes, e o fluxo quebrado
+no meio.
+
+O mesmo método resolvia a role **só pelo nome** (`_db.Roles.FirstOrDefault(r => r.Name ==
+roleName)`), o que com homônimas pegaria a linha errada. **A auditoria dos 20 usos não
+viu este site porque ele consulta `_db.Roles` direto, sem passar pelo `RoleManager`** —
+a varredura tinha filtrado por `RoleManager`/`UserManager`. Corrigido para
+canônica-ou-minha, o que de quebra impede um Owner de conceder a role de outro tenant só
+sabendo o nome. Dois testes novos prendem os dois lados.
+
+### Erros do plano
+
+1. **A migration não bastava criar o índice novo — precisava REMOVER o do Identity.**
+   Enquanto o índice sobre `NormalizedName` existir, o nome segue único globalmente e
+   homônimos são impossíveis de qualquer jeito. Pior: o EF **recusa o modelo** com
+   "two indexes mapped to RoleNameIndex with different columns". A remoção via
+   `builder.Metadata.RemoveIndex(...)` não estava no plano.
+2. **`toPermissionLevel` já existia** em `core/models/index.ts`, escrito no fix do
+   `22aba79`. O plano mandava escrevê-la de novo. Reusada.
+3. **`getRoleResourcePermissions` já existia** no `api.service.ts`. Adicioná-la
+   duplicou o método e quebrou o build.
+4. **`TenantRole` já é o nome do enum de cargo** (Owner/Admin/Member). A interface nova
+   virou `ManagedRole`.
+5. **`InvalidOperationException` já mapeia para 400**, não 500 — o 409 que o plano
+   sugeria não foi feito, porque aquele mapeamento é global e mudá-lo alteraria o
+   contrato de todos os endpoints.
+
+### Verificado contra a API viva e o Postgres
+
+| O quê | Resultado |
+|---|---|
+| Role nasce vazia | 0 `ResourcePermissions` no banco; a tela lê "0 de 12 recursos" |
+| Vira chave atribuível | aparece em `assignable-roles` de `ppg` |
+| **Isolamento** | **não** aparece em `assignable-roles` de `bmp` |
+| Índice: canônica duplicada | `duplicate key value violates unique constraint "RoleNameIndex"` |
+| Índice: homônimas em tenants distintos | as duas inseridas |
+| Criar "RH" | 400 "é uma role do sistema e não pode ser recriada" |
+| Criar duplicada / nome vazio | 400 com mensagem limpa |
+| Excluir canônica | 400 "Roles do sistema não podem ser excluídas" |
+| Excluir em uso | 400 pedindo para remover dos membros antes |
+| Excluir de outro tenant | **403** — o `[TenantModule]` barra antes do service (rota diverge do claim, comportamento da fase 1). O 404 do service é a segunda camada, coberta em unidade |
+| Excluir de verdade | `ResourcePermissions` da role morreram junto; **0 órfãs** no banco inteiro |
+| Teste de arquitetura | visto falhando: comentar `[TenantModule]` faz o `TenantCoverageTests` nomear as 3 actions |
+| Teste de isolamento | visto falhando: afrouxar o filtro para `Where(r => true)` quebra exatamente `Role_criada_por_um_tenant_NAO_aparece_para_outro` |
+| Tela | role criada pela UI, grade grava (`HR.Employees` nível 1 no banco) e o contador vai de "0 de 12" para "1 de 12" |
+
+### Gotchas
+
+- **`form_input` do browser não dispara o evento que o Angular ReactiveForms escuta.**
+  O valor aparece no campo, o `FormControl` continua vazio e o botão fica desabilitado —
+  parece que o clique não funcionou. Digitar com `type` resolve.
+- **`display: flex` num parágrafo transforma cada filho em coluna**, então um `<strong>`
+  no meio de uma frase a quebra em pedaços. Envolver o texto num `<span>`.
+- O `MSB3027` apareceu **duas vezes** por a API estar rodando durante o `dotnet build`.
+  Parar antes é obrigatório, e é fácil esquecer quando a API foi subida para outra coisa.
+
+### Sujeira deixada no banco de dev
+
+A role **"Leitura"** (com `Read` em `HR.Employees`) e o usuário **`leitor@teste.local`**
+continuam lá, como demonstração viva do caso de uso. O `descartavel@teste.local` do item
+5 também. Apagar é decisão do usuário.
