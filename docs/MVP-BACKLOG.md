@@ -69,7 +69,7 @@ o master admin. Mas esta tela configura `RolePermission`, e as do `Administrador
 Tirar o master daqui removeria funcionalidade de verdade. (O bypass do master em
 `ResourcePermissionService` é do *outro* sistema, o de `ResourcePermission` por recurso.)
 
-## 3. Não existe tela (nem API) para criar role
+## 3. Criar role — ✅ 3A FEITO em 2026-08-26, 3B pendente
 
 **Causa:** confirmado — não há `RolesController`. Nenhum endpoint de **criar/excluir**
 role. Para *listar* já existem dois, ambos devolvendo listas fixas do Domain:
@@ -139,6 +139,47 @@ Recurso × Nível, não simplesmente apagado.
 
 **Alcance medido:** 28 arquivos citam `RolePermission`, mas **12 são migrations**
 (histórico, não se toca) — o código vivo são ~14 arquivos, mais o frontend.
+
+---
+
+### ✅ 3A FEITO em 2026-08-26
+
+Plano e registro de execução:
+`docs/superpowers/plans/2026-08-26-item3a-criar-role-e-grade-de-niveis.md`.
+Backend na branch `feature/item3a-tenant-roles` (6 commits), frontend na `main` do
+repo Angular (2 commits). Suíte **110** (eram 101).
+
+**O objetivo, medido:** um membro cuja única chave é a role "Leitura" (com `Read` em
+`HR.Employees`) recebe **200 no GET** e **403 no POST** de `/employees`. É o
+"funcionário que vê mas não edita" que originou o item.
+
+**O que entrou:** `ApplicationRole.TenantId` nullable + índice
+`(NormalizedName, TenantId)` **`NULLS NOT DISTINCT`**; `TenantRoleAdminService` e
+`TenantRolesController` (rota por tenant, `[TenantModule("Role.Management")]`);
+`assignable-roles` passou a consultar o Identity; e a tela **"Roles"**, que substituiu
+"Permissões por Role", com criar/excluir e a grade Recurso × Nível.
+
+**A armadilha do Postgres que quase passou:** `NULL` não é igual a `NULL`, então sem
+`NULLS NOT DISTINCT` o índice **não protegeria as roles canônicas** — duas "RH" globais
+passariam. Verificado nos dois sentidos contra o PG 17.9.
+
+**O bug que só a API viva pegou:** criar a role e listá-la como atribuível funcionavam,
+mas **atribuí-la a um membro devolvia 400** — `AssignFeatureRoleAsync` ainda validava
+contra a lista fixa do Domain. Build e 108 testes verdes com o fluxo quebrado no meio.
+O mesmo método resolvia a role **só por nome**, o que com homônimas pegaria a linha
+errada; **a auditoria dos usos de `RoleManager` não viu este site porque ele consulta
+`_db.Roles` direto.**
+
+**Ainda no banco de dev, de propósito:** a role `Leitura` e o usuário
+`leitor@teste.local`, como demonstração viva do caso de uso.
+
+### 3B — o que sobrou
+
+Aposentar `RolePermission` + o catálogo `Permissions.cs` + as policies +
+`PermissionAuthorizationHandler`; **remodelar** o `PermissionAuditLog` (hoje é
+`PermissionId`/`PermissionName`, precisa virar Recurso × Nível); e converter o
+`PermissionsController`. Cuidado com `AuthService.cs:280`, que chama
+`GetUserPermissionsForTenantAsync` **dentro da emissão do token**.
 
 ## 4. Contagem de roles por usuário sempre mostra 0
 
