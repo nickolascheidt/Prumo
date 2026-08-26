@@ -157,8 +157,9 @@ namespace Prumo.Api.Controllers
 
         [HttpGet("{tenantId:guid}/assignable-roles")]
         [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
-        public ActionResult<IReadOnlyList<string>> GetAssignableRoles(Guid tenantId)
-            => Ok(Prumo.Domain.Authorization.Permissions.Roles.AssignableFeatureRoles);
+        public async Task<ActionResult<IReadOnlyList<string>>> GetAssignableRoles(
+            Guid tenantId, [FromServices] ITenantRoleAdminService roleAdmin, CancellationToken ct)
+            => Ok(await roleAdmin.GetAssignableRoleNamesAsync(tenantId, ct));
 
         [HttpGet("{tenantId:guid}/members/{userId:guid}/roles")]
         [ProducesResponseType(typeof(TenantMemberRolesDto), StatusCodes.Status200OK)]

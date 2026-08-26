@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Prumo.Application.DTOs.Roles;
+using Prumo.Domain.Authorization;
 using Prumo.Domain.Entities;
 using Prumo.Infrastructure.Data;
 
@@ -43,6 +44,23 @@ namespace Prumo.Application.Services
                     r.Description,
                     r.TenantId == null,
                     counts.TryGetValue(r.Id, out var c) ? c : 0))
+                .ToList();
+        }
+
+        public async Task<IReadOnlyList<string>> GetAssignableRoleNamesAsync(
+            Guid tenantId, CancellationToken ct = default)
+        {
+            var ownNames = await _db.Roles
+                .Where(r => r.TenantId == tenantId)
+                .Select(r => r.Name!)
+                .ToListAsync(ct);
+
+            // As canônicas vêm da lista do Domain, e não do banco, porque ela já exclui
+            // o master admin de propósito — ele existe como role mas não é concedível
+            // por um admin de tenant.
+            return Permissions.Roles.AssignableFeatureRoles
+                .Concat(ownNames)
+                .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
         }
 

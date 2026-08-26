@@ -117,6 +117,26 @@ namespace Prumo.Tests.Services
         }
 
         [Fact]
+        public async Task Role_do_tenant_vira_chave_atribuivel_so_no_tenant_dono()
+        {
+            using var db = NewDb(TenantA, nameof(Role_do_tenant_vira_chave_atribuivel_so_no_tenant_dono));
+            var service = ServiceOver(db);
+
+            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+
+            var atribuiveisEmA = await service.GetAssignableRoleNamesAsync(TenantA);
+            var atribuiveisEmB = await service.GetAssignableRoleNamesAsync(TenantB);
+
+            Assert.Contains("Leitura", atribuiveisEmA);
+            Assert.DoesNotContain("Leitura", atribuiveisEmB);
+
+            // As canônicas seguem atribuíveis nos dois, e o master continua fora.
+            Assert.Contains("RH", atribuiveisEmA);
+            Assert.Contains("RH", atribuiveisEmB);
+            Assert.DoesNotContain("Administrador", atribuiveisEmA);
+        }
+
+        [Fact]
         public async Task Nao_deixa_recriar_uma_role_do_sistema()
         {
             using var db = NewDb(TenantA, nameof(Nao_deixa_recriar_uma_role_do_sistema));
