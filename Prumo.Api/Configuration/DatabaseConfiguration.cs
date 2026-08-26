@@ -1,7 +1,9 @@
 using Prumo.Domain.Entities;
+using Prumo.Infrastructure.Authorization;
 using Prumo.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Prumo.Api.Configuration;
 
@@ -30,6 +32,15 @@ public static class DatabaseConfiguration
         })
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
+
+        // O RoleValidator padrão do Identity rejeita qualquer nome já existente em
+        // qualquer lugar, o que torna o índice (NormalizedName, TenantId) letra morta:
+        // a escrita nunca chega ao banco para o índice ter o que decidir.
+        //
+        // Precisa ser REMOVIDO, não complementado. `AddRoleValidator` acrescenta à lista
+        // e o RoleManager roda todos — o padrão continuaria recusando.
+        services.RemoveAll<IRoleValidator<ApplicationRole>>();
+        services.AddScoped<IRoleValidator<ApplicationRole>, TenantScopedRoleValidator>();
 
         return services;
     }

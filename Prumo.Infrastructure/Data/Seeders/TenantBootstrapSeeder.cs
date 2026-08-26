@@ -64,6 +64,51 @@ namespace Prumo.Infrastructure.Data.Seeders
                 Icon = "dashboard",
                 DisplayOrder = 0
             },
+            // As abas do dashboard têm recurso próprio para poderem ser concedidas
+            // separadamente da tela do módulo. Antes cada uma emprestava o recurso do
+            // módulo correspondente (a aba RH gateava por HR.Employees), o que grudava
+            // os dois acessos: não dava para mostrar o painel de RH a quem não pode
+            // abrir a tela de funcionários, nem o contrário.
+            new()
+            {
+                Code = "Dashboard.Accounting",
+                Name = "Dashboard Contábil",
+                Description = "Painel com os indicadores da contabilidade",
+                Module = "Dashboard",
+                FrontendRoute = "/dashboard/accounting",
+                Icon = "account_balance",
+                DisplayOrder = 1
+            },
+            new()
+            {
+                Code = "Dashboard.Finance",
+                Name = "Dashboard Financeiro",
+                Description = "Painel com os indicadores do financeiro",
+                Module = "Dashboard",
+                FrontendRoute = "/dashboard/finance",
+                Icon = "payments",
+                DisplayOrder = 2
+            },
+            new()
+            {
+                Code = "Dashboard.HR",
+                Name = "Dashboard de RH",
+                Description = "Painel com os indicadores de recursos humanos",
+                Module = "Dashboard",
+                FrontendRoute = "/dashboard/hr",
+                Icon = "groups",
+                DisplayOrder = 3
+            },
+            new()
+            {
+                Code = "Dashboard.Admin",
+                Name = "Dashboard Administrativo",
+                Description = "Painel com os indicadores de administração",
+                Module = "Dashboard",
+                FrontendRoute = "/dashboard/admin",
+                Icon = "admin_panel_settings",
+                DisplayOrder = 4
+            },
             new()
             {
                 Code = "ChartOfAccounts.Management",
@@ -143,6 +188,67 @@ namespace Prumo.Infrastructure.Data.Seeders
         public static IReadOnlyList<string> DefaultResourceCodes =>
             DefaultResources.Select(r => r.Code).ToList();
 
+        /// <summary>
+        /// Garante que <b>todo</b> tenant tenha todos os recursos do catálogo, incluindo
+        /// os que foram acrescentados depois de o tenant existir.
+        /// </summary>
+        /// <remarks>
+        /// Existe separado do <see cref="SeedAsync"/> de propósito, para poder rodar a
+        /// cada boot: o seeder completo também escreve <c>RolePermission</c>, e reaplicá-lo
+        /// faria um grant revogado voltar — foi exatamente o bug 4203a15. Aqui só entram
+        /// linhas de <c>Resource</c> que faltam; nada de permissão é tocado, então nenhuma
+        /// revogação é desfeita.
+        /// </remarks>
+        public static async Task SyncResourcesForAllTenantsAsync(
+            ApplicationDbContext db, CancellationToken cancellationToken = default)
+        {
+            // cross-tenant de propósito: roda no startup, sem TenantContext, e precisa
+            // enxergar todos os tenants para completar o catálogo de cada um.
+            var tenantIds = await db.Tenants
+                .IgnoreQueryFilters()
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var tenantId in tenantIds)
+            {
+                await SyncResourcesAsync(db, tenantId, cancellationToken);
+            }
+        }
+
+        /// <summary>Acrescenta a um tenant os recursos do catálogo que ainda faltam.</summary>
+        private static async Task SyncResourcesAsync(
+            ApplicationDbContext db, Guid tenantId, CancellationToken cancellationToken)
+        {
+            var existingCodes = await db.Resources
+                // cross-tenant de propósito: roda no startup, sem TenantContext. O
+                // tenantId vem do parâmetro e é filtrado logo abaixo.
+                .IgnoreQueryFilters()
+                .Where(r => r.TenantId == tenantId)
+                .Select(r => r.Code)
+                .ToListAsync(cancellationToken);
+
+            var missing = DefaultResources
+                .Where(r => !existingCodes.Contains(r.Code))
+                .Select(r => new Resource
+                {
+                    TenantId = tenantId,
+                    Code = r.Code,
+                    Name = r.Name,
+                    Description = r.Description,
+                    Module = r.Module,
+                    FrontendRoute = r.FrontendRoute,
+                    Icon = r.Icon,
+                    DisplayOrder = r.DisplayOrder
+                })
+                .ToList();
+
+            if (missing.Count > 0)
+            {
+                db.Resources.AddRange(missing);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+
         public static async Task SeedAsync(ApplicationDbContext db, Guid tenantId, CancellationToken cancellationToken = default)
         {
             // Resources
@@ -180,7 +286,12 @@ namespace Prumo.Infrastructure.Data.Seeders
             var permissions = await db.Permissions.ToListAsync(cancellationToken);
             var permissionByName = permissions.ToDictionary(p => p.Name, p => p.Id);
 
-            var rolesByName = await db.Roles.ToDictionaryAsync(r => r.Name!, r => r.Id, cancellationToken);
+            // Só as canônicas (TenantId nulo). Sem o filtro, dois tenants com uma role
+            // homônima fariam o ToDictionary estourar com chave duplicada e derrubar o
+            // startup — e este bloco só configura roles canônicas de qualquer forma.
+            var rolesByName = await db.Roles
+                .Where(r => r.TenantId == null)
+                .ToDictionaryAsync(r => r.Name!, r => r.Id, cancellationToken);
 
             var rolePermissionConfig = new Dictionary<string, IReadOnlyCollection<string>>
             {

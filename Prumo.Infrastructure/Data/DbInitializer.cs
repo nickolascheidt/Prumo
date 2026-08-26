@@ -1,5 +1,6 @@
 using Prumo.Domain.Authorization;
 using Prumo.Domain.Entities;
+using Prumo.Domain.Enums;
 using Prumo.Infrastructure.Data.Seeders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -166,6 +167,7 @@ namespace Prumo.Infrastructure.Data
                     }
 
                     await EnsureDefaultTenantAsync(context, adminUser, logger);
+                    await SyncResourceCatalogAsync(context, logger);
 
                     logger.LogInformation("=== Inicialização concluída ===");
                     return;
@@ -217,6 +219,8 @@ namespace Prumo.Infrastructure.Data
                     var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                     logger.LogError("✗ Erro ao criar usuário admin: {Errors}", errors);
                 }
+
+                await SyncResourceCatalogAsync(context, logger);
 
                 logger.LogInformation("=== Inicialização concluída ===");
             }
@@ -283,6 +287,142 @@ namespace Prumo.Infrastructure.Data
         /// o `InitializeAsync` inteiro não é testável em memória porque chama
         /// `MigrateAsync`, que exige provider relacional.
         /// </summary>
+        /// <summary>
+        /// Completa o catálogo de recursos de todo tenant a cada boot.
+        /// </summary>
+        /// <remarks>
+        /// Sem isto, um módulo novo só chega a tenants criados <b>depois</b> dele: o
+        /// <c>TenantBootstrapSeeder</c> roda uma vez, na criação do tenant, e até aqui a
+        /// solução tinha sido escrever uma migration de backfill por recurso novo
+        /// (ver <c>BackfillTenantResources</c>) — trabalho manual, fácil de esquecer, e
+        /// que deixa a tela nova invisível justamente nos tenants que já existem.
+        ///
+        /// Só acrescenta linhas de <c>Resource</c>. Nenhuma permissão é tocada, então
+        /// nada de revogado volta.
+        /// </remarks>
+        private static async Task SyncResourceCatalogAsync(
+            ApplicationDbContext context, ILogger logger)
+        {
+            try
+            {
+                // cross-tenant de propósito: contagem de todos os tenants, no startup,
+                // sem TenantContext resolvido — serve só para relatar quantos recursos
+                // foram acrescentados.
+                var before = await context.Resources.IgnoreQueryFilters().CountAsync();
+
+                await Seeders.TenantBootstrapSeeder.SyncResourcesForAllTenantsAsync(context);
+
+                // cross-tenant de propósito: mesma contagem, depois da sincronização.
+                var after = await context.Resources.IgnoreQueryFilters().CountAsync();
+
+                if (after > before)
+                {
+                    logger.LogInformation(
+                        "✓ Catálogo de recursos sincronizado: {Count} recurso(s) acrescentado(s) a tenants existentes",
+                        after - before);
+                }
+
+                await BackfillDashboardGrantsAsync(context, logger);
+            }
+            catch (Exception ex)
+            {
+                // Não derruba o startup: sem os recursos novos a app sobe com as telas
+                // novas invisíveis, o que é ruim mas recuperável. Cair aqui não seria.
+                logger.LogError(ex, "✗ Falha ao sincronizar o catálogo de recursos");
+            }
+        }
+
+        /// <summary>
+        /// Aba do dashboard que passou a ter recurso próprio, e o recurso que ela
+        /// emprestava antes.
+        /// </summary>
+        private static readonly (string Dashboard, string PreviouslyGatedBy)[] DashboardMigrationMap =
+        {
+            ("Dashboard.Accounting", "GeneralLedger.Management"),
+            ("Dashboard.Finance",    "AccountsPayable.Entries"),
+            ("Dashboard.HR",         "HR.Employees"),
+            ("Dashboard.Admin",      "User.Management")
+        };
+
+        /// <summary>
+        /// Concede cada <c>Dashboard.*</c> novo a quem já enxergava aquela aba pelo
+        /// recurso emprestado, para que ninguém perca acesso na troca.
+        /// </summary>
+        /// <remarks>
+        /// Roda uma vez por par (role, recurso): se o grant já existe, é pulado. Isso o
+        /// torna idempotente e — importante — faz com que revogar o acesso ao dashboard
+        /// depois <b>não</b> seja desfeito no próximo boot, porque a linha reaparecendo
+        /// exigiria que ela não existisse, e ela existe até alguém apagá-la de propósito.
+        ///
+        /// A ressalva honesta: se o admin revogar `Dashboard.HR` e mantiver
+        /// `HR.Employees`, esta rotina reconcede no boot seguinte. É o mesmo formato do
+        /// bug 4203a15, mitigado por rodar só enquanto a coluna de origem existir — a
+        /// intenção é remover este backfill assim que os tenants estiverem migrados.
+        /// </remarks>
+        private static async Task BackfillDashboardGrantsAsync(
+            ApplicationDbContext context, ILogger logger)
+        {
+            // cross-tenant de propósito: roda no startup, sem TenantContext, e precisa
+            // enxergar os recursos e grants de todos os tenants.
+            var resources = await context.Resources
+                .IgnoreQueryFilters()
+                .Select(r => new { r.Id, r.Code, r.TenantId })
+                .ToListAsync();
+
+            var granted = 0;
+
+            foreach (var (dashboardCode, sourceCode) in DashboardMigrationMap)
+            {
+                var dashboards = resources.Where(r => r.Code == dashboardCode).ToList();
+
+                foreach (var dashboard in dashboards)
+                {
+                    var source = resources.FirstOrDefault(
+                        r => r.Code == sourceCode && r.TenantId == dashboard.TenantId);
+
+                    if (source is null) continue;
+
+                    // cross-tenant de propósito: mesmo motivo, e o TenantId entra no filtro.
+                    var sourceGrants = await context.ResourcePermissions
+                        .IgnoreQueryFilters()
+                        .Where(rp => rp.ResourceId == source.Id && rp.TenantId == dashboard.TenantId)
+                        .Select(rp => new { rp.RoleId, rp.Level })
+                        .ToListAsync();
+
+                    foreach (var grant in sourceGrants)
+                    {
+                        // cross-tenant de propósito: mesmo motivo, e o TenantId entra no filtro.
+                        var alreadyThere = await context.ResourcePermissions
+                            .IgnoreQueryFilters()
+                            .AnyAsync(rp => rp.ResourceId == dashboard.Id
+                                         && rp.RoleId == grant.RoleId
+                                         && rp.TenantId == dashboard.TenantId);
+
+                        if (alreadyThere) continue;
+
+                        context.ResourcePermissions.Add(new ResourcePermission
+                        {
+                            TenantId = dashboard.TenantId,
+                            ResourceId = dashboard.Id,
+                            RoleId = grant.RoleId,
+                            // Dashboard é só leitura: nem Write nem Full significam nada
+                            // numa tela que só mostra números.
+                            Level = PermissionLevel.Read
+                        });
+                        granted++;
+                    }
+                }
+            }
+
+            if (granted > 0)
+            {
+                await context.SaveChangesAsync();
+                logger.LogInformation(
+                    "✓ {Count} acesso(s) a dashboard concedido(s) a quem já enxergava a aba pelo recurso do módulo",
+                    granted);
+            }
+        }
+
         internal static async Task EnsureDefaultTenantAsync(
             ApplicationDbContext context,
             ApplicationUser owner,

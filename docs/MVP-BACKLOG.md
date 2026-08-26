@@ -69,7 +69,7 @@ o master admin. Mas esta tela configura `RolePermission`, e as do `Administrador
 Tirar o master daqui removeria funcionalidade de verdade. (O bypass do master em
 `ResourcePermissionService` é do *outro* sistema, o de `ResourcePermission` por recurso.)
 
-## 3. Não existe tela (nem API) para criar role
+## 3. Criar role — ✅ 3A FEITO em 2026-08-26, 3B pendente
 
 **Causa:** confirmado — não há `RolesController`. Nenhum endpoint de **criar/excluir**
 role. Para *listar* já existem dois, ambos devolvendo listas fixas do Domain:
@@ -87,10 +87,99 @@ item 2).
   `Roles.All` é `readonly` e testado; com criação dinâmica ele vira consulta ao Identity,
   e `CanonicalRolesTests` muda de sentido. **É aqui que o desvio do spec (roles no seeder
   vs migration) volta à mesa — decidido em 2026-08-18 esperar este item.**
-- Frontend: página nova. Decisão do Nickolas: **página separada**, não embutida
-  na tela de Permissões por Role.
+- Frontend: ~~página nova, **separada**, não embutida na tela de Permissões por Role~~
+  — **decisão revertida em 2026-08-26**, ver abaixo.
 
 **Esforço:** médio. **Já não bloqueia o item 2** — aquele foi fechado em 2026-08-18.
+
+---
+
+### Decisões de 2026-08-26 — e o achado que as motivou
+
+**O achado, verificado:** existem **três** sistemas de permissão, e **só um gateia**.
+
+| Sistema | Guarda | Quem gateia com isso |
+|---|---|---|
+| `ResourcePermission` | Role × Recurso → `None/Read/Write/Full` | **tudo**: menu, guards de rota e a API via `[TenantModule]` |
+| `RolePermission` + catálogo `Permissions.cs` | Role × string (`employees.edit`) | **nada** |
+| `TenantUserRole` | quem tem qual role no tenant | quais módulos aparecem |
+
+O `RolePermission` não é subutilizado, está **desconectado**: **zero** controllers usam
+`[Authorize(Policy=…)]` (os 32 `[Authorize]` são por role ou só autenticação), e no
+frontend o `hasPermission()` existe mas **ninguém o chama**. As policies são registradas
+no startup (`AuthenticationConfiguration.cs:58`) e o `PermissionAuthorizationHandler`
+existe, mas nada os consome. **Logo, a tela "Permissões por Role" configura hoje um
+sistema que não tem efeito em autorização nenhuma.**
+
+**Consequência prática que motivou a pergunta do Nickolas** ("como faço um funcionário
+que vê mas não edita?"): esse caso **já é expressável** — é `ResourcePermission` de nível
+`Read`, porque o `[TenantModule]` infere o nível do verbo (`GET`→`Read`,
+`POST/PUT/PATCH`→`Write`, `DELETE`→`Full`). O endpoint que concede já existe
+(`POST /api/resources/assign`, com `roleId`+`resourceId`+`Level`). **Falta só a tela.**
+
+**Decisão 1 — aposentar o `RolePermission`.** Fica um sistema só, o de níveis. Saem o
+catálogo de ~40 permission strings, as policies, o handler e o `CanonicalRolesTests`.
+
+**Decisão 2 — a tela "Permissões por Role" vira "Roles"** e ganha criar/excluir +
+a grade Recurso × Nível. **Isto reverte a decisão de 2026-08-18** ("página separada"),
+e o motivo da reversão é o achado acima: separar as telas só fazia sentido enquanto se
+acreditava que os dois sistemas eram ambos reais. Com um só, são a mesma tela.
+
+**Decisão 3 — fatiar em 3A e 3B**, porque a aposentadoria toca dois lugares perigosos:
+o `AuthService.cs:280` chama `GetUserPermissionsForTenantAsync` **dentro da emissão do
+token** (é onde a fase 2 quase quebrou o login), e o `PermissionAuditLog` é modelado em
+torno de `PermissionId`/`PermissionName` — precisa ser **remodelado** para auditar
+Recurso × Nível, não simplesmente apagado.
+
+- **3A (aditivo, primeiro):** criar/excluir role + grade Recurso × Nível. Nada é
+  removido, login e auditoria não são tocados. No fim, a role "só leitura" já funciona.
+- **3B (limpeza, depois):** aposentar `RolePermission` + catálogo + policies + handler,
+  remodelar o audit log, e converter o `PermissionsController` — que é o único usuário de
+  `[RequireResourceAccess]` e já estava marcado como pendência desde a fase 2.
+
+**Alcance medido:** 28 arquivos citam `RolePermission`, mas **12 são migrations**
+(histórico, não se toca) — o código vivo são ~14 arquivos, mais o frontend.
+
+---
+
+### ✅ 3A FEITO em 2026-08-26
+
+Plano e registro de execução:
+`docs/superpowers/plans/2026-08-26-item3a-criar-role-e-grade-de-niveis.md`.
+Backend na branch `feature/item3a-tenant-roles` (6 commits), frontend na `main` do
+repo Angular (2 commits). Suíte **110** (eram 101).
+
+**O objetivo, medido:** um membro cuja única chave é a role "Leitura" (com `Read` em
+`HR.Employees`) recebe **200 no GET** e **403 no POST** de `/employees`. É o
+"funcionário que vê mas não edita" que originou o item.
+
+**O que entrou:** `ApplicationRole.TenantId` nullable + índice
+`(NormalizedName, TenantId)` **`NULLS NOT DISTINCT`**; `TenantRoleAdminService` e
+`TenantRolesController` (rota por tenant, `[TenantModule("Role.Management")]`);
+`assignable-roles` passou a consultar o Identity; e a tela **"Roles"**, que substituiu
+"Permissões por Role", com criar/excluir e a grade Recurso × Nível.
+
+**A armadilha do Postgres que quase passou:** `NULL` não é igual a `NULL`, então sem
+`NULLS NOT DISTINCT` o índice **não protegeria as roles canônicas** — duas "RH" globais
+passariam. Verificado nos dois sentidos contra o PG 17.9.
+
+**O bug que só a API viva pegou:** criar a role e listá-la como atribuível funcionavam,
+mas **atribuí-la a um membro devolvia 400** — `AssignFeatureRoleAsync` ainda validava
+contra a lista fixa do Domain. Build e 108 testes verdes com o fluxo quebrado no meio.
+O mesmo método resolvia a role **só por nome**, o que com homônimas pegaria a linha
+errada; **a auditoria dos usos de `RoleManager` não viu este site porque ele consulta
+`_db.Roles` direto.**
+
+**Ainda no banco de dev, de propósito:** a role `Leitura` e o usuário
+`leitor@teste.local`, como demonstração viva do caso de uso.
+
+### 3B — o que sobrou
+
+Aposentar `RolePermission` + o catálogo `Permissions.cs` + as policies +
+`PermissionAuthorizationHandler`; **remodelar** o `PermissionAuditLog` (hoje é
+`PermissionId`/`PermissionName`, precisa virar Recurso × Nível); e converter o
+`PermissionsController`. Cuidado com `AuthService.cs:280`, que chama
+`GetUserPermissionsForTenantAsync` **dentro da emissão do token**.
 
 ## 4. Contagem de roles por usuário sempre mostra 0
 
@@ -315,6 +404,23 @@ consumindo fila, com container e deploy próprios no repo de DevOps. Ver a seç�
   controller: `products`, `customers`, `stock`.
 - O `TenantBootstrapSeeder` só roda na **criação** do tenant — tenant antigo não
   recebe recurso novo. Vai doer quando um módulo novo for adicionado.
+- **`console.log` de debug no frontend** (pedido do Nickolas em 2026-08-26, para
+  fazer **no pass de limpeza final**, não agora). No repo Angular:
+  - `core/services/auth.service.ts:211-213` — três linhas no login bem-sucedido,
+    uma delas imprimindo **o início do token JWT**
+    (`token.substring(0, 20)`) e outra o e-mail do usuário.
+    *Nota sobre a gravidade:* os 20 primeiros caracteres de um JWT são o header
+    base64 (`eyJhbGciOiJIUzI1NiIs` = `{"alg":"HS256","typ`), que é **constante e
+    público** — não vaza payload nem assinatura, então não é vazamento de
+    credencial. Mas é ruído de debug que não deve chegar a produção, e o e-mail
+    ao lado é dado pessoal em log de navegador.
+  - `core/guards/resource-access.guard.ts:39,87` — dois `console.warn` de acesso
+    negado. **Avaliar em vez de apagar cegamente:** aviso de guard negando é
+    diagnóstico útil; o caminho limpo é mantê-lo atrás de
+    `if (!environment.production)`.
+  - O `auth.service.ts:236` é `console.error` de falha real — esse **fica**.
+  - Os seis `console.log` do `extractHttpErrorMessage` já morreram junto com
+    `users-roles-management`, no item 5.
 
 ---
 
