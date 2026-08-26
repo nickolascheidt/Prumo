@@ -72,7 +72,10 @@ namespace Prumo.Application.Services
             }
 
             var token = await GenerateJwtToken(user, tenantId);
-            var userDto = await MapToUserDto(user);
+            // tenantId pode ser null (login sem slug) — e aí MapToUserDto devolve só as
+            // roles globais, que é o correto. Com slug, o corpo precisa concordar com os
+            // claims: ver o comentário em SelectTenantAsync.
+            var userDto = await MapToUserDto(user, tenantId, cancellationToken);
 
             return new LoginResponseDto(
                 token,
@@ -92,7 +95,10 @@ namespace Prumo.Application.Services
                 throw new UnauthorizedAccessException("Usuário não pertence a este tenant");
 
             var token = await GenerateJwtToken(user, tenantId);
-            var userDto = await MapToUserDto(user);
+            // O corpo tem de concordar com os claims que acabaram de ser emitidos: o SPA
+            // guarda este user e desenha o dashboard a partir dele, sem reler o token.
+            // Sem o tenantId aqui, quem tem feature role vê "Nenhuma role atribuída".
+            var userDto = await MapToUserDto(user, tenantId, cancellationToken);
 
             return new LoginResponseDto(
                 token,
