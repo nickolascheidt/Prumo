@@ -180,7 +180,12 @@ namespace Prumo.Infrastructure.Data.Seeders
             var permissions = await db.Permissions.ToListAsync(cancellationToken);
             var permissionByName = permissions.ToDictionary(p => p.Name, p => p.Id);
 
-            var rolesByName = await db.Roles.ToDictionaryAsync(r => r.Name!, r => r.Id, cancellationToken);
+            // Só as canônicas (TenantId nulo). Sem o filtro, dois tenants com uma role
+            // homônima fariam o ToDictionary estourar com chave duplicada e derrubar o
+            // startup — e este bloco só configura roles canônicas de qualquer forma.
+            var rolesByName = await db.Roles
+                .Where(r => r.TenantId == null)
+                .ToDictionaryAsync(r => r.Name!, r => r.Id, cancellationToken);
 
             var rolePermissionConfig = new Dictionary<string, IReadOnlyCollection<string>>
             {

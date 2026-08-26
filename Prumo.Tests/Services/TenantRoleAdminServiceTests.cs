@@ -136,6 +136,35 @@ namespace Prumo.Tests.Services
             Assert.DoesNotContain("Administrador", atribuiveisEmA);
         }
 
+        /// <summary>
+        /// ATENÇÃO: este teste cobre a lógica do service, <b>não</b> o
+        /// <c>IRoleValidator</c> do Identity — o RoleManager aqui é um substituto que
+        /// grava direto no contexto e não roda validador nenhum. O defeito real ("Role
+        /// name is already taken", vindo do validador padrão) passava por este teste sem
+        /// ser notado, e só apareceu contra a API viva. Ao mexer em unicidade de nome,
+        /// verifique também com a API de pé.
+        /// </summary>
+        [Fact]
+        public async Task Dois_tenants_podem_ter_cada_um_a_sua_role_com_o_mesmo_nome()
+        {
+            using var db = NewDb(TenantA, nameof(Dois_tenants_podem_ter_cada_um_a_sua_role_com_o_mesmo_nome));
+            var service = ServiceOver(db);
+
+            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            await service.CreateAsync(TenantB, new CreateTenantRoleDto("Leitura", null));
+
+            var emA = await service.GetVisibleRolesAsync(TenantA);
+            var emB = await service.GetVisibleRolesAsync(TenantB);
+
+            Assert.Single(emA, r => r.Name == "Leitura");
+            Assert.Single(emB, r => r.Name == "Leitura");
+
+            // E são linhas diferentes, não a mesma role aparecendo duas vezes.
+            var idA = emA.Single(r => r.Name == "Leitura").Id;
+            var idB = emB.Single(r => r.Name == "Leitura").Id;
+            Assert.NotEqual(idA, idB);
+        }
+
         [Fact]
         public async Task Uma_role_criada_pelo_tenant_pode_ser_concedida_a_um_membro()
         {
