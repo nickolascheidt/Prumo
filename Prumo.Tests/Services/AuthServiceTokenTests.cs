@@ -164,6 +164,57 @@ namespace Prumo.Tests.Services
             Assert.Equal(tenantId.ToString(), tenantIdEl.GetString());
         }
 
+        /// <summary>
+        /// The SPA stores <c>response.user</c> from POST /tenants/select and renders the
+        /// dashboard from it — it does not re-read the token. So the body has to agree with
+        /// the claims; when it did not, the dashboard said "Nenhuma role atribuída" to a
+        /// user whose menu and API access proved otherwise. Backlog item 4.
+        /// </summary>
+        [Fact]
+        public async Task Select_tenant_response_body_carries_the_same_roles_as_the_token()
+        {
+            var tenantId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "u@x.com",
+                Email = "u@x.com",
+                FullName = "Test User",
+                IsActive = true
+            };
+
+            var userManager = MakeUserManager();
+            userManager.FindByIdAsync(user.Id.ToString()).Returns(user);
+            userManager.GetRolesAsync(user).Returns(new List<string>());
+
+            var tenantService = Substitute.For<ITenantService>();
+            tenantService.IsMemberAsync(tenantId, user.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+            var tenantRoleService = Substitute.For<ITenantRoleService>();
+            tenantRoleService.GetTenantRoleNamesAsync(user.Id, tenantId, Arg.Any<CancellationToken>())
+                .Returns(new List<string> { "RH" });
+            tenantRoleService
+                .GetEffectiveRoleNamesAsync(user.Id, tenantId, Arg.Any<IReadOnlyCollection<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(async call =>
+                {
+                    var globalRoles = call.ArgAt<IReadOnlyCollection<string>>(2);
+                    var tenantRoles = await tenantRoleService.GetTenantRoleNamesAsync(
+                        user.Id, tenantId, call.ArgAt<CancellationToken>(3));
+                    return (IReadOnlyList<string>)globalRoles.Concat(tenantRoles).Distinct().ToList();
+                });
+
+            var sut = new AuthService(
+                userManager, MakeSignInManager(userManager), MakeConfiguration(),
+                Substitute.For<IPermissionService>(), tenantService, tenantRoleService);
+
+            var response = await sut.SelectTenantAsync(user.Id, tenantId);
+
+            using var doc = DecodePayload(response.Token);
+            Assert.Contains("RH", StringValues(doc.RootElement.GetProperty(RoleClaimKey)));
+            Assert.Contains("RH", response.User.Roles);
+        }
+
         [Fact]
         public async Task Token_without_tenant_has_global_roles_and_no_tenant_claims()
         {

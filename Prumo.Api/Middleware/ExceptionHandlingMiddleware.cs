@@ -76,6 +76,15 @@ namespace Prumo.Api.Middleware
                     _logger.LogWarning("Invalid operation: {Message}", exception.Message);
                     break;
 
+                // ArgumentNullException derives from ArgumentException, but a null argument
+                // is our bug and not the caller's input — it falls through to the 500 below.
+                case ArgumentException argumentException when exception is not ArgumentNullException:
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    errorResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                    errorResponse.Message = WithoutParameterName(argumentException);
+                    _logger.LogWarning("Invalid argument: {Message}", exception.Message);
+                    break;
+
                 default:
                     response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     errorResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -91,6 +100,13 @@ namespace Prumo.Api.Middleware
 
             await response.WriteAsync(result);
         }
+
+        // ArgumentException appends "(Parameter 'x')" to Message. That names our own
+        // method signature, which means nothing to whoever is filling in the form.
+        private static string WithoutParameterName(ArgumentException exception) =>
+            exception.ParamName is null
+                ? exception.Message
+                : exception.Message.Replace($" (Parameter '{exception.ParamName}')", string.Empty);
     }
 
     public class ErrorResponse
