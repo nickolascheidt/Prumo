@@ -144,22 +144,17 @@ namespace Prumo.Application.Services
                 Role = TenantRole.Admin
             });
 
-            // PermissionAuditLog é modelado para grants de role/permissão, então os campos
-            // de role e permissão recebem sentinelas legíveis em vez de ids inventados —
-            // o que importa registrar aqui é quem entrou, em qual tenant e quando.
+            // Entidade própria desde o item 3B. Antes isto ia no PermissionAuditLog com
+            // sentinelas (RoleId vazio, PermissionName "SupportAccess"), porque aquela
+            // tabela era modelada para grants de permissão e não para isto.
             var admin = await _userManager.FindByIdAsync(masterAdminUserId.ToString());
-            _db.PermissionAuditLogs.Add(new PermissionAuditLog
+            _db.SupportAccessLogs.Add(new SupportAccessLog
             {
                 TenantId = tenantId,
-                RoleId = Guid.Empty,
-                RoleName = "TenantRole.Admin",
-                PermissionId = Guid.Empty,
-                PermissionName = "SupportAccess",
-                Action = "SUPPORT_ACCESS_GRANTED",
-                PerformedByUserId = masterAdminUserId,
-                PerformedByUserEmail = admin?.Email ?? masterAdminUserId.ToString(),
-                PerformedAt = DateTime.UtcNow,
-                Reason = $"Master admin {masterAdminUserId} inseriu-se como Admin do tenant {tenantId} para suporte."
+                MasterAdminUserId = masterAdminUserId,
+                MasterAdminEmail = admin?.Email ?? masterAdminUserId.ToString(),
+                GrantedAt = DateTime.UtcNow,
+                Reason = $"Master admin inseriu-se como Admin do tenant {tenantId} para suporte."
             });
 
             await _db.SaveChangesAsync(ct);

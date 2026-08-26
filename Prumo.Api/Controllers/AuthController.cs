@@ -14,12 +14,10 @@ namespace Prumo.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly IPermissionService _permissionService;
 
-        public AuthController(IAuthService authService, IPermissionService permissionService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
-            _permissionService = permissionService;
         }
 
         /// <summary>
@@ -90,9 +88,10 @@ namespace Prumo.Api.Controllers
             if (user == null)
                 return NotFound();
 
-            var permissions = tenantId.HasValue
-                ? await _permissionService.GetUserPermissionsForTenantAsync(userId, tenantId.Value, cancellationToken)
-                : await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
+            // As permission strings saíram no item 3B: o catálogo que as produzia não
+            // gateava nada. O que o SPA usa para montar menu e telas é
+            // GET /api/resources/my-permissions, que devolve nível por recurso.
+            var permissions = Array.Empty<string>();
 
             return Ok(new CurrentUserDto(
                 user.Id,

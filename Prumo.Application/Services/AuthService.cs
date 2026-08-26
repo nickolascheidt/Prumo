@@ -16,7 +16,6 @@ namespace Prumo.Application.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
-        private readonly IPermissionService _permissionService;
         private readonly ITenantService _tenantService;
         private readonly ITenantRoleService _tenantRoleService;
 
@@ -24,14 +23,12 @@ namespace Prumo.Application.Services
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration,
-            IPermissionService permissionService,
             ITenantService tenantService,
             ITenantRoleService tenantRoleService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
-            _permissionService = permissionService;
             _tenantService = tenantService;
             _tenantRoleService = tenantRoleService;
         }
@@ -277,8 +274,10 @@ namespace Prumo.Application.Services
                 if (tenantRole.HasValue)
                     claims.Add(new Claim("tenant_role", tenantRole.Value.ToString()));
 
-                var permissions = await _permissionService.GetUserPermissionsForTenantAsync(user.Id, tenantId.Value);
-                claims.AddRange(permissions.Select(p => new Claim("permission", p)));
+                // O claim "permission" saiu no item 3B junto com o RolePermission: ele
+                // carregava as strings de um catálogo que nenhum endpoint consultava
+                // (zero [Authorize(Policy=...)]) e que o frontend nunca lia. Quem gateia
+                // é ResourcePermission, resolvida por request e não pelo token.
             }
 
             claims.AddRange(roleClaims.Distinct().Select(r => new Claim(ClaimTypes.Role, r)));

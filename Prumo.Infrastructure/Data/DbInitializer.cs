@@ -37,14 +37,6 @@ namespace Prumo.Infrastructure.Data
                 var legacyUserRole = await roleManager.FindByNameAsync("User");
                 if (legacyUserRole != null)
                 {
-                    // cross-tenant de propósito: limpeza da role legada "User" em TODOS os
-                    // tenants, no startup e sem TenantContext. Filtrar por tenant aqui
-                    // deixaria lixo para trás em todos os outros.
-                    var legacyRps = context.RolePermissions
-                        .IgnoreQueryFilters()
-                        .Where(rp => rp.RoleId == legacyUserRole.Id);
-                    context.RolePermissions.RemoveRange(legacyRps);
-                    await context.SaveChangesAsync();
                     await roleManager.DeleteAsync(legacyUserRole);
                     logger.LogInformation("✓ Role legada 'User' removida");
                 }
@@ -85,35 +77,6 @@ namespace Prumo.Infrastructure.Data
                     else
                     {
                         logger.LogDebug($"✓ Role '{roleName}' já existe");
-                    }
-                }
-
-                // Criar permissões se não existirem
-                logger.LogInformation("Criando permissões...");
-                var allPermissions = Permissions.GetAllPermissions();
-                var permissionMap = new Dictionary<string, Permission>();
-
-                foreach (var permissionName in allPermissions)
-                {
-                    var existingPermission = await context.Permissions
-                        .FirstOrDefaultAsync(p => p.Name == permissionName);
-
-                    if (existingPermission == null)
-                    {
-                        var permission = new Permission
-                        {
-                            Name = permissionName,
-                            Description = $"Permissão: {permissionName}",
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        context.Permissions.Add(permission);
-                        await context.SaveChangesAsync();
-                        permissionMap[permissionName] = permission;
-                        logger.LogInformation($"✓ Permissão '{permissionName}' criada");
-                    }
-                    else
-                    {
-                        permissionMap[permissionName] = existingPermission;
                     }
                 }
 
@@ -322,104 +285,12 @@ namespace Prumo.Infrastructure.Data
                         after - before);
                 }
 
-                await BackfillDashboardGrantsAsync(context, logger);
             }
             catch (Exception ex)
             {
                 // Não derruba o startup: sem os recursos novos a app sobe com as telas
                 // novas invisíveis, o que é ruim mas recuperável. Cair aqui não seria.
                 logger.LogError(ex, "✗ Falha ao sincronizar o catálogo de recursos");
-            }
-        }
-
-        /// <summary>
-        /// Aba do dashboard que passou a ter recurso próprio, e o recurso que ela
-        /// emprestava antes.
-        /// </summary>
-        private static readonly (string Dashboard, string PreviouslyGatedBy)[] DashboardMigrationMap =
-        {
-            ("Dashboard.Accounting", "GeneralLedger.Management"),
-            ("Dashboard.Finance",    "AccountsPayable.Entries"),
-            ("Dashboard.HR",         "HR.Employees"),
-            ("Dashboard.Admin",      "User.Management")
-        };
-
-        /// <summary>
-        /// Concede cada <c>Dashboard.*</c> novo a quem já enxergava aquela aba pelo
-        /// recurso emprestado, para que ninguém perca acesso na troca.
-        /// </summary>
-        /// <remarks>
-        /// Roda uma vez por par (role, recurso): se o grant já existe, é pulado. Isso o
-        /// torna idempotente e — importante — faz com que revogar o acesso ao dashboard
-        /// depois <b>não</b> seja desfeito no próximo boot, porque a linha reaparecendo
-        /// exigiria que ela não existisse, e ela existe até alguém apagá-la de propósito.
-        ///
-        /// A ressalva honesta: se o admin revogar `Dashboard.HR` e mantiver
-        /// `HR.Employees`, esta rotina reconcede no boot seguinte. É o mesmo formato do
-        /// bug 4203a15, mitigado por rodar só enquanto a coluna de origem existir — a
-        /// intenção é remover este backfill assim que os tenants estiverem migrados.
-        /// </remarks>
-        private static async Task BackfillDashboardGrantsAsync(
-            ApplicationDbContext context, ILogger logger)
-        {
-            // cross-tenant de propósito: roda no startup, sem TenantContext, e precisa
-            // enxergar os recursos e grants de todos os tenants.
-            var resources = await context.Resources
-                .IgnoreQueryFilters()
-                .Select(r => new { r.Id, r.Code, r.TenantId })
-                .ToListAsync();
-
-            var granted = 0;
-
-            foreach (var (dashboardCode, sourceCode) in DashboardMigrationMap)
-            {
-                var dashboards = resources.Where(r => r.Code == dashboardCode).ToList();
-
-                foreach (var dashboard in dashboards)
-                {
-                    var source = resources.FirstOrDefault(
-                        r => r.Code == sourceCode && r.TenantId == dashboard.TenantId);
-
-                    if (source is null) continue;
-
-                    // cross-tenant de propósito: mesmo motivo, e o TenantId entra no filtro.
-                    var sourceGrants = await context.ResourcePermissions
-                        .IgnoreQueryFilters()
-                        .Where(rp => rp.ResourceId == source.Id && rp.TenantId == dashboard.TenantId)
-                        .Select(rp => new { rp.RoleId, rp.Level })
-                        .ToListAsync();
-
-                    foreach (var grant in sourceGrants)
-                    {
-                        // cross-tenant de propósito: mesmo motivo, e o TenantId entra no filtro.
-                        var alreadyThere = await context.ResourcePermissions
-                            .IgnoreQueryFilters()
-                            .AnyAsync(rp => rp.ResourceId == dashboard.Id
-                                         && rp.RoleId == grant.RoleId
-                                         && rp.TenantId == dashboard.TenantId);
-
-                        if (alreadyThere) continue;
-
-                        context.ResourcePermissions.Add(new ResourcePermission
-                        {
-                            TenantId = dashboard.TenantId,
-                            ResourceId = dashboard.Id,
-                            RoleId = grant.RoleId,
-                            // Dashboard é só leitura: nem Write nem Full significam nada
-                            // numa tela que só mostra números.
-                            Level = PermissionLevel.Read
-                        });
-                        granted++;
-                    }
-                }
-            }
-
-            if (granted > 0)
-            {
-                await context.SaveChangesAsync();
-                logger.LogInformation(
-                    "✓ {Count} acesso(s) a dashboard concedido(s) a quem já enxergava a aba pelo recurso do módulo",
-                    granted);
             }
         }
 

@@ -28,7 +28,6 @@ public class AuthServiceRoleGuardTests
             userManager,
             signInManager,
             Substitute.For<IConfiguration>(),
-            Substitute.For<IPermissionService>(),
             Substitute.For<ITenantService>(),
             Substitute.For<ITenantRoleService>());
     }

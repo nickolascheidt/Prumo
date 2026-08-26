@@ -101,10 +101,6 @@ namespace Prumo.Tests.Services
             var signInManager = MakeSignInManager(userManager);
             var configuration = MakeConfiguration();
 
-            var permissionService = Substitute.For<IPermissionService>();
-            permissionService.GetUserPermissionsForTenantAsync(user.Id, tenantId, Arg.Any<CancellationToken>())
-                .Returns(new List<string> { "employees.view" });
-
             var tenantService = Substitute.For<ITenantService>();
             tenantService.IsMemberAsync(tenantId, user.Id, Arg.Any<CancellationToken>())
                 .Returns(true);
@@ -130,7 +126,7 @@ namespace Prumo.Tests.Services
 
             var sut = new AuthService(
                 userManager, signInManager, configuration,
-                permissionService, tenantService, tenantRoleService);
+                tenantService, tenantRoleService);
 
             // Act: drive the real GenerateJwtToken through the public SelectTenantAsync entry point.
             var response = await sut.SelectTenantAsync(user.Id, tenantId);
@@ -155,9 +151,11 @@ namespace Prumo.Tests.Services
             Assert.True(root.TryGetProperty("tenant_role", out var tenantRoleEl), "Expected 'tenant_role' claim");
             Assert.Equal("Admin", tenantRoleEl.GetString());
 
-            // permission claim = IPermissionService.GetUserPermissionsForTenantAsync value.
-            Assert.True(root.TryGetProperty("permission", out var permEl), "Expected 'permission' claim");
-            Assert.Contains("employees.view", StringValues(permEl));
+            // O claim "permission" saiu no item 3B junto com o catálogo de strings, que
+            // nenhum endpoint consultava. Asserção invertida de propósito: se ele voltar,
+            // é porque alguém ressuscitou o sistema aposentado.
+            Assert.False(root.TryGetProperty("permission", out _),
+                "O claim 'permission' foi aposentado no item 3B e não deve voltar.");
 
             // tenant_id claim is present.
             Assert.True(root.TryGetProperty("tenant_id", out var tenantIdEl), "Expected 'tenant_id' claim");
@@ -206,7 +204,7 @@ namespace Prumo.Tests.Services
 
             var sut = new AuthService(
                 userManager, MakeSignInManager(userManager), MakeConfiguration(),
-                Substitute.For<IPermissionService>(), tenantService, tenantRoleService);
+                tenantService, tenantRoleService);
 
             var response = await sut.SelectTenantAsync(user.Id, tenantId);
 
@@ -239,13 +237,12 @@ namespace Prumo.Tests.Services
 
             var configuration = MakeConfiguration();
 
-            var permissionService = Substitute.For<IPermissionService>();
             var tenantService = Substitute.For<ITenantService>();
             var tenantRoleService = Substitute.For<ITenantRoleService>();
 
             var sut = new AuthService(
                 userManager, signInManager, configuration,
-                permissionService, tenantService, tenantRoleService);
+                tenantService, tenantRoleService);
 
             // Act: LoginAsync with no TenantSlug drives the real GenerateJwtToken(user, null).
             var response = await sut.LoginAsync(
@@ -270,8 +267,6 @@ namespace Prumo.Tests.Services
             // Tenant data services must not be consulted for a no-tenant token.
             await tenantRoleService.DidNotReceiveWithAnyArgs()
                 .GetEffectiveRoleNamesAsync(default, default, default!, default);
-            await permissionService.DidNotReceiveWithAnyArgs()
-                .GetUserPermissionsForTenantAsync(default, default, default);
         }
     }
 }

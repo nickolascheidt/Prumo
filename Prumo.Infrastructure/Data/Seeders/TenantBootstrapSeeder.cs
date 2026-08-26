@@ -282,59 +282,12 @@ namespace Prumo.Infrastructure.Data.Seeders
                 await db.SaveChangesAsync(cancellationToken);
             }
 
-            // Role permissions (catalog-style permissions per Identity role)
-            var permissions = await db.Permissions.ToListAsync(cancellationToken);
-            var permissionByName = permissions.ToDictionary(p => p.Name, p => p.Id);
-
             // Só as canônicas (TenantId nulo). Sem o filtro, dois tenants com uma role
             // homônima fariam o ToDictionary estourar com chave duplicada e derrubar o
             // startup — e este bloco só configura roles canônicas de qualquer forma.
             var rolesByName = await db.Roles
                 .Where(r => r.TenantId == null)
                 .ToDictionaryAsync(r => r.Name!, r => r.Id, cancellationToken);
-
-            var rolePermissionConfig = new Dictionary<string, IReadOnlyCollection<string>>
-            {
-                { "Administrador", Permissions.DefaultRolePermissions.Admin },
-                { "Funcionario",   Permissions.DefaultRolePermissions.Funcionario },
-                { "Cliente",       Permissions.DefaultRolePermissions.Cliente },
-                { "RH",            Permissions.DefaultRolePermissions.RH },
-                { "Financeiro",    Permissions.DefaultRolePermissions.Financeiro },
-                { "ContasAPagar",  Permissions.DefaultRolePermissions.ContasAPagar }
-            };
-
-            foreach (var (roleName, perms) in rolePermissionConfig)
-            {
-                if (!rolesByName.TryGetValue(roleName, out var roleId)) continue;
-
-                foreach (var permName in perms)
-                {
-                    if (!permissionByName.TryGetValue(permName, out var permissionId)) continue;
-
-                    var exists = await db.RolePermissions
-                        // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                        // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                        // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
-                        .IgnoreQueryFilters()
-                        .AnyAsync(rp =>
-                            rp.TenantId == tenantId &&
-                            rp.RoleId == roleId &&
-                            rp.PermissionId == permissionId, cancellationToken);
-
-                    if (!exists)
-                    {
-                        db.RolePermissions.Add(new RolePermission
-                        {
-                            TenantId = tenantId,
-                            RoleId = roleId,
-                            PermissionId = permissionId,
-                            GrantedAt = DateTime.UtcNow
-                        });
-                    }
-                }
-            }
-
-            await db.SaveChangesAsync(cancellationToken);
 
             // Resource permissions: Admin gets Full access to every default resource
             if (rolesByName.TryGetValue("Administrador", out var adminRoleId))
