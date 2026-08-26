@@ -111,7 +111,7 @@ item 2).
 
 **Esforço:** pequeno/médio.
 
-## 5. Fundir as telas de membros — CONVERSAR ANTES
+## 5. Fundir as telas de membros — ✅ FEITO em 2026-08-26
 
 O Nickolas quer: mover "adicionar membro" para *Roles por Usuário*, e remover as
 telas *Membros do Tenant* e *Tenant*.
@@ -169,6 +169,40 @@ de entrada que o item 8 vai reusar para convidar por e-mail.
 
 **Dependência:** precisa do item 4 antes — a linha só consegue mostrar as chaves sem
 N+1 se o `TenantMemberDto` já trouxer as roles.
+
+---
+
+### ✅ Feito em 2026-08-26 — como ficou
+
+Plano e registro de execução: **`docs/superpowers/plans/2026-08-26-item5-tela-unica-de-membros.md`
+no repo Angular** (o item é 100% frontend — nenhum arquivo do backend foi tocado).
+Branch `feature/item5-single-member-screen`, 6 commits. **3 telas viraram 1**, 9 arquivos
+apagados (862 linhas), suíte Angular 9 testes, backend 101/101 inalterado.
+
+**Duas decisões estreitaram o escopo:**
+
+1. **O rodapé de dados do tenant ficou só-leitura.** Nenhum `PUT /api/tenants/{id}` foi
+   criado — ele não existia, e criá-lo trazia a questão de o slug ser usado no login por
+   slug. Editar o tenant vira item próprio se fizer falta.
+2. **O botão "Desativar usuário" saiu da tela.** Ele bate em `DELETE /api/auth/users/{id}`,
+   que vale em **todos** os tenants; numa tela por tenant ele ficaria ao lado de "remover
+   deste tenant" com ícone quase igual (`person_off` × `person_remove`) e raio de ação
+   muito maior. O endpoint segue vivo, sem UI — volta como tela de master admin se
+   precisar.
+
+**Também morreu aqui** a verruga do smoke test de 2026-08-18: `admin/tenant` era a única
+rota admin sem `canActivate`, e por isso "Tenant" aparecia no menu de um Member simples.
+Ela e `admin/users-roles` viraram `redirectTo` para `/admin/members`.
+
+**O bug que a execução descobriu, e que não era novo:** a API serializa `TenantRole` como
+**string** (`"Owner"`), mas o enum do Angular é numérico — então a coluna Cargo dizia
+"Desconhecido" e, pior, `myRole === TenantRole.Admin` era sempre falso, **escondendo o
+dropdown de cargo e o botão de remover** de quem tinha direito a eles. A tela antiga tinha
+exatamente o mesmo defeito (indexava um `Record<number, string>` e comparava com `1`/`2`),
+então `/admin/members` **nunca** mostrou seus botões de gestão — a fusão só tornou isso
+visível. É a mesma armadilha de `22aba79` com `PermissionLevel`. **Regra para o próximo
+endpoint: enum atravessa o wire como string, normalize na fronteira** (aqui,
+`toTenantRole`, com fallback para `Member`).
 
 ## 6. Botão "Configurações" no menu do usuário — ✅ FEITO em 2026-08-18
 
@@ -677,11 +711,20 @@ da exceção vai para o corpo da resposta (as atuais são seguras, mas vira cont
    escrito — é o próximo trabalho grande.**
 2. ~~**Rename**~~ — ✅ **feito em 2026-08-11.** O sistema é **Prumo**. Ver item 7.
 3. ~~**Quick wins** — itens 1 e 6~~ — ✅ **feitos em 2026-08-18**, junto com o item 2.
-4. **Pacote RBAC** — sobraram os itens **3, 4 e 5**; o item 2 saiu na frente em
-   2026-08-18 porque não estava bloqueado como este documento dizia.
+4. **Pacote RBAC** — sobrou o item **3**. Os itens 4 e 15 saíram em 2026-08-25
+   (PR #14 nos dois repos, mergeado), e o **item 5 saiu em 2026-08-26** — a tela
+   única de membros está de pé. O item 2 saiu na frente em 2026-08-18 porque não
+   estava bloqueado como este documento dizia.
    *(desbloqueado em 2026-08-06: a explicação Owner/Admin/Member vs feature roles
-   foi dada e entendida — ver a tabela no item 5. O item 5 segue marcado
-   CONVERSAR ANTES: falta decidir o formato da tela fundida.)*
+   foi dada e entendida — ver a tabela no item 5.)*
+
+   **O item 3 é o próximo**, e ele obriga a revisitar duas coisas já registradas:
+   `Permissions.Roles.All` é hoje uma lista `readonly` travada por
+   `CanonicalRolesTests` — com role virando dado criado pelo usuário, ela vira
+   consulta ao Identity e aqueles testes mudam de sentido; e é o momento de reabrir
+   a decisão "seeder vs migration", adiada exatamente para cá. Junto dele vai o
+   `[RequireResourceAccess]` do `PermissionsController`, que ficou fora da fase 2 de
+   propósito (aquele controller não tem `{tenantId}` na rota).
 5. **Cadastro + e-mail** (item 8) — maior, e com decisão de produto pendente.
 6. **Item 11** — portão antes de subir para produção. É trabalho de DevOps, corre
    em paralelo com o resto.
