@@ -392,35 +392,23 @@ consumindo fila, com container e deploy próprios no repo de DevOps. Ver a seç�
 "Serviço de notificação" no roteiro
 `docs/superpowers/plans/2026-08-18-roadmap-pos-fase1.md`.
 
-## 9. Limpeza
+## 9. Limpeza — ✅ FEITO em 2026-08-26
 
-- ✅ **Feito em 2026-08-11, junto com o rename (item 7):** apagados
-  `BiomePampa.Api/`, `BiomePampa.Application/`, `BiomePampa.Domain/`,
-  `BiomePampa.Infrastructure/`, `BiomePampa.Tests/` da raiz do backend — eram só
-  `bin`/`obj` de antes do rename anterior, nenhum arquivo rastreado pelo git.
-- Existem planos não commitados em `docs/superpowers/plans/`: `hr-module-backend`,
-  `hr-module-frontend`, `user-management`.
-- O catálogo de permissões (`Permissions.cs`) ainda lista módulos que não têm
-  controller: `products`, `customers`, `stock`.
-- O `TenantBootstrapSeeder` só roda na **criação** do tenant — tenant antigo não
-  recebe recurso novo. Vai doer quando um módulo novo for adicionado.
-- **`console.log` de debug no frontend** (pedido do Nickolas em 2026-08-26, para
-  fazer **no pass de limpeza final**, não agora). No repo Angular:
-  - `core/services/auth.service.ts:211-213` — três linhas no login bem-sucedido,
-    uma delas imprimindo **o início do token JWT**
-    (`token.substring(0, 20)`) e outra o e-mail do usuário.
-    *Nota sobre a gravidade:* os 20 primeiros caracteres de um JWT são o header
-    base64 (`eyJhbGciOiJIUzI1NiIs` = `{"alg":"HS256","typ`), que é **constante e
-    público** — não vaza payload nem assinatura, então não é vazamento de
-    credencial. Mas é ruído de debug que não deve chegar a produção, e o e-mail
-    ao lado é dado pessoal em log de navegador.
-  - `core/guards/resource-access.guard.ts:39,87` — dois `console.warn` de acesso
-    negado. **Avaliar em vez de apagar cegamente:** aviso de guard negando é
-    diagnóstico útil; o caminho limpo é mantê-lo atrás de
-    `if (!environment.production)`.
-  - O `auth.service.ts:236` é `console.error` de falha real — esse **fica**.
-  - Os seis `console.log` do `extractHttpErrorMessage` já morreram junto com
-    `users-roles-management`, no item 5.
+- ✅ **2026-08-11, junto com o rename (item 7):** apagados `BiomePampa.*` da raiz do
+  backend — eram só `bin`/`obj` de antes do rename anterior.
+- ✅ **Planos soltos** em `docs/superpowers/plans/` foram commitados em 2026-08-17.
+- ✅ **Módulos fantasma no catálogo** (`products`, `customers`, `stock`): resolvido por
+  tabela rasa — o catálogo inteiro morreu com o item 3B, porque não gateava nada.
+- ✅ **`TenantBootstrapSeeder` só rodava na criação do tenant**, então módulo novo nunca
+  chegava a tenant existente. Resolvido em 2026-08-26 com
+  `SyncResourcesForAllTenantsAsync`, que completa o catálogo de todo tenant a cada boot.
+  Só insere `Resource`; nenhuma permissão é tocada, então nada revogado volta.
+- ✅ **`console.log` de debug no frontend.** As três linhas que disparavam a cada login
+  (uma imprimia o início do JWT, outra o e-mail) foram removidas. Os `console.warn` de
+  acesso negado no guard ficaram atrás de `!environment.production` — são diagnóstico
+  útil em desenvolvimento, mas em produção contariam a estranhos o que existe e o que
+  falta para alcançar. Os `console.error` de falha real ficaram.
+
 
 ---
 
@@ -796,44 +784,55 @@ da exceção vai para o corpo da resposta (as atuais são seguras, mas vira cont
 
 ---
 
-## Ordem sugerida
+## Onde o projeto está — 2026-08-26
 
-> **Atualizado em 2026-08-06.** Decisão do Nickolas: atacar segurança primeiro, e
-> tratar **10 + 12 + 13 como um design único** — "o que garante isolamento e
-> permissão no backend" — em vez de três consertos soltos. O alvo escolhido é
-> *rede de segurança de verdade*: um endpoint novo escrito sem cuidado não deve
-> conseguir vazar dado, mesmo que o dev esqueça a checagem. Isso implica resolver
-> o `TenantContext` pela rota, tornar o filtro global fail-closed e autoritativo,
-> derrubar os ~87 `IgnoreQueryFilters` e levar o `[RequireResourceAccess]` aos 9
-> controllers de módulo.
+> **Leia isto primeiro ao retomar.** Substitui a "ordem sugerida" antiga, que ficou
+> inteira para trás.
 
-1. ~~**Pacote de segurança do backend — itens 10 + 13 + 12**~~ — ✅ **fase 1 feita,
-   mergeada e verificada de ponta a ponta** (2026-08-13, verificação fechada em
-   2026-08-18). Spec em
-   `docs/superpowers/specs/2026-08-11-backend-tenant-isolation-design.md`; o registro
-   do que foi entregue e do que foi provado está no fim de
-   `docs/superpowers/plans/2026-08-11-tenant-isolation-phase1.md`. **A fase 2, de
-   limpeza (~87 `IgnoreQueryFilters` + checagens redundantes), ainda não tem plano
-   escrito — é o próximo trabalho grande.**
-2. ~~**Rename**~~ — ✅ **feito em 2026-08-11.** O sistema é **Prumo**. Ver item 7.
-3. ~~**Quick wins** — itens 1 e 6~~ — ✅ **feitos em 2026-08-18**, junto com o item 2.
-4. **Pacote RBAC** — sobrou o item **3**. Os itens 4 e 15 saíram em 2026-08-25
-   (PR #14 nos dois repos, mergeado), e o **item 5 saiu em 2026-08-26** — a tela
-   única de membros está de pé. O item 2 saiu na frente em 2026-08-18 porque não
-   estava bloqueado como este documento dizia.
-   *(desbloqueado em 2026-08-06: a explicação Owner/Admin/Member vs feature roles
-   foi dada e entendida — ver a tabela no item 5.)*
+**Tudo o que não depende de e-mail está feito.** Sobraram exatamente **dois** itens, e
+os dois são do Nickolas, para outro dia:
 
-   **O item 3 é o próximo**, e ele obriga a revisitar duas coisas já registradas:
-   `Permissions.Roles.All` é hoje uma lista `readonly` travada por
-   `CanonicalRolesTests` — com role virando dado criado pelo usuário, ela vira
-   consulta ao Identity e aqueles testes mudam de sentido; e é o momento de reabrir
-   a decisão "seeder vs migration", adiada exatamente para cá. Junto dele vai o
-   `[RequireResourceAccess]` do `PermissionsController`, que ficou fora da fase 2 de
-   propósito (aquele controller não tem `{tenantId}` na rota).
-5. **Cadastro + e-mail** (item 8) — maior, e com decisão de produto pendente.
-6. **Item 11** — portão antes de subir para produção. É trabalho de DevOps, corre
-   em paralelo com o resto.
+| Falta | Por quê ainda não |
+|---|---|
+| **Item 8** — cadastro, confirmação de e-mail, esqueci a senha | Depende de infra de e-mail que **não existe**. Precisa antes do serviço de notificação (provedor escolhido, container, fila, Terraform) — dois blocos grandes, um dependendo do outro. |
+| **Item 11** — sair do superuser do Postgres | Trabalho de DevOps, e o Nickolas assumiu. |
+
+Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento:
+
+- **Pass de infra** (`2026-08-11-infra-rename-pass.md`) — renomear os 3 repos e corrigir
+  as federated credentials no Entra. Exige `az login`, é tarefa a dois.
+- **Preparar para publicar** — varredura de segredo no histórico, `NU1903`, README. Vão
+  juntos, num pass só, quando publicar deixar de ser "daqui a um tempo".
+- **Fora do MVP desde sempre:** dashboards como produto, e contas a pagar / plano de
+  contas / razão geral.
+
+### O que foi feito, em ordem
+
+| # | Item | Quando |
+|---|---|---|
+| 1 | Fase 1 de isolamento de tenant (itens 10 + 12 + 13) | 2026-08-13, verificada em 08-18 |
+| 2 | Rename para Prumo (item 7) | 2026-08-11 |
+| 3 | Quick wins — itens 1, 2 e 6 | 2026-08-18 |
+| 4 | Fase 2 — limpeza do acesso a dados | 2026-08-25 |
+| 5 | Itens 4 e 15 — roles do membro e mapeamento de erro | 2026-08-25 |
+| 6 | Item 5 — tela única de membros | 2026-08-26 |
+| 7 | Item 3A — role por tenant e grade de níveis | 2026-08-26 |
+| 8 | Item 3B — aposentadoria do `RolePermission` e auditoria de verdade | 2026-08-26 |
+| 9 | Recursos próprios para as abas do dashboard + sync de catálogo | 2026-08-26 |
+| 10 | Item 9 — limpeza, incluindo o logging de debug | 2026-08-26 |
+
+### Três coisas que valem lembrar antes de escrever código novo
+
+1. **Enum atravessa o wire como string.** `TenantRole` chega `"Owner"`, `PermissionLevel`
+   chega `"Read"`. Tratar como número dá sempre falso e some com controles da tela sem
+   erro nenhum. Já mordeu **quatro** vezes. Normalize na fronteira: `toTenantRole` e
+   `toPermissionLevel` vivem em `core/models`.
+2. **Rotina de startup que escreve permissão é sempre suspeita.** Duas vezes um seeder
+   ressuscitou grant revogado (4203a15, e o backfill de dashboard em 08-26). Se precisa
+   rodar uma vez, é migration.
+3. **O master admin não enxerga gating.** Ele é bypass em duas camadas (role global
+   `Administrador` e Owner/Admin do tenant). Testar autorização com a conta `admin@SBP.com`
+   não prova nada — use um Member com role limitada.
 
 ## Fora do escopo do MVP
 
