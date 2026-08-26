@@ -69,7 +69,7 @@ o master admin. Mas esta tela configura `RolePermission`, e as do `Administrador
 Tirar o master daqui removeria funcionalidade de verdade. (O bypass do master em
 `ResourcePermissionService` é do *outro* sistema, o de `ResourcePermission` por recurso.)
 
-## 3. Criar role — ✅ 3A FEITO em 2026-08-26, 3B pendente
+## 3. Criar role — ✅ 3A e 3B FEITOS em 2026-08-26
 
 **Causa:** confirmado — não há `RolesController`. Nenhum endpoint de **criar/excluir**
 role. Para *listar* já existem dois, ambos devolvendo listas fixas do Domain:
@@ -840,3 +840,37 @@ da exceção vai para o corpo da resposta (as atuais são seguras, mas vira cont
 - Dashboards: OK como estão.
 - Contas a pagar, plano de contas, razão geral: testados há um tempo, presumidos
   funcionando, não são preocupação agora.
+
+---
+
+## Registro do item 3B (2026-08-26)
+
+**O sistema `RolePermission` foi aposentado.** Saíram: `PermissionsController`,
+`PermissionService`/`IPermissionService`, as entidades `RolePermission`, `Permission` e
+`PermissionAuditLog`, o catálogo de ~40 strings em `Permissions.cs`, as policies por
+permissão e o `PermissionAuthorizationHandler`. Nada disso gateava coisa alguma: zero
+`[Authorize(Policy=…)]` nos controllers e `hasPermission()` nunca chamado no frontend.
+
+**Auditoria, que era o ponto cego:** conceder e revogar nível de recurso — o que de fato
+dá acesso — **não deixava rastro nenhum**. A linha guardava quem criou, mas revogar
+apagava a linha e o histórico junto. Agora há `ResourcePermissionAuditLog`
+(role × recurso, de qual nível para qual, por quem), e o support-access do master admin
+ganhou o `SupportAccessLog` próprio, executando a decisão de 2026-08-18 — antes ele
+usava o `PermissionAuditLog` com sentinelas.
+
+**Dados descartados:** 31 permissões e 217 grants, todos seed gerado por código, e uma
+tabela de auditoria com **zero** linhas. Nada escrito por humano se perdeu.
+
+**O risco era a emissão do token** — `AuthService` chamava o serviço aposentado enquanto
+montava os claims, e é esse caminho que quase quebrou o login na fase 2. O claim
+`permission` saiu junto; o teste que afirmava a presença dele agora **afirma a ausência**,
+para que ressuscitar o sistema morto falhe alto.
+
+**O defeito que a verificação pegou, e que era meu:** o backfill que preservava os
+acessos de dashboard rodava **a cada boot** e por isso **desfazia revogações** — tirar
+`Dashboard.HR` de uma role que ainda tivesse `HR.Employees` durava até o restart. Mesma
+forma do bug 4203a15. Virou migration, que roda uma vez. Provado: revogação sobrevive ao
+restart agora, e não sobrevivia antes.
+
+**Também aqui:** `ResourcePermissions` **não tem coluna `Id` nem `IsActive`** — a chave é
+composta `(TenantId, RoleId, ResourceId)`. SQL cru contra essa tabela precisa saber disso.
