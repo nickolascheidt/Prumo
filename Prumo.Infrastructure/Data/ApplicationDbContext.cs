@@ -23,6 +23,8 @@ namespace Prumo.Infrastructure.Data
         public DbSet<Permission> Permissions => Set<Permission>();
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
         public DbSet<PermissionAuditLog> PermissionAuditLogs => Set<PermissionAuditLog>();
+        public DbSet<ResourcePermissionAuditLog> ResourcePermissionAuditLogs => Set<ResourcePermissionAuditLog>();
+        public DbSet<SupportAccessLog> SupportAccessLogs => Set<SupportAccessLog>();
 
         // DbSets para Controle de Acesso Baseado em Recursos
         public DbSet<Resource> Resources => Set<Resource>();

@@ -195,8 +195,8 @@ namespace Prumo.Api.Controllers
         public async Task<IActionResult> AssignPermission([FromBody] AssignResourcePermissionDto dto)
         {
             var email = User.FindFirst(ClaimTypes.Email)?.Value;
-            var success = await _permissionService.AssignPermissionAsync(dto, email);
-            
+            var success = await _permissionService.AssignPermissionAsync(dto, email, CurrentUserId());
+
             if (!success)
             {
                 return BadRequest(new { message = "Role or Resource not found" });
@@ -213,8 +213,10 @@ namespace Prumo.Api.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> RemovePermission([FromQuery] Guid roleId, [FromQuery] Guid resourceId)
         {
-            var success = await _permissionService.RemovePermissionAsync(roleId, resourceId);
-            
+            var email = User.FindFirst(ClaimTypes.Email)?.Value;
+            var success = await _permissionService.RemovePermissionAsync(
+                roleId, resourceId, email, CurrentUserId());
+
             if (!success)
             {
                 return NotFound(new { message = "Permission not found" });
@@ -236,5 +238,15 @@ namespace Prumo.Api.Controllers
         }
 
         #endregion
+
+        /// <summary>
+        /// Id do usuário autenticado, ou <see cref="Guid.Empty"/> se o claim faltar —
+        /// a auditoria não deve derrubar a operação por não saber o autor.
+        /// </summary>
+        private Guid CurrentUserId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+        }
     }
 }

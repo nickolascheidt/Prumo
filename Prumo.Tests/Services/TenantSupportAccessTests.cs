@@ -62,12 +62,13 @@ namespace Prumo.Tests.Services
             await service.GrantSupportAccessAsync(tenantId, adminId);
             await service.GrantSupportAccessAsync(tenantId, adminId);
 
-            var audit = await db.PermissionAuditLogs.IgnoreQueryFilters()
+            // Entidade própria desde o item 3B: antes isto ia no PermissionAuditLog com
+            // sentinelas, porque aquela tabela era modelada para grants de permissão.
+            var audit = await db.SupportAccessLogs.IgnoreQueryFilters()
                 .Where(a => a.TenantId == tenantId).ToListAsync();
 
             Assert.Single(audit);
-            Assert.Equal("SUPPORT_ACCESS_GRANTED", audit[0].Action);
-            Assert.Equal(adminId, audit[0].PerformedByUserId);
+            Assert.Equal(adminId, audit[0].MasterAdminUserId);
         }
 
         [Fact]

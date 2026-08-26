@@ -19,8 +19,11 @@ namespace Prumo.Application.Services
         Task<bool> DeleteResourceAsync(Guid id);
 
         // Gerenciamento de Permissões
-        Task<bool> AssignPermissionAsync(AssignResourcePermissionDto dto, string? grantedByEmail = null);
-        Task<bool> RemovePermissionAsync(Guid roleId, Guid resourceId);
+        Task<bool> AssignPermissionAsync(
+            AssignResourcePermissionDto dto, string? grantedByEmail = null, Guid? performedByUserId = null);
+
+        Task<bool> RemovePermissionAsync(
+            Guid roleId, Guid resourceId, string? removedByEmail = null, Guid? performedByUserId = null);
         Task<List<ResourcePermissionDto>> GetRolePermissionsAsync(Guid roleId);
 
         // Consulta de Permissões do Usuário
@@ -175,18 +178,21 @@ namespace Prumo.Application.Services
 
         #region Permission Management
 
-        public async Task<bool> AssignPermissionAsync(AssignResourcePermissionDto dto, string? grantedByEmail = null)
+        public async Task<bool> AssignPermissionAsync(
+            AssignResourcePermissionDto dto, string? grantedByEmail = null, Guid? performedByUserId = null)
         {
-            var roleExists = await _context.Roles.AnyAsync(r => r.Id == dto.RoleId);
-            var resourceExists = await _context.Resources.AnyAsync(r => r.Id == dto.ResourceId);
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == dto.RoleId);
+            var resource = await _context.Resources.FirstOrDefaultAsync(r => r.Id == dto.ResourceId);
 
-            if (!roleExists || !resourceExists)
+            if (role is null || resource is null)
             {
                 return false;
             }
 
             var existingPermission = await _context.ResourcePermissions
                 .FirstOrDefaultAsync(rp => rp.RoleId == dto.RoleId && rp.ResourceId == dto.ResourceId);
+
+            var previousLevel = existingPermission?.Level ?? PermissionLevel.None;
 
             if (existingPermission != null)
             {
@@ -206,21 +212,65 @@ namespace Prumo.Application.Services
                 _context.ResourcePermissions.Add(permission);
             }
 
+            WriteAudit(role, resource, previousLevel, dto.Level, grantedByEmail, performedByUserId);
+
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> RemovePermissionAsync(Guid roleId, Guid resourceId)
+        public async Task<bool> RemovePermissionAsync(
+            Guid roleId, Guid resourceId, string? removedByEmail = null, Guid? performedByUserId = null)
         {
             var permission = await _context.ResourcePermissions
                 .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.ResourceId == resourceId);
 
             if (permission == null) return false;
 
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == roleId);
+            var resource = await _context.Resources.FirstOrDefaultAsync(r => r.Id == resourceId);
+
             _context.ResourcePermissions.Remove(permission);
+
+            if (role is not null && resource is not null)
+            {
+                WriteAudit(role, resource, permission.Level, PermissionLevel.None,
+                    removedByEmail, performedByUserId);
+            }
+
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        /// <summary>
+        /// Registra a mudança de nível. Nomes de role e recurso são <b>copiados</b>: a
+        /// role pode ser excluída depois, e o histórico não pode virar uma lista de GUIDs.
+        /// </summary>
+        private void WriteAudit(
+            ApplicationRole role,
+            Resource resource,
+            PermissionLevel previousLevel,
+            PermissionLevel newLevel,
+            string? performedByEmail,
+            Guid? performedByUserId)
+        {
+            if (previousLevel == newLevel) return;
+
+            _context.ResourcePermissionAuditLogs.Add(new ResourcePermissionAuditLog
+            {
+                // O TenantId sai do próprio recurso, que é ITenantScoped: o SaveChanges
+                // preencheria pelo TenantContext, e este caminho nem sempre tem um.
+                TenantId = resource.TenantId,
+                RoleId = role.Id,
+                RoleName = role.Name ?? role.Id.ToString(),
+                ResourceId = resource.Id,
+                ResourceCode = resource.Code,
+                PreviousLevel = previousLevel,
+                NewLevel = newLevel,
+                PerformedByUserId = performedByUserId ?? Guid.Empty,
+                PerformedByUserEmail = performedByEmail ?? "desconhecido",
+                PerformedAt = DateTime.UtcNow
+            });
         }
 
         public async Task<List<ResourcePermissionDto>> GetRolePermissionsAsync(Guid roleId)
