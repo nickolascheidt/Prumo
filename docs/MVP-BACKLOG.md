@@ -315,6 +315,23 @@ consumindo fila, com container e deploy próprios no repo de DevOps. Ver a seç�
   controller: `products`, `customers`, `stock`.
 - O `TenantBootstrapSeeder` só roda na **criação** do tenant — tenant antigo não
   recebe recurso novo. Vai doer quando um módulo novo for adicionado.
+- **`console.log` de debug no frontend** (pedido do Nickolas em 2026-08-26, para
+  fazer **no pass de limpeza final**, não agora). No repo Angular:
+  - `core/services/auth.service.ts:211-213` — três linhas no login bem-sucedido,
+    uma delas imprimindo **o início do token JWT**
+    (`token.substring(0, 20)`) e outra o e-mail do usuário.
+    *Nota sobre a gravidade:* os 20 primeiros caracteres de um JWT são o header
+    base64 (`eyJhbGciOiJIUzI1NiIs` = `{"alg":"HS256","typ`), que é **constante e
+    público** — não vaza payload nem assinatura, então não é vazamento de
+    credencial. Mas é ruído de debug que não deve chegar a produção, e o e-mail
+    ao lado é dado pessoal em log de navegador.
+  - `core/guards/resource-access.guard.ts:39,87` — dois `console.warn` de acesso
+    negado. **Avaliar em vez de apagar cegamente:** aviso de guard negando é
+    diagnóstico útil; o caminho limpo é mantê-lo atrás de
+    `if (!environment.production)`.
+  - O `auth.service.ts:236` é `console.error` de falha real — esse **fica**.
+  - Os seis `console.log` do `extractHttpErrorMessage` já morreram junto com
+    `users-roles-management`, no item 5.
 
 ---
 
