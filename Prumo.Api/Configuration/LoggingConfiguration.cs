@@ -9,6 +9,11 @@ public static class LoggingConfiguration
 {
     public static Serilog.ILogger CreateBootstrapLogger()
     {
+        // Falha de sink é silenciosa por design no Serilog: a exceção morre dentro do
+        // batch periódico. Foi assim que o sink do Postgres passou meses sem escrever
+        // uma linha sem ninguém notar. O SelfLog só fala quando algo quebra.
+        Serilog.Debugging.SelfLog.Enable(message => Console.Error.WriteLine($"[serilog] {message}"));
+
         return new LoggerConfiguration()
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -39,7 +44,7 @@ public static class LoggingConfiguration
                     { "message", new RenderedMessageColumnWriter(NpgsqlDbType.Text) },
                     { "message_template", new MessageTemplateColumnWriter(NpgsqlDbType.Text) },
                     { "level", new LevelColumnWriter(true, NpgsqlDbType.Varchar) },
-                    { "raise_date", new TimestampColumnWriter(NpgsqlDbType.TimestampTz) },
+                    { "raise_date", new UtcTimestampColumnWriter() },
                     { "exception", new ExceptionColumnWriter(NpgsqlDbType.Text) },
                     { "properties", new LogEventSerializedColumnWriter(NpgsqlDbType.Jsonb) },
                     { "props_test", new PropertiesColumnWriter(NpgsqlDbType.Jsonb) },
@@ -47,11 +52,15 @@ public static class LoggingConfiguration
                     { "client_ip", new SinglePropertyColumnWriter("ClientIp", PropertyWriteMethod.ToString, NpgsqlDbType.Varchar, "l") }
                 };
 
+                // `needAutoCreateTable: false` porque a aplicação conecta como `prumo_app`,
+                // que não faz DDL (ver `db/roles.sql`). A tabela `logs` é criada pela
+                // migration `CreateLogsTable`, junto do resto do schema — se ela faltar, o
+                // sink falha aqui em vez de o Postgres recusar um CREATE TABLE silencioso.
                 configuration.WriteTo.PostgreSQL(
                     connectionString: connectionString,
                     tableName: "logs",
                     columnOptions: columnWriters,
-                    needAutoCreateTable: true,
+                    needAutoCreateTable: false,
                     restrictedToMinimumLevel: LogEventLevel.Information);
             }
         });
