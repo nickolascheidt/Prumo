@@ -8,9 +8,22 @@ namespace Prumo.Infrastructure.Data
     /// Usado só pelo `dotnet ef` em design-time. Lê a mesma configuração da aplicação
     /// para que migration e runtime nunca apontem para bases diferentes — a divergência
     /// que o item 12 do backlog descreve.
+    ///
+    /// Conecta com a credencial do migrator quando ela existe. A da aplicação não faz
+    /// DDL (ver `db/roles.sql`), então usá-la aqui só produziria "permission denied".
     /// </summary>
     public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
     {
+        /// <summary>
+        /// Preferimos a conexão do migrator e caímos para a da aplicação quando ela não
+        /// existe — bancos anteriores à separação de roles continuam migráveis.
+        /// </summary>
+        public static string? ResolveMigrationConnectionString(IConfiguration configuration) =>
+            configuration.GetConnectionString("MigratorConnection")
+                is { Length: > 0 } migrator
+                ? migrator
+                : configuration.GetConnectionString("DefaultConnection");
+
         public ApplicationDbContext CreateDbContext(string[] args)
         {
             var basePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "Prumo.Api");
@@ -22,10 +35,11 @@ namespace Prumo.Infrastructure.Data
                 .AddEnvironmentVariables()
                 .Build();
 
-            var connectionString = configuration.GetConnectionString("DefaultConnection")
+            var connectionString = ResolveMigrationConnectionString(configuration)
                 ?? throw new InvalidOperationException(
-                    "ConnectionStrings:DefaultConnection não encontrada. O design-time factory lê a "
-                    + "configuração de Prumo.Api; rode o comando a partir da raiz da solution.");
+                    "Nenhuma connection string encontrada (MigratorConnection ou DefaultConnection). "
+                    + "O design-time factory lê a configuração de Prumo.Api; rode o comando a partir "
+                    + "da raiz da solution.");
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
             optionsBuilder.UseNpgsql(connectionString);

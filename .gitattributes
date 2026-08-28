@@ -3,6 +3,11 @@
 ###############################################################################
 * text=auto
 
+# db/roles.sql é montado dentro do container do Postgres e executado por um psql
+# Linux. CRLF não quebrou nos testes, mas arquivo que atravessa para o container
+# não tem motivo para carregar terminador do Windows.
+db/*.sql text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

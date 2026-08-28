@@ -7,10 +7,17 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: SaaSBasePlatformDb
+      # Lidas pelo db/roles.sql. Valores de desenvolvimento, iguais aos do
+      # appsettings.json — fora daqui as senhas vêm do ambiente.
+      PRUMO_MIGRATOR_PASSWORD: prumo_migrator_dev
+      PRUMO_APP_PASSWORD: prumo_app_dev
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # Só roda em volume novo. Banco que já existe recebe o script à mão:
+      #   docker exec -i saasbase-postgres psql -U postgres -d SaaSBasePlatformDb < db/roles.sql
+      - ./db/roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s

@@ -18,20 +18,22 @@ namespace Prumo.Infrastructure.Data
             using var scope = serviceProvider.CreateScope();
             var services = scope.ServiceProvider;
 
+            var context = services.GetRequiredService<ApplicationDbContext>();
+            var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
+            var configuration = services.GetRequiredService<IConfiguration>();
+
+            logger.LogInformation("=== Iniciando inicialização do banco de dados ===");
+
+            // Fora do try de propósito. Um schema atrasado não é coisa que se registre no
+            // log e siga em frente: a aplicação subiria e falharia mais tarde, num lugar
+            // que não explica a causa.
+            await EnsureSchemaUpToDateAsync(context, configuration, logger);
+
             try
             {
-                var context = services.GetRequiredService<ApplicationDbContext>();
                 var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
                 var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
-                var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
-                var configuration = services.GetRequiredService<IConfiguration>();
                 var environment = services.GetRequiredService<IHostEnvironment>();
-
-                logger.LogInformation("=== Iniciando inicialização do banco de dados ===");
-
-                // Aplicar migrations pendentes (cria o banco e schema se necessário)
-                await context.Database.MigrateAsync();
-                logger.LogInformation("Banco de dados verificado/criado com sucesso");
 
                 // One-time cleanup: remove legacy "User" role if it exists
                 var legacyUserRole = await roleManager.FindByNameAsync("User");
@@ -189,9 +191,59 @@ namespace Prumo.Infrastructure.Data
             }
             catch (Exception ex)
             {
-                var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
                 logger.LogError(ex, "Erro ao inicializar o banco de dados.");
             }
+        }
+
+        /// <summary>
+        /// Garante que o schema corresponde às migrations do assembly — sem que a conexão
+        /// da aplicação precise de DDL.
+        ///
+        /// A aplicação conecta como `prumo_app`, que só tem DML (ver `db/roles.sql`), então
+        /// migrar aqui é privilégio que ela não deve carregar. O padrão é **verificar** e
+        /// quebrar cedo; migrar no startup é escotilha, ligada por
+        /// `Database:MigrateOnStartup`, e mesmo assim por uma conexão separada, com a
+        /// credencial do migrator.
+        /// </summary>
+        internal static async Task EnsureSchemaUpToDateAsync(
+            ApplicationDbContext context,
+            IConfiguration configuration,
+            ILogger logger)
+        {
+            // Provider em memória (testes) não tem migrations para comparar.
+            if (!context.Database.IsRelational())
+            {
+                return;
+            }
+
+            if (configuration.GetValue("Database:MigrateOnStartup", false))
+            {
+                var connectionString = ApplicationDbContextFactory.ResolveMigrationConnectionString(configuration)
+                    ?? throw new InvalidOperationException(
+                        "Database:MigrateOnStartup está ligado, mas não há connection string para migrar.");
+
+                var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                    .UseNpgsql(connectionString)
+                    .Options;
+
+                await using var migrationContext = new ApplicationDbContext(options);
+                await migrationContext.Database.MigrateAsync();
+                logger.LogInformation("Migrations aplicadas no startup (Database:MigrateOnStartup).");
+                return;
+            }
+
+            var pending = (await context.Database.GetPendingMigrationsAsync()).ToList();
+            if (pending.Count == 0)
+            {
+                logger.LogInformation("Schema em dia com as migrations do assembly.");
+                return;
+            }
+
+            throw new InvalidOperationException(
+                $"O banco está {pending.Count} migration(s) atrás da aplicação: {string.Join(", ", pending)}. "
+                + "A aplicação não faz DDL — rode "
+                + "`dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api` "
+                + "ou ligue Database:MigrateOnStartup neste ambiente.");
         }
 
         /// <summary>

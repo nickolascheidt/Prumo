@@ -51,17 +51,49 @@ Api → Application → Infrastructure → Domain
 ## Getting Started
 
 ```bash
+# Postgres and Redis, with the versions this project expects
+docker compose up -d
+
 # Restore dependencies
 dotnet restore
 
-# Apply database migrations
+# Apply database migrations (connects as the migrator role)
 dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api
 
 # Run the API (listens on http://localhost:5201)
 dotnet run --project Prumo.Api
 ```
 
-The API runs migrations and seeds initial data automatically on startup via `app.InitializeDatabaseAsync()`.
+Migrations are a separate step on purpose. The API connects as `prumo_app`, a role with
+no DDL rights, so it cannot migrate itself — see [Database roles](#database-roles). On
+startup it only *checks* that the schema matches the migrations in the assembly, and
+refuses to serve when it does not, naming the command to run.
+
+`app.InitializeDatabaseAsync()` still seeds the canonical roles and the master admin,
+which is plain DML.
+
+### Database roles
+
+`db/roles.sql` creates two Postgres roles and is idempotent:
+
+| Role | Rights | Used by |
+|---|---|---|
+| `prumo_migrator` | owns everything in `public`, can DDL | `dotnet ef`, the deploy's migration step |
+| `prumo_app` | `SELECT/INSERT/UPDATE/DELETE` only | the running API |
+
+`docker compose up -d` applies the script automatically to a **fresh** volume. A database
+that already exists takes it by hand:
+
+```bash
+docker exec -i saasbase-postgres psql -U postgres -d SaaSBasePlatformDb < db/roles.sql
+```
+
+Passwords come from `PRUMO_MIGRATOR_PASSWORD` and `PRUMO_APP_PASSWORD`, falling back to
+development values that match `appsettings.json`.
+
+Environments that need the API to migrate itself — the `Demo` overlay, for instance — set
+`Database:MigrateOnStartup`. Even then the DDL runs over a separate connection built from
+`ConnectionStrings:MigratorConnection`, never over the application's own.
 
 ## Configuration
 
