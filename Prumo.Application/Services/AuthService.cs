@@ -148,6 +148,11 @@ namespace Prumo.Application.Services
             if (!string.IsNullOrWhiteSpace(roleName))
                 await _userManager.AddToRoleAsync(user, roleName);
 
+            // Convites que já esperavam por este endereço viram associação agora. O e-mail
+            // não é o que autoriza: quem se cadastrou com o endereço convidado provou ser
+            // dono da caixa, que é a mesma prova da confirmação.
+            await _tenantService.AcceptPendingInvitationsAsync(user.Id, user.Email!, cancellationToken);
+
             await PublishEmailConfirmationAsync(user, cancellationToken);
 
             return new RegistrationResultDto(user.Id, user.Email!);
