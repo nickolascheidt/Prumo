@@ -149,3 +149,53 @@ Manual, contra o `docker compose` (Postgres + Redis + emulador do Service Bus):
 - **Outbox transacional** — ver a justificativa acima.
 - **Preferências de notificação, histórico de e-mails enviados, outros canais.**
   O serviço nasce com um canal e três mensagens.
+
+
+---
+
+## Registro de execução (2026-08-28)
+
+Feito na branch `feature/notification-service` (backend) e `feature/item8-signup-screens`
+(Angular). Suíte backend **119** (eram 111), Angular **14**, build de produção limpo,
+`check-tokens.sh` limpo.
+
+### As três coisas que a execução ensinou
+
+1. **`SignIn.RequireConfirmedEmail` não teria funcionado.** A opção só é aplicada por
+   `PasswordSignInAsync`; o `AuthService` usa `CheckPasswordSignInAsync`, que a ignora.
+   Ligar o flag pareceria certo e não faria nada. A checagem virou explícita, **depois** da
+   senha — antes dela, a resposta contaria quais endereços têm conta.
+2. **O e-mail precisa ser normalizado dos dois lados.** O admin digita `Convidada@X.com` e
+   a pessoa se cadastra como `convidada@x.com`. Sem `NormalizedEmail`, o convite não casa e
+   ela se cadastra sem entrar em lugar nenhum — verificado exatamente assim contra a API.
+3. **O filtro global mordeu no lugar previsto.** `TenantInvitation` é `ITenantScoped`, mas o
+   `TenantsController` é isento de `[TenantModule]` (exigir associação provada de quem
+   *gerencia* associação seria circular), então ali o `TenantContext` vem do claim. As
+   consultas de convite ignoram o filtro e restringem pelo `tenantId` **da rota**, que o
+   guard do controller já provou. Nos testes, o mesmo filtro estourava com
+   `NullReferenceException` até o `ApplicationDbContext` receber um `ITenantContext`.
+
+### O que foi verificado, e como
+
+| O quê | Resultado |
+|---|---|
+| Cadastro → fila → worker → arquivo | e-mail gravado em segundos, com o link |
+| Login antes de confirmar | 403 com `code: "email_not_confirmed"` |
+| Confirmar pelo link → login | 204, depois 200 |
+| Contas anteriores ao item 8 (`admin@SBP.com`) | 200 — a migration de backfill segurou |
+| `forgot-password` para e-mail inexistente | 202 e **zero** e-mails gerados |
+| Reset → senha nova 200, antiga 401 | ✅ |
+| **Worker derrubado, cadastro mesmo assim** | conta criada, mensagem esperou na fila, entregue quando o worker voltou |
+| Convite a e-mail sem conta → cadastro depois | convite aceito, associação criada com o cargo certo |
+| Convite a quem já é membro / convite repetido | 400 nos dois |
+| Navegador: cadastro → confirmação → "aguardando convite" | as três telas certas, sem erro de console |
+| Navegador: convidar e-mail sem conta | snackbar dizendo que ficou pendente, e a seção de convites listando |
+
+A linha do worker derrubado é a que prova que o limite do microserviço está no lugar: se
+a conta não fosse criada sem ele, o serviço seria síncrono disfarçado.
+
+### O que ficou para o pass de Azure
+
+Recurso de ACS e Service Bus reais, container do worker publicado (o `Dockerfile` já
+existe, e usa a imagem `runtime` e não `aspnet` — ele consome fila, não atende HTTP),
+escala a zero por KEDA, e o passo de migration no `deploy.yml`.
