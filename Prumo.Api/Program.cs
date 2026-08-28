@@ -20,6 +20,7 @@ try
     builder.Services.AddAuthenticationConfiguration(builder.Configuration);
     builder.Services.AddAuthorizationConfiguration();
     builder.Services.AddApplicationServices();
+    builder.Services.AddNotificationConfiguration(builder.Configuration, builder.Environment);
     builder.Services.AddHealthChecksConfiguration();
     builder.Services.AddRateLimitingConfiguration(builder.Configuration);
     builder.Services.AddCorsConfiguration(builder.Configuration);
