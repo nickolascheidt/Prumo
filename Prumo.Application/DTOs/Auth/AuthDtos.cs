@@ -22,6 +22,21 @@ namespace Prumo.Application.DTOs.Auth
         Guid? TenantId = null
     );
 
+    /// <summary>
+    /// O que o cadastro devolve. **Não tem token**: quem acabou de se cadastrar ainda não
+    /// provou que o e-mail é seu, e devolver sessão aqui tornaria a confirmação decorativa.
+    /// </summary>
+    public record RegistrationResultDto(
+        Guid UserId,
+        string Email
+    );
+
+    public record ConfirmEmailRequestDto(Guid UserId, string Token);
+
+    public record EmailOnlyRequestDto(string Email);
+
+    public record ResetPasswordRequestDto(Guid UserId, string Token, string NewPassword);
+
     public record UserDto(
         Guid Id,
         string Email,

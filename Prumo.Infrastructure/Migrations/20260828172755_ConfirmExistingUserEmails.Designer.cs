@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Prumo.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Prumo.Infrastructure.Data;
 namespace Prumo.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828172755_ConfirmExistingUserEmails")]
+    partial class ConfirmExistingUserEmails
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -921,54 +924,6 @@ namespace Prumo.Infrastructure.Migrations
                     b.ToTable("TenantGlSettings", (string)null);
                 });
 
-            modelBuilder.Entity("Prumo.Domain.Entities.TenantInvitation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("AcceptedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Guid>("InvitedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("NormalizedEmail")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail");
-
-                    b.HasIndex("TenantId", "NormalizedEmail")
-                        .IsUnique()
-                        .HasFilter("\"AcceptedAt\" IS NULL");
-
-                    b.ToTable("TenantInvitations", (string)null);
-                });
-
             modelBuilder.Entity("Prumo.Domain.Entities.TenantUser", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -1297,17 +1252,6 @@ namespace Prumo.Infrastructure.Migrations
                     b.Navigation("DefaultCashAccount");
 
                     b.Navigation("DefaultExpenseAccount");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Prumo.Domain.Entities.TenantInvitation", b =>
-                {
-                    b.HasOne("Prumo.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Tenant");
                 });

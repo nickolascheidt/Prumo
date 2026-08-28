@@ -7,6 +7,9 @@ using Prumo.Domain.Entities;
 using Prumo.Domain.Enums;
 using Prumo.Infrastructure.Data;
 using Prumo.Infrastructure.Data.Seeders;
+using Prumo.Infrastructure.Services;
+using Prumo.Notifications.Contracts;
+using Microsoft.Extensions.Configuration;
 
 namespace Prumo.Application.Services
 {
@@ -14,12 +17,23 @@ namespace Prumo.Application.Services
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly INotificationPublisher _notifications;
+        private readonly IConfiguration _configuration;
 
-        public TenantService(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public TenantService(
+            ApplicationDbContext db,
+            UserManager<ApplicationUser> userManager,
+            INotificationPublisher notifications,
+            IConfiguration configuration)
         {
             _db = db;
             _userManager = userManager;
+            _notifications = notifications;
+            _configuration = configuration;
         }
+
+        private string AppBaseUrl =>
+            _configuration["App:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:4200";
 
         public async Task<TenantDto> CreateAsync(Guid ownerUserId, CreateTenantRequestDto request, CancellationToken cancellationToken = default)
         {
@@ -195,34 +209,161 @@ namespace Prumo.Application.Services
             return new UserLookupDto(user.Id, user.Email!, user.FullName);
         }
 
-        public async Task<TenantMemberDto> CreateAndAddMemberAsync(
-            Guid tenantId, CreateTenantUserDto dto, CancellationToken ct = default)
+        /// <summary>
+        /// O admin digita um e-mail. Se já existe conta, a pessoa entra na hora; se não,
+        /// fica um convite pendente que o cadastro resolve sozinho.
+        ///
+        /// Substituiu a criação de conta com senha digitada pelo admin, que fazia a senha
+        /// inicial de todo mundo passar por ele.
+        /// </summary>
+        public async Task<InviteMemberResultDto> InviteMemberAsync(
+            Guid tenantId, InviteMemberRequestDto dto, Guid invitedByUserId, CancellationToken ct = default)
         {
-            var existing = await _userManager.FindByEmailAsync(dto.Email.Trim().ToLowerInvariant());
-            if (existing != null)
-                throw new InvalidOperationException($"A user with email '{dto.Email}' already exists.");
+            var email = dto.Email.Trim();
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ArgumentException("E-mail é obrigatório.", nameof(dto));
 
-            var user = new ApplicationUser
+            var normalized = email.ToUpperInvariant();
+
+            var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, ct)
+                ?? throw new KeyNotFoundException("Tenant not found.");
+
+            var invitedBy = await _userManager.FindByIdAsync(invitedByUserId.ToString());
+            var existingUser = await _userManager.FindByEmailAsync(email);
+
+            if (existingUser is not null)
             {
-                UserName = dto.Email.Trim().ToLowerInvariant(),
-                Email = dto.Email.Trim().ToLowerInvariant(),
-                FullName = dto.FullName,
-                PhoneNumber = dto.Phone,
-                IsActive = true
-            };
+                var alreadyMember = await _db.TenantUsers
+                    .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == existingUser.Id, ct);
+                if (alreadyMember)
+                    throw new InvalidOperationException($"'{email}' já é membro desta empresa.");
 
-            var createResult = await _userManager.CreateAsync(user, dto.Password);
-            if (!createResult.Succeeded)
-                throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(e => e.Description)));
+                _db.TenantUsers.Add(new TenantUser
+                {
+                    TenantId = tenantId,
+                    UserId = existingUser.Id,
+                    Role = dto.Role
+                });
+                await _db.SaveChangesAsync(ct);
 
-            _db.TenantUsers.Add(new TenantUser { TenantId = tenantId, UserId = user.Id, Role = dto.Role });
+                await PublishInvitationNoticeAsync(email, tenant.Name, invitedBy, ct);
+
+                return new InviteMemberResultDto(true, existingUser.Id, email);
+            }
+
+            // cross-tenant: o TenantsController é isento de [TenantModule] (exigir
+            // associação provada em quem gerencia associação seria circular), então aqui o
+            // TenantContext viria do claim, que pode divergir da rota. O tenant desta
+            // consulta é o da rota, o mesmo que o guard do controller já provou.
+            var pending = await _db.TenantInvitations
+                .IgnoreQueryFilters()
+                .AnyAsync(i => i.TenantId == tenantId && i.NormalizedEmail == normalized && i.AcceptedAt == null, ct);
+            if (pending)
+                throw new InvalidOperationException($"Já existe um convite pendente para '{email}'.");
+
+            _db.TenantInvitations.Add(new TenantInvitation
+            {
+                TenantId = tenantId,
+                Email = email,
+                NormalizedEmail = normalized,
+                Role = dto.Role,
+                InvitedByUserId = invitedByUserId
+            });
             await _db.SaveChangesAsync(ct);
 
-            // Membro recém-criado: nasce sem feature role nenhuma, e o master admin é
-            // global — quem acabou de ser criado aqui nunca o é.
-            return new TenantMemberDto(
-                user.Id, user.Email!, user.FullName, dto.Role, DateTime.UtcNow,
-                Array.Empty<string>(), false);
+            await PublishInvitationNoticeAsync(email, tenant.Name, invitedBy, ct);
+
+            return new InviteMemberResultDto(false, null, email);
+        }
+
+        public async Task<IReadOnlyList<TenantInvitationDto>> GetPendingInvitationsAsync(
+            Guid tenantId, CancellationToken ct = default)
+        {
+            // cross-tenant: mesma razão do InviteMemberAsync — o tenant vem da rota, já
+            // provada pelo guard do controller, e não do claim que o filtro global usaria.
+            return await _db.TenantInvitations
+                .IgnoreQueryFilters()
+                .Where(i => i.TenantId == tenantId && i.AcceptedAt == null)
+                .OrderBy(i => i.CreatedAt)
+                .Select(i => new TenantInvitationDto(i.Id, i.Email, i.Role, i.CreatedAt))
+                .ToListAsync(ct);
+        }
+
+        public async Task CancelInvitationAsync(Guid tenantId, Guid invitationId, CancellationToken ct = default)
+        {
+            // cross-tenant: mesma razão do InviteMemberAsync. O `i.TenantId == tenantId` é
+            // o que impede cancelar convite de outra empresa, e vem da rota.
+            var invitation = await _db.TenantInvitations
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(i => i.Id == invitationId && i.TenantId == tenantId && i.AcceptedAt == null, ct)
+                ?? throw new KeyNotFoundException("Convite não encontrado.");
+
+            _db.TenantInvitations.Remove(invitation);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        /// <summary>
+        /// Chamado no cadastro: admite quem acabou de criar a conta nos tenants que já
+        /// tinham convidado aquele endereço.
+        /// </summary>
+        public async Task<int> AcceptPendingInvitationsAsync(
+            Guid userId, string email, CancellationToken ct = default)
+        {
+            var normalized = email.Trim().ToUpperInvariant();
+
+            // cross-tenant de propósito: quem acabou de se cadastrar não pertence a tenant
+            // nenhum, então não há TenantContext para o filtro global resolver. A consulta
+            // é fechada pelo e-mail, que a pessoa acabou de provar ser dela.
+            var invitations = await _db.TenantInvitations
+                .IgnoreQueryFilters()
+                .Where(i => i.NormalizedEmail == normalized && i.AcceptedAt == null)
+                .ToListAsync(ct);
+
+            if (invitations.Count == 0)
+                return 0;
+
+            foreach (var invitation in invitations)
+            {
+                // cross-tenant: mesma razão da consulta acima — no cadastro não há tenant
+                // selecionado, e o vínculo é o e-mail que a pessoa acabou de provar.
+                var alreadyMember = await _db.TenantUsers
+                    .IgnoreQueryFilters()
+                    .AnyAsync(tu => tu.TenantId == invitation.TenantId && tu.UserId == userId, ct);
+
+                if (!alreadyMember)
+                {
+                    _db.TenantUsers.Add(new TenantUser
+                    {
+                        TenantId = invitation.TenantId,
+                        UserId = userId,
+                        Role = invitation.Role
+                    });
+                }
+
+                invitation.AcceptedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return invitations.Count;
+        }
+
+        private async Task PublishInvitationNoticeAsync(
+            string email, string tenantName, ApplicationUser? invitedBy, CancellationToken ct)
+        {
+            await _notifications.PublishAsync(
+                new NotificationMessage
+                {
+                    Type = NotificationTypes.TenantInvitation,
+                    To = email,
+                    CorrelationId = Guid.NewGuid(),
+                    Data = new Dictionary<string, string>
+                    {
+                        ["tenantName"] = tenantName,
+                        ["invitedBy"] = invitedBy?.FullName ?? invitedBy?.Email ?? "Um administrador",
+                        ["link"] = AppBaseUrl
+                    }
+                },
+                ct);
         }
 
         public async Task UpdateMemberRoleAsync(

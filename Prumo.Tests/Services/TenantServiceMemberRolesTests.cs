@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+using Prumo.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
@@ -80,7 +82,7 @@ namespace Prumo.Tests.Services
             GrantFeatureRole(db, tenantId, userId, rhRoleId, "RH");
             await db.SaveChangesAsync();
 
-            var members = await new TenantService(db, MockUserManager()).GetMembersAsync(tenantId);
+            var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantId);
 
             var maria = Assert.Single(members);
             Assert.Equal(new[] { "RH" }, maria.Roles);
@@ -97,7 +99,7 @@ namespace Prumo.Tests.Services
             AddMember(db, tenantId, Guid.NewGuid(), "sem-chave@example.com");
             await db.SaveChangesAsync();
 
-            var members = await new TenantService(db, MockUserManager()).GetMembersAsync(tenantId);
+            var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantId);
 
             Assert.Empty(Assert.Single(members).Roles);
         }
@@ -123,7 +125,7 @@ namespace Prumo.Tests.Services
             AddMember(db, tenantA, userId, "viajante@example.com");
             await db.SaveChangesAsync();
 
-            var members = await new TenantService(db, MockUserManager()).GetMembersAsync(tenantA);
+            var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantA);
 
             Assert.Empty(Assert.Single(members).Roles);
         }
@@ -148,7 +150,7 @@ namespace Prumo.Tests.Services
             db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = adminId, RoleId = masterRoleId });
             await db.SaveChangesAsync();
 
-            var admin = Assert.Single(await new TenantService(db, MockUserManager()).GetMembersAsync(tenantId));
+            var admin = Assert.Single(await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantId));
 
             Assert.True(admin.IsMasterAdmin);
             Assert.Empty(admin.Roles);
@@ -165,7 +167,7 @@ namespace Prumo.Tests.Services
             AddMember(db, tenantId, Guid.NewGuid(), "maria@example.com");
             await db.SaveChangesAsync();
 
-            var members = await new TenantService(db, MockUserManager()).GetMembersAsync(tenantId);
+            var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantId);
 
             Assert.False(Assert.Single(members).IsMasterAdmin);
         }

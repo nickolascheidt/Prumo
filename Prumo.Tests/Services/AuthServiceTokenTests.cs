@@ -1,3 +1,4 @@
+using Prumo.Infrastructure.Services;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
@@ -126,7 +127,7 @@ namespace Prumo.Tests.Services
 
             var sut = new AuthService(
                 userManager, signInManager, configuration,
-                tenantService, tenantRoleService);
+                tenantService, tenantRoleService, Substitute.For<INotificationPublisher>());
 
             // Act: drive the real GenerateJwtToken through the public SelectTenantAsync entry point.
             var response = await sut.SelectTenantAsync(user.Id, tenantId);
@@ -204,7 +205,7 @@ namespace Prumo.Tests.Services
 
             var sut = new AuthService(
                 userManager, MakeSignInManager(userManager), MakeConfiguration(),
-                tenantService, tenantRoleService);
+                tenantService, tenantRoleService, Substitute.For<INotificationPublisher>());
 
             var response = await sut.SelectTenantAsync(user.Id, tenantId);
 
@@ -223,7 +224,10 @@ namespace Prumo.Tests.Services
                 UserName = "admin@x.com",
                 Email = "admin@x.com",
                 FullName = "Admin User",
-                IsActive = true
+                IsActive = true,
+                // Desde o item 8 o login exige e-mail confirmado. Sem esta linha o teste
+                // morre antes de chegar ao token, que é o que ele quer inspecionar.
+                EmailConfirmed = true
             };
 
             var userManager = MakeUserManager();
@@ -242,7 +246,7 @@ namespace Prumo.Tests.Services
 
             var sut = new AuthService(
                 userManager, signInManager, configuration,
-                tenantService, tenantRoleService);
+                tenantService, tenantRoleService, Substitute.For<INotificationPublisher>());
 
             // Act: LoginAsync with no TenantSlug drives the real GenerateJwtToken(user, null).
             var response = await sut.LoginAsync(

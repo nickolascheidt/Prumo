@@ -35,12 +35,29 @@ namespace Prumo.Application.DTOs.Tenants
         IReadOnlyList<string> Roles,
         bool IsMasterAdmin);
 
-    public record CreateTenantUserDto(
+    /// <summary>
+    /// O admin convida por e-mail e escolhe o cargo. **Não há senha aqui** — quem define a
+    /// senha é a própria pessoa, ao se cadastrar.
+    /// </summary>
+    public record InviteMemberRequestDto(
         string Email,
-        string Password,
-        string FullName,
-        string? Phone,
         TenantRole Role);
+
+    /// <param name="JoinedImmediately">
+    /// Verdadeiro quando o e-mail já tinha conta e a pessoa virou membro na hora; falso
+    /// quando ficou um convite pendente, esperando o cadastro. A tela usa isto para dizer
+    /// qual das duas coisas aconteceu.
+    /// </param>
+    public record InviteMemberResultDto(
+        bool JoinedImmediately,
+        Guid? UserId,
+        string Email);
+
+    public record TenantInvitationDto(
+        Guid Id,
+        string Email,
+        TenantRole Role,
+        DateTime CreatedAt);
 
     public record UpdateMemberRoleDto(TenantRole Role);
 

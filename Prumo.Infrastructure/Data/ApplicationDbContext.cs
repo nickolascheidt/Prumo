@@ -31,6 +31,7 @@ namespace Prumo.Infrastructure.Data
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
         public DbSet<TenantUserRole> TenantUserRoles => Set<TenantUserRole>();
+        public DbSet<TenantInvitation> TenantInvitations => Set<TenantInvitation>();
 
         // Accounts Payable (Contas a Pagar)
         public DbSet<AccountsPayableCategory> AccountsPayableCategories => Set<AccountsPayableCategory>();

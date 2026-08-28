@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
@@ -16,13 +17,16 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
+    <!-- 10.0.9 e não 10.0.3: o Azure.Core, que vem com o Service Bus, exige >= 10.0.9,
+         e o NuGet trata downgrade como erro (NU1605). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
     <PackageReference Include="StackExchange.Redis" Version="2.12.8" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Prumo.Domain\Prumo.Domain.csproj" />
+    <ProjectReference Include="..\Prumo.Notifications.Contracts\Prumo.Notifications.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

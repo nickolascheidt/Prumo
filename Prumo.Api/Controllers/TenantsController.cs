@@ -103,18 +103,48 @@ namespace Prumo.Api.Controllers
             return NoContent();
         }
 
-        [HttpPost("{tenantId:guid}/users")]
-        [ProducesResponseType(typeof(TenantMemberDto), StatusCodes.Status201Created)]
+        /// <summary>
+        /// Adiciona alguém pelo e-mail. Conta existente entra na hora; e-mail sem conta
+        /// vira convite pendente, que se resolve quando a pessoa se cadastrar.
+        /// </summary>
+        [HttpPost("{tenantId:guid}/invitations")]
+        [ProducesResponseType(typeof(InviteMemberResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult<TenantMemberDto>> CreateUser(
-            Guid tenantId, [FromBody] CreateTenantUserDto request, CancellationToken ct)
+        public async Task<ActionResult<InviteMemberResultDto>> InviteMember(
+            Guid tenantId, [FromBody] InviteMemberRequestDto request, CancellationToken ct)
         {
             var role = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
             if (role is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
 
-            var member = await _tenantService.CreateAndAddMemberAsync(tenantId, request, ct);
-            return StatusCode(StatusCodes.Status201Created, member);
+            var result = await _tenantService.InviteMemberAsync(tenantId, request, CurrentUserId, ct);
+            return Ok(result);
+        }
+
+        [HttpGet("{tenantId:guid}/invitations")]
+        [ProducesResponseType(typeof(IReadOnlyList<TenantInvitationDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<IReadOnlyList<TenantInvitationDto>>> GetInvitations(
+            Guid tenantId, CancellationToken ct)
+        {
+            var role = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
+            if (role is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
+
+            return Ok(await _tenantService.GetPendingInvitationsAsync(tenantId, ct));
+        }
+
+        [HttpDelete("{tenantId:guid}/invitations/{invitationId:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CancelInvitation(
+            Guid tenantId, Guid invitationId, CancellationToken ct)
+        {
+            var role = await _tenantService.GetUserRoleAsync(tenantId, CurrentUserId, ct);
+            if (role is not (TenantRole.Owner or TenantRole.Admin)) return Forbid();
+
+            await _tenantService.CancelInvitationAsync(tenantId, invitationId, ct);
+            return NoContent();
         }
 
         [HttpDelete("{tenantId:guid}/members/{userId:guid}")]

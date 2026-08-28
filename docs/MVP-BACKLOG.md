@@ -348,7 +348,38 @@ o MVP estiver fechado e o Nickolas for mexer no DevOps.
 - Repo `nickolascheidt/SaaSBasePlatform-DevOps`
 - Recursos do Azure
 
-## 8. Cadastro de usuário + confirmação de e-mail + esqueci minha senha
+## 8. Cadastro + confirmação de e-mail + esqueci a senha — ✅ FEITO em 2026-08-28
+
+> Junto dele nasceu o **serviço de notificação** (`Prumo.Notifications`), que era o
+> pré-requisito. Design e registro de execução em
+> `docs/superpowers/specs/2026-08-28-notification-service-and-signup-design.md`.
+>
+> **O que ficou para o pass de Azure:** criar o recurso de ACS e o Service Bus real,
+> publicar o container do worker e ligar o KEDA. Local, roda inteiro no
+> `docker compose --profile notifications up -d`, com os e-mails indo para disco.
+
+**Como ficou:**
+
+- `POST /api/auth/register` responde **202 sem token**: a conta nasce não confirmada.
+- Login recusa e-mail não confirmado com **403 + `code: "email_not_confirmed"`**, depois
+  da checagem de senha — recusar antes contaria quais endereços têm conta.
+- `confirm-email`, `resend-confirmation`, `forgot-password` (sempre 202) e `reset-password`.
+- **Convite:** `POST /tenants/{id}/invitations`. E-mail com conta entra na hora; sem conta
+  vira `TenantInvitation` pendente, que o cadastro consome. O admin **não define mais
+  senha de ninguém** — `CreateAndAddMemberAsync` foi apagado.
+- Cinco telas novas no Angular, e a de membros lista os convites pendentes.
+
+**A armadilha que quase passou:** `SignIn.RequireConfirmedEmail` **não funcionaria** aqui.
+Aquela opção só é aplicada por `PasswordSignInAsync`, e o `AuthService` usa
+`CheckPasswordSignInAsync`, que a ignora. Ligar o flag pareceria certo e não faria nada.
+
+**Redefinir a senha também confirma o e-mail:** quem abriu o link provou ter acesso à
+caixa, que é o que a confirmação verifica. Sem isso, quem esquecesse a senha antes de
+confirmar redefiniria e continuaria trancado para fora.
+
+---
+
+### O registro original do item
 
 O maior item, e o único que não é trabalho de uma tarde.
 
@@ -821,12 +852,13 @@ da exceção vai para o corpo da resposta (as atuais são seguras, mas vira cont
 > **Leia isto primeiro ao retomar.** Substitui a "ordem sugerida" antiga, que ficou
 > inteira para trás.
 
-**Tudo o que não depende de e-mail nem da Azure está feito.** O que sobra:
+**Tudo o que é aplicação está feito** — os itens 8 e 11 saíram em 2026-08-28. O que sobra
+é um pass único de infraestrutura, decidido nesta ordem para não pagar `terraform apply`
+(e o tempo do Nickolas) mais de uma vez:
 
 | Falta | Por quê ainda não |
 |---|---|
-| **Item 8** — cadastro, confirmação de e-mail, esqueci a senha | Depende de infra de e-mail que **não existe**. Precisa antes do serviço de notificação (provedor escolhido, container, fila, Terraform) — dois blocos grandes, um dependendo do outro. A decisão que destrava tudo é **qual provedor de e-mail**. |
-| **Item 11** — a metade de Azure | A metade local saiu em 2026-08-28: dois roles no Postgres, migration fora do startup, sink de log sem DDL. Falta private endpoint/VNet, Entra ID + Managed Identity, o passo de migration no `deploy.yml` e, por último, RLS com `FORCE`. Exige `az login`. |
+| **O pass único de Azure** | Tudo o que é aplicação está feito. Sobra: recurso de ACS e Service Bus reais, container do worker publicado com escala a zero por KEDA, private endpoint/VNet, Entra ID + Managed Identity, o passo de migration no `deploy.yml`, `SslMode=VerifyFull` e, por último, RLS com `FORCE`. Exige `az login` — tarefa a dois. |
 
 Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento:
 
@@ -852,6 +884,8 @@ Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento
 | 9 | Recursos próprios para as abas do dashboard + sync de catálogo | 2026-08-26 |
 | 10 | Item 9 — limpeza, incluindo o logging de debug | 2026-08-26 |
 | 11 | Item 11, metade local — roles do Postgres e migration fora do startup | 2026-08-28 |
+| 12 | Serviço de notificação (`Prumo.Notifications`) — fila, worker e envio | 2026-08-28 |
+| 13 | Item 8 — cadastro, confirmação, senha esquecida e convites | 2026-08-28 |
 
 ### Quatro coisas que valem lembrar antes de escrever código novo
 

@@ -380,3 +380,6 @@ FodyWeavers.xsd
 # Saída de ferramentas locais (graphify, superpowers) — artefatos gerados
 /graphify-out/
 /.superpowers/
+
+# E-mails gravados pelo FileEmailSender em desenvolvimento.
+sent-emails/

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+using Prumo.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
@@ -35,7 +37,7 @@ namespace Prumo.Tests.Services
             db.Tenants.Add(new Tenant { Id = tenantId, Name = "T", Slug = "t", OwnerUserId = Guid.NewGuid() });
             await db.SaveChangesAsync();
 
-            var service = new TenantService(db, MockUserManager());
+            var service = new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>());
 
             Assert.True(await service.GrantSupportAccessAsync(tenantId, adminId));
             Assert.True(await service.GrantSupportAccessAsync(tenantId, adminId));
@@ -57,7 +59,7 @@ namespace Prumo.Tests.Services
             db.Tenants.Add(new Tenant { Id = tenantId, Name = "T", Slug = "t", OwnerUserId = Guid.NewGuid() });
             await db.SaveChangesAsync();
 
-            var service = new TenantService(db, MockUserManager());
+            var service = new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>());
 
             await service.GrantSupportAccessAsync(tenantId, adminId);
             await service.GrantSupportAccessAsync(tenantId, adminId);
@@ -75,7 +77,7 @@ namespace Prumo.Tests.Services
         public async Task Support_access_to_an_unknown_tenant_returns_false()
         {
             await using var db = NewDb();
-            var service = new TenantService(db, MockUserManager());
+            var service = new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>());
 
             Assert.False(await service.GrantSupportAccessAsync(Guid.NewGuid(), Guid.NewGuid()));
         }
