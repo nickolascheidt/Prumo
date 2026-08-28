@@ -39,13 +39,16 @@ namespace Prumo.Api.Controllers
         /// </summary>
         [HttpPost("register")]
         [EnableRateLimiting("public")]
-        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(RegistrationResultDto), StatusCodes.Status202Accepted)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-        public async Task<ActionResult<LoginResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
+        public async Task<ActionResult<RegistrationResultDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
             var response = await _authService.RegisterAsync(request, null, cancellationToken);
-            return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
+
+            // 202 e não 201: a conta existe, mas não serve para nada até o e-mail ser
+            // confirmado. Não há recurso para apontar num Location.
+            return Accepted(response);
         }
 
         /// <summary>
@@ -53,14 +56,75 @@ namespace Prumo.Api.Controllers
         /// </summary>
         [HttpPost("register/admin")]
         [Authorize(Roles = "Administrador")]
-        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(RegistrationResultDto), StatusCodes.Status202Accepted)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult<LoginResponseDto>> RegisterAdmin([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
+        public async Task<ActionResult<RegistrationResultDto>> RegisterAdmin([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
         {
             var response = await _authService.RegisterAsync(request, "Administrador", cancellationToken);
-            return CreatedAtAction(nameof(GetCurrentUser), new { }, response);
+            return Accepted(response);
+        }
+
+        /// <summary>
+        /// Confirmar o e-mail a partir do link enviado no cadastro
+        /// </summary>
+        [HttpPost("confirm-email")]
+        [EnableRateLimiting("public")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto request, CancellationToken cancellationToken)
+        {
+            var confirmed = await _authService.ConfirmEmailAsync(request, cancellationToken);
+
+            // Uma resposta só para link expirado, adulterado ou de usuário inexistente:
+            // distinguir os casos diria a um estranho quais ids existem.
+            return confirmed
+                ? NoContent()
+                : BadRequest(new { message = "Link inválido ou expirado. Peça um novo e-mail de confirmação." });
+        }
+
+        /// <summary>
+        /// Reenviar o e-mail de confirmação
+        /// </summary>
+        [HttpPost("resend-confirmation")]
+        [EnableRateLimiting("public")]
+        [ProducesResponseType(StatusCodes.Status202Accepted)]
+        public async Task<IActionResult> ResendConfirmation([FromBody] EmailOnlyRequestDto request, CancellationToken cancellationToken)
+        {
+            await _authService.ResendConfirmationAsync(request.Email, cancellationToken);
+            return Accepted();
+        }
+
+        /// <summary>
+        /// Pedir o e-mail de redefinição de senha
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [EnableRateLimiting("public")]
+        [ProducesResponseType(StatusCodes.Status202Accepted)]
+        public async Task<IActionResult> ForgotPassword([FromBody] EmailOnlyRequestDto request, CancellationToken cancellationToken)
+        {
+            await _authService.ForgotPasswordAsync(request.Email, cancellationToken);
+
+            // Sempre 202, exista o e-mail ou não. Responder diferente para endereço
+            // desconhecido transformaria este endpoint num enumerador de contas.
+            return Accepted();
+        }
+
+        /// <summary>
+        /// Definir a nova senha a partir do link de redefinição
+        /// </summary>
+        [HttpPost("reset-password")]
+        [EnableRateLimiting("public")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken cancellationToken)
+        {
+            var reset = await _authService.ResetPasswordAsync(request, cancellationToken);
+
+            return reset
+                ? NoContent()
+                : BadRequest(new { message = "Link inválido ou expirado, ou a senha não atende aos requisitos." });
         }
 
         /// <summary>

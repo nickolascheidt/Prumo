@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using Prumo.Domain.Common;
 
 namespace Prumo.Api.Middleware
 {
@@ -62,6 +63,16 @@ namespace Prumo.Api.Middleware
                     _logger.LogWarning("Not found: {Message}", exception.Message);
                     break;
 
+                // Antes do UnauthorizedAccessException: é um caso que o SPA precisa
+                // distinguir de "credenciais inválidas", e o 401 genérico apaga a mensagem.
+                case EmailNotConfirmedException:
+                    response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    errorResponse.StatusCode = (int)HttpStatusCode.Forbidden;
+                    errorResponse.Message = exception.Message;
+                    errorResponse.Code = EmailNotConfirmedException.Code;
+                    _logger.LogInformation("Login recusado: e-mail não confirmado.");
+                    break;
+
                 case UnauthorizedAccessException:
                     response.StatusCode = (int)HttpStatusCode.Unauthorized;
                     errorResponse.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -113,6 +124,13 @@ namespace Prumo.Api.Middleware
     {
         public bool Success { get; set; }
         public int StatusCode { get; set; }
+
+        /// <summary>
+        /// Código estável para o cliente ramificar sem depender do texto da mensagem.
+        /// Preenchido só onde a distinção importa; nulo é o caso normal.
+        /// </summary>
+        public string? Code { get; set; }
+
         public string Message { get; set; } = string.Empty;
         public List<ErrorDetail>? Errors { get; set; }
         public DateTime Timestamp { get; set; }

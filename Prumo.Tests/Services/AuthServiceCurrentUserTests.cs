@@ -1,3 +1,4 @@
+using Prumo.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;
@@ -65,7 +66,8 @@ namespace Prumo.Tests.Services
                 MakeSignInManager(userManager),
                 Substitute.For<IConfiguration>(),
                 Substitute.For<ITenantService>(),
-                tenantRoles);
+                tenantRoles,
+                Substitute.For<INotificationPublisher>());
 
             return new Fixture { Service = service, User = user };
         }

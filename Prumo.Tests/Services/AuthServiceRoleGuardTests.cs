@@ -1,3 +1,4 @@
+using Prumo.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;
@@ -29,7 +30,8 @@ public class AuthServiceRoleGuardTests
             signInManager,
             Substitute.For<IConfiguration>(),
             Substitute.For<ITenantService>(),
-            Substitute.For<ITenantRoleService>());
+            Substitute.For<ITenantRoleService>(),
+            Substitute.For<INotificationPublisher>());
     }
 
     [Fact]
