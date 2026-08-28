@@ -573,7 +573,15 @@ uma proteção que não existe. Código que mente sobre o que faz; limpar junto.
 (resolver tenant pela rota + remover os `IgnoreQueryFilters`).
 **Prioridade: alta.** É o item de segurança de melhor retorno do backlog.
 
-## 11. A aplicação conecta no banco como superuser
+## 11. A aplicação conecta no banco como superuser — ✅ METADE LOCAL FEITA em 2026-08-28
+
+> A parte que roda e se verifica contra o Docker local está pronta: dois roles, a
+> migration fora do startup e o sink de log parando de fazer DDL. O que sobra é
+> **rede e identidade na Azure** (private endpoint/VNet, Entra ID + Managed
+> Identity) e, depois disso, RLS com `FORCE` — tudo listado no fim desta seção.
+>
+> Design: `docs/superpowers/specs/2026-08-28-postgres-least-privilege-design.md`,
+> que tem no fim o registro do que a execução revelou.
 
 **Causa:** `appsettings.json:3` — `Username=postgres;Password=postgres`.
 Credencial default, commitada no repo (que é privado — confirmado via `gh`).
@@ -582,11 +590,14 @@ Superuser do Postgres **ignora toda checagem de permissão**: um
 `DROP SCHEMA public CASCADE` apaga as 25 tabelas, e não há grant, revoke ou
 policy que segure. Se um dia entrar RLS, superuser ignora as policies também — e
 o *owner* da tabela ignora a menos que se use `ALTER TABLE ... FORCE ROW LEVEL
-SECURITY`. Hoje as 25 tabelas são todas owned by `postgres` (verificado no banco
-local). Então **RLS sem separar os roles antes seria falsa sensação de segurança.**
+SECURITY`. Até 2026-08-28 as 25 tabelas eram todas owned by `postgres` (verificado
+no banco local); hoje pertencem a `prumo_migrator`. Então **RLS sem separar os
+roles antes seria falsa sensação de segurança** — é por isso que ele vem depois.
 
-O que empurra para o superuser é `Program.cs:30`: `InitializeDatabaseAsync` roda
-as migrations a cada startup, e migration precisa de DDL.
+O que empurrava para o superuser eram duas coisas, e só a primeira estava
+levantada: `InitializeDatabaseAsync` rodava as migrations a cada startup, e o sink
+PostgreSQL do Serilog criava a tabela `logs` sozinho, também pela conexão da
+aplicação.
 
 **O que já está certo:** `appsettings.Production.json:3` sobrescreve o
 `DefaultConnection` com o placeholder `CONFIGURE_VIA_AZURE_APP_SETTINGS_OR_KEY_VAULT`.
@@ -594,22 +605,43 @@ Em Production não existe fallback silencioso para `postgres/postgres` — a app
 quebra no startup se a env var `ConnectionStrings__DefaultConnection` não vier.
 Falha segura, comportamento correto, manter assim.
 
-**O que precisa, antes de subir para a Azure:**
+**✅ Feito em 2026-08-28:**
 
-- Dois roles no Postgres: um **migrator** com DDL, usado só no passo de migration,
-  e um **runtime** só com DML nas tabelas da app. A API conecta como runtime.
-- Tirar a migration do startup (ou pôr atrás de flag), para a app rodando nunca
-  precisar de DDL.
+- **Dois roles**, em `db/roles.sql` (idempotente, montado no
+  `docker-entrypoint-initdb.d`): `prumo_migrator` é dono de tudo em `public` e é o
+  único com DDL; `prumo_app` tem só `SELECT/INSERT/UPDATE/DELETE`. Transferir a
+  **posse** das tabelas era metade do trabalho — quem possui a tabela faz DDL nela
+  por mais que se revogue grant.
+- **`ALTER DEFAULT PRIVILEGES`** para o migrator, senão toda migration com tabela
+  nova exigiria reeditar o script, e o esquecimento só apareceria como 500.
+- **Migration fora do startup**, atrás de `Database:MigrateOnStartup` (default
+  `false` em todo ambiente, `true` só no overlay `Demo`). Quando ligada, migra por
+  uma conexão separada com a credencial do migrator — nunca pela da aplicação.
+- **Guarda de schema:** o startup compara as migrations do assembly com o banco e
+  **recusa servir** se estiver atrasado, dizendo o comando a rodar. É leitura pura
+  (`GetPendingMigrationsAsync`), e fica fora do `catch` que engole o resto.
+- **O Serilog parou de fazer DDL:** `needAutoCreateTable: false` e a tabela `logs`
+  virou a migration `CreateLogsTable`.
+- ~~Corrigir o template `PostgresProd`~~ — o `appsettings.ConnectionStrings.json`
+  foi apagado no item 12; não existe mais nenhum `SslMode`/`TrustServerCertificate`
+  no repo. O `VerifyFull` volta à pauta quando a connection string de produção
+  existir de verdade.
+
+**O que falta, e é na Azure:**
+
 - Rede: private endpoint / VNet, sem acesso público. Evitar "permitir acesso de
   qualquer serviço do Azure" — é 0.0.0.0/0 abrangendo outros tenants do Azure.
+  Hoje o `terraform/modules/postgres/main.tf` tem exatamente essa regra
+  (`allow-azure-services`, 0.0.0.0) e `public_network_access_enabled = true`.
 - Auth: Entra ID + Managed Identity em vez de senha — elimina o segredo armazenado.
-- Corrigir o template `PostgresProd` em `appsettings.ConnectionStrings.json:5`:
-  tem `SslMode=Require;Trust Server Certificate=true`, e o `Trust Server Certificate`
-  **desliga a validação do certificado** (abre espaço para MITM). Em produção,
-  `SslMode=VerifyFull`.
+- O **passo de migration no deploy**: com a migration fora do startup, o
+  `deploy.yml` do repo de DevOps precisa rodar `dotnet ef` (ou um bundle) antes de
+  o container subir. Enquanto a stack está destruída, nada quebra.
+- `SslMode=VerifyFull` na connection string de produção, quando ela existir.
 - Só depois de tudo isso, RLS — e com `FORCE`.
 
-**Esforço:** médio, e majoritariamente DevOps/Terraform (repo `SaaSBasePlatform-DevOps`).
+**Esforço do que sobra:** médio, e majoritariamente DevOps/Terraform (repo
+`SaaSBasePlatform-DevOps`). Exige `az login`, é tarefa a dois.
 
 ## 12. Config de banco: um arquivo morto e o `dotnet ef` apontando para outra base
 
@@ -784,18 +816,17 @@ da exceção vai para o corpo da resposta (as atuais são seguras, mas vira cont
 
 ---
 
-## Onde o projeto está — 2026-08-26
+## Onde o projeto está — 2026-08-28
 
 > **Leia isto primeiro ao retomar.** Substitui a "ordem sugerida" antiga, que ficou
 > inteira para trás.
 
-**Tudo o que não depende de e-mail está feito.** Sobraram exatamente **dois** itens, e
-os dois são do Nickolas, para outro dia:
+**Tudo o que não depende de e-mail nem da Azure está feito.** O que sobra:
 
 | Falta | Por quê ainda não |
 |---|---|
-| **Item 8** — cadastro, confirmação de e-mail, esqueci a senha | Depende de infra de e-mail que **não existe**. Precisa antes do serviço de notificação (provedor escolhido, container, fila, Terraform) — dois blocos grandes, um dependendo do outro. |
-| **Item 11** — sair do superuser do Postgres | Trabalho de DevOps, e o Nickolas assumiu. |
+| **Item 8** — cadastro, confirmação de e-mail, esqueci a senha | Depende de infra de e-mail que **não existe**. Precisa antes do serviço de notificação (provedor escolhido, container, fila, Terraform) — dois blocos grandes, um dependendo do outro. A decisão que destrava tudo é **qual provedor de e-mail**. |
+| **Item 11** — a metade de Azure | A metade local saiu em 2026-08-28: dois roles no Postgres, migration fora do startup, sink de log sem DDL. Falta private endpoint/VNet, Entra ID + Managed Identity, o passo de migration no `deploy.yml` e, por último, RLS com `FORCE`. Exige `az login`. |
 
 Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento:
 
@@ -820,8 +851,9 @@ Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento
 | 8 | Item 3B — aposentadoria do `RolePermission` e auditoria de verdade | 2026-08-26 |
 | 9 | Recursos próprios para as abas do dashboard + sync de catálogo | 2026-08-26 |
 | 10 | Item 9 — limpeza, incluindo o logging de debug | 2026-08-26 |
+| 11 | Item 11, metade local — roles do Postgres e migration fora do startup | 2026-08-28 |
 
-### Três coisas que valem lembrar antes de escrever código novo
+### Quatro coisas que valem lembrar antes de escrever código novo
 
 1. **Enum atravessa o wire como string.** `TenantRole` chega `"Owner"`, `PermissionLevel`
    chega `"Read"`. Tratar como número dá sempre falso e some com controles da tela sem
@@ -833,6 +865,10 @@ Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento
 3. **O master admin não enxerga gating.** Ele é bypass em duas camadas (role global
    `Administrador` e Owner/Admin do tenant). Testar autorização com a conta `admin@SBP.com`
    não prova nada — use um Member com role limitada.
+4. **Falha de sink do Serilog é silenciosa.** A exceção morre dentro do batch periódico.
+   O sink do Postgres passou meses sem gravar uma linha por causa de um `DateTimeOffset`
+   com fuso local (item 11, 2026-08-28), e nada no console denunciava. O `SelfLog` agora
+   está ligado; se ele falar, alguma escrita de log está se perdendo.
 
 ## Fora do escopo do MVP
 
