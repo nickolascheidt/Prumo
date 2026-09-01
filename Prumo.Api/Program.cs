@@ -16,7 +16,6 @@ try
         .AddJsonOptions(options =>
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
-    builder.Services.AddCacheConfiguration(builder.Configuration);
     builder.Services.AddAuthenticationConfiguration(builder.Configuration);
     builder.Services.AddAuthorizationConfiguration();
     builder.Services.AddApplicationServices();

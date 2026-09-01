@@ -24,20 +24,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: saasbase-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Fila local, no perfil "notifications" — `docker compose up -d` sozinho não sobe estes
   # dois. São ~2 GB e só fazem falta ao mexer em e-mail; a API roda sem eles, com um
   # publisher que descarta e avisa no log.
@@ -74,4 +60,3 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
