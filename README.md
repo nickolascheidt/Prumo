@@ -9,7 +9,6 @@ ASP.NET Core 10 REST API for a multi-tenant SaaS platform with role-based permis
 | Runtime | .NET 10 / ASP.NET Core |
 | ORM | Entity Framework Core 10 (Code-First) |
 | Database | PostgreSQL |
-| Cache | Redis (StackExchange.Redis) |
 | Auth | JWT Bearer tokens |
 | Logging | Serilog (Console + SQL Server sink) |
 | Testing | xUnit + NSubstitute |
@@ -27,7 +26,7 @@ Api → Application → Infrastructure → Domain
 |---|---|
 | `Prumo.Domain` | Entities, enums, permission constants — no external dependencies |
 | `Prumo.Application` | Services, DTOs, FluentValidation validators |
-| `Prumo.Infrastructure` | EF Core DbContext, migrations, repositories, Redis cache |
+| `Prumo.Infrastructure` | EF Core DbContext, migrations, services |
 | `Prumo.Api` | Controllers, middleware, DI wiring, configuration extensions |
 | `Prumo.Tests` | Unit tests mirroring the production project structure |
 
@@ -36,7 +35,6 @@ Api → Application → Infrastructure → Domain
 `Program.cs` is intentionally minimal — it calls a chain of extension methods from `Api/Configuration/`:
 
 - `DatabaseConfiguration` — EF Core + PostgreSQL
-- `CacheConfiguration` — Redis
 - `AuthenticationConfiguration` — JWT Bearer
 - `AuthorizationConfiguration` — permission policies
 - `DependencyInjectionConfiguration` — repositories, services, validator scanning
@@ -46,12 +44,11 @@ Api → Application → Infrastructure → Domain
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - PostgreSQL (default: `localhost:5432`, database `SaaSBasePlatformDb`)
-- Redis (default: `localhost:6379`)
 
 ## Getting Started
 
 ```bash
-# Postgres and Redis, with the versions this project expects
+# Postgres, with the version this project expects
 docker compose up -d
 
 # Restore dependencies
@@ -110,9 +107,6 @@ Key sections:
   },
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Port=5432;Database=SaaSBasePlatformDb;..."
-  },
-  "Redis": {
-    "ConnectionString": "localhost:6379"
   }
 }
 ```
@@ -138,17 +132,38 @@ All endpoints require a `Bearer` token except `POST /api/auth/login` and `POST /
 
 ## Authorization Model
 
-Two complementary authorization mechanisms:
+One mechanism gates requests: **`ResourcePermission`** (role x resource -> `None / Read / Write / Full`).
 
-**1. Role-based permission policies**
-Permission strings use dot-notation with wildcard support (e.g., `employees.view`, `payments.*`). Enforced by `PermissionAuthorizationHandler`. The full catalog lives in `Domain/Authorization/Permissions.cs`. Permission sets are Redis-cached.
+The `[TenantModule("<resource code>")]` attribute on the module controllers enforces it. It
+proves the caller belongs to the tenant in the route, then infers the required level from the
+HTTP verb -- `GET` needs `Read`, `POST/PUT/PATCH` need `Write`, `DELETE` needs `Full`. An
+architecture test fails the build if an action under `{tenantId}` is left undeclared.
 
-**2. Per-resource access**
-`[RequireResourceAccess]` attribute on controllers/actions checks `ResourcePermission` against the requesting user. Access levels: `None / Read / Write / Full`. All access checks are audit-logged to `PermissionAuditLog`.
+Three role concepts, deliberately separate:
+
+| Concept | Where it lives | What it means |
+|---|---|---|
+| Administrative rank | `TenantUsers.Role` (`Owner / Admin / Member`) | Position within one tenant |
+| Feature roles | `TenantUserRoles` | Which modules open, per tenant |
+| Master admin | Identity role `Administrador` | Global, cross-tenant |
+
+Grants and revocations are audit-logged to `ResourcePermissionAuditLog`; master-admin support
+access to a tenant is logged to `SupportAccessLog`.
+
+> The earlier string-permission catalog (`employees.view`, `payments.*`) and its policy handler
+> were retired -- no endpoint ever consulted them.
 
 ## Data Access
 
-Use `IRepository<T>` / `IUnitOfWork` — do not inject `ApplicationDbContext` directly into Application-layer services. `QueryableExtensions` provides paging helpers that return `PagedResult<T>`.
+Application-layer services inject `ApplicationDbContext` directly -- the old
+`IRepository<T>` / `IUnitOfWork` pair was dead code and was removed.
+
+A global query filter scopes every `ITenantScoped` entity to the current tenant and **fails
+closed**: with no tenant resolved, queries return nothing rather than everything. Bypassing it
+with `IgnoreQueryFilters` requires a nearby comment explaining the cross-tenant reason, and
+`DataAccessHygieneTests` fails the build without one.
+
+`QueryableExtensions` provides paging helpers that return `PagedResult<T>`.
 
 ## Adding a New Feature
 

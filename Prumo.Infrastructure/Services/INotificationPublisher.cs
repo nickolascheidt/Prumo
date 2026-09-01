@@ -11,8 +11,8 @@ namespace Prumo.Infrastructure.Services
     /// entra em tenant nenhum por engano — a pessoa só não é avisada, e todo fluxo tem
     /// reenvio manual. É essa propriedade que permite o serviço ser assíncrono.
     ///
-    /// Fica em Infrastructure, junto de <see cref="ICacheService"/>, porque a direção de
-    /// referência deste repo é Application → Infrastructure.
+    /// Fica em Infrastructure, e não em Application, porque a direção de referência deste
+    /// repo é Application → Infrastructure.
     /// </summary>
     public interface INotificationPublisher
     {
