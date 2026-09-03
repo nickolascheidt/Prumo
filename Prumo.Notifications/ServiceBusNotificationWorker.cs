@@ -52,6 +52,13 @@ public sealed class ServiceBusNotificationWorker : BackgroundService
         switch (outcome)
         {
             case NotificationOutcome.Poison poison:
+                // O handler não enxerga o identificador de transporte — só o corpo. Sem
+                // esta linha, uma mensagem dead-letterada não deixa rastro no log que
+                // permita achá-la na fila morta.
+                _logger.LogError(
+                    "Mensagem {MessageId} enviada para a dead-letter: {Reason} — {Detail}",
+                    args.Message.MessageId, poison.Reason, poison.Detail);
+
                 await args.DeadLetterMessageAsync(
                     args.Message,
                     Truncate(poison.Reason, MaxReasonLength),
