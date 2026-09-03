@@ -65,9 +65,20 @@ public sealed class ServiceBusNotificationWorker : BackgroundService
                     Truncate(poison.Detail, MaxDetailLength));
                 break;
 
-            default:
+            case NotificationOutcome.Handled:
+            case NotificationOutcome.Duplicate:
                 await args.CompleteMessageAsync(args.Message);
                 break;
+
+            // Um resultado que ninguém ensinou este worker a traduzir **não** pode ser
+            // completado em silêncio — isso descartaria a mensagem como se ela tivesse
+            // saído. A exceção não é capturada, então o Service Bus reentrega e a falha
+            // aparece, em vez de uma notificação sumir sem rastro. O `switch` de
+            // statement não dá exaustividade em tempo de compilação, então a garantia
+            // tem de ser esta.
+            default:
+                throw new NotSupportedException(
+                    $"NotificationOutcome não tratado: {outcome.GetType().Name}.");
         }
     }
 
