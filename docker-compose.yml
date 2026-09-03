@@ -24,39 +24,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # Fila local, no perfil "notifications" — `docker compose up -d` sozinho não sobe estes
-  # dois. São ~2 GB e só fazem falta ao mexer em e-mail; a API roda sem eles, com um
-  # publisher que descarta e avisa no log.
+  # Fila local, no perfil "notifications" — `docker compose up -d` sozinho não a sobe.
+  # A API roda sem ela, com um publisher que descarta e avisa no log.
   #   docker compose --profile notifications up -d
-  servicebus:
-    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
-    container_name: saasbase-servicebus
+  #
+  # Substituiu o emulador do Service Bus, que puxava um SQL Server junto e passava de 2 GB
+  # para servir um projeto que roda em um container. Efeito colateral bem-vindo: some o
+  # ACCEPT_EULA chumbado no compose.
+  elasticmq:
+    image: softwaremill/elasticmq-native
+    container_name: saasbase-elasticmq
     profiles: ["notifications"]
     restart: unless-stopped
     volumes:
-      - ./servicebus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+      - ./elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro
     ports:
-      - "5672:5672"
-      - "5300:5300"
-    environment:
-      SQL_SERVER: saasbase-mssql
-      MSSQL_SA_PASSWORD: Prumo@LocalDev1
-      # Aceita a EULA do emulador do Service Bus e a do SQL Server Linux. Vale só para
-      # este ambiente de desenvolvimento.
-      ACCEPT_EULA: "Y"
-      EMULATOR_HTTP_PORT: 5300
-    depends_on:
-      - mssql
-
-  # Dependência do emulador, não da aplicação. O Prumo continua sendo Postgres.
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: saasbase-mssql
-    profiles: ["notifications"]
-    restart: unless-stopped
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: Prumo@LocalDev1
+      - "9324:9324"
+      - "9325:9325"
 
 volumes:
   postgres-data:
