@@ -138,6 +138,7 @@ public class NotificationHandlerTests
 
         var poison = Assert.IsType<NotificationOutcome.Poison>(outcome);
         Assert.Equal("EmptyBody", poison.Reason);
+        await sender.DidNotReceive().SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>
@@ -156,5 +157,48 @@ public class NotificationHandlerTests
         var poison = Assert.IsType<NotificationOutcome.Poison>(outcome);
         Assert.Equal("RenderFailed", poison.Reason);
         await sender.DidNotReceive().SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// A distinção de que a fase inteira depende: veneno é `Poison` (dead-letter agora),
+    /// provedor fora do ar é exceção (reentrega depois). Se esta linha inverter, um SES
+    /// intermitente passa a queimar notificação na DLQ.
+    /// </summary>
+    [Fact]
+    public async Task Falha_do_provedor_de_email_sobe_como_excecao()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        // Task falhada em vez de `throw` dentro do lambda: com throw, o compilador não
+        // infere o tipo de retorno e o `Returns` fica ambíguo. Await de Task falhada
+        // levanta a mesma exceção.
+        sender.SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new HttpRequestException("provedor fora do ar")));
+        var sut = MakeSut(sender);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => sut.HandleAsync(MakeBody(NotificationTypes.PasswordReset)));
+    }
+
+    /// <summary>
+    /// E a mensagem que estourou no envio **não** entra na janela de duplicata: se
+    /// entrasse, a reentrega seria descartada como duplicata e o e-mail nunca sairia.
+    /// </summary>
+    [Fact]
+    public async Task Mensagem_que_falhou_no_envio_nao_entra_na_janela()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        var falhar = true;
+        sender.SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>())
+            .Returns(_ => falhar
+                ? Task.FromException(new HttpRequestException("provedor fora do ar"))
+                : Task.CompletedTask);
+        var sut = MakeSut(sender);
+        var body = MakeBody(NotificationTypes.PasswordReset, Guid.NewGuid());
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.HandleAsync(body));
+        falhar = false;
+        var retry = await sut.HandleAsync(body);
+
+        Assert.IsType<NotificationOutcome.Handled>(retry);
     }
 }
