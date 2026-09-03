@@ -1,4 +1,5 @@
 using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Caching.Memory;
 using Prumo.Notifications;
 using Prumo.Notifications.Email;
 
@@ -24,6 +25,13 @@ builder.Services.AddSingleton(sp => sp.GetRequiredService<ServiceBusClient>().Cr
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<NotificationRenderer>();
+// Fábrica explícita: o container embutido não honra valor default de parâmetro de
+// construtor, e o `duplicateWindow` do handler é opcional (só os testes o passam).
+builder.Services.AddSingleton(sp => new NotificationHandler(
+    sp.GetRequiredService<NotificationRenderer>(),
+    sp.GetRequiredService<IEmailSender>(),
+    sp.GetRequiredService<IMemoryCache>(),
+    sp.GetRequiredService<ILogger<NotificationHandler>>()));
 
 // Em produção sai por Azure Communication Services; em desenvolvimento vai para disco, o
 // que permite verificar todo o item 8 sem provedor, sem domínio e sem custo.
@@ -40,7 +48,7 @@ else
     builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
 }
 
-builder.Services.AddHostedService<NotificationWorker>();
+builder.Services.AddHostedService<ServiceBusNotificationWorker>();
 
 var host = builder.Build();
 host.Run();
