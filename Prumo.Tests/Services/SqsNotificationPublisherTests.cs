@@ -47,8 +47,11 @@ public class SqsNotificationPublisherTests
         Assert.Equal(correlationId, roundTrip.CorrelationId);
         Assert.Equal("alguem@exemplo.com", roundTrip.To);
 
-        Assert.Equal(NotificationTypes.TenantInvitation, captured.MessageAttributes["Type"].StringValue);
-        Assert.Equal("String", captured.MessageAttributes["Type"].DataType);
-        Assert.Equal(correlationId.ToString(), captured.MessageAttributes["CorrelationId"].StringValue);
+        Assert.True(captured.MessageAttributes.TryGetValue("Type", out var typeAttr));
+        Assert.Equal(NotificationTypes.TenantInvitation, typeAttr.StringValue);
+        Assert.Equal("String", typeAttr.DataType);
+
+        Assert.True(captured.MessageAttributes.TryGetValue("CorrelationId", out var correlationAttr));
+        Assert.Equal(correlationId.ToString(), correlationAttr.StringValue);
     }
 }
