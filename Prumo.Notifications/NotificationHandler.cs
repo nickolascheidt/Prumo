@@ -40,8 +40,20 @@ public sealed class NotificationHandler
 
     public async Task<NotificationOutcome> HandleAsync(string body, CancellationToken cancellationToken = default)
     {
-        var email = _renderer.Render(JsonSerializer.Deserialize<NotificationMessage>(body)!);
+        var message = JsonSerializer.Deserialize<NotificationMessage>(body)!;
+
+        if (_seen.TryGetValue(message.CorrelationId, out _))
+        {
+            _logger.LogInformation(
+                "Notificação {CorrelationId} já enviada nesta janela; ignorando reentrega.",
+                message.CorrelationId);
+            return new NotificationOutcome.Duplicate();
+        }
+
+        var email = _renderer.Render(message);
         await _sender.SendAsync(email, cancellationToken);
+
+        _seen.Set(message.CorrelationId, true, _duplicateWindow);
         return new NotificationOutcome.Handled();
     }
 }

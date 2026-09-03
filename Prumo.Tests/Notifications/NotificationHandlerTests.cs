@@ -76,4 +76,42 @@ public class NotificationHandlerTests
                 e.HtmlBody.Contains(expectedLink)),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Reentrega_do_mesmo_correlation_id_na_janela_nao_envia_de_novo()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var sut = MakeSut(sender, cache);
+        var correlationId = Guid.NewGuid();
+        var body = MakeBody(NotificationTypes.EmailConfirmation, correlationId);
+
+        var first = await sut.HandleAsync(body);
+        var second = await sut.HandleAsync(body);
+
+        Assert.IsType<NotificationOutcome.Handled>(first);
+        Assert.IsType<NotificationOutcome.Duplicate>(second);
+        await sender.Received(1).SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Fora da janela, a mesma mensagem sai de novo — a janela é anti-duplicata de
+    /// reentrega, não idempotência eterna. A janela é injetável exatamente para este
+    /// teste; em produção vale o `DefaultDuplicateWindow`.
+    /// </summary>
+    [Fact]
+    public async Task Mesmo_correlation_id_fora_da_janela_envia_de_novo()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var sut = MakeSut(sender, cache, TimeSpan.FromMilliseconds(50));
+        var body = MakeBody(NotificationTypes.EmailConfirmation, Guid.NewGuid());
+
+        await sut.HandleAsync(body);
+        await Task.Delay(200);
+        var second = await sut.HandleAsync(body);
+
+        Assert.IsType<NotificationOutcome.Handled>(second);
+        await sender.Received(2).SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
+    }
 }
