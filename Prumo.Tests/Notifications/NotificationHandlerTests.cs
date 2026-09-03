@@ -114,4 +114,47 @@ public class NotificationHandlerTests
         Assert.IsType<NotificationOutcome.Handled>(second);
         await sender.Received(2).SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Corpo_que_nao_e_json_e_veneno()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        var sut = MakeSut(sender);
+
+        var outcome = await sut.HandleAsync("isto não é json");
+
+        var poison = Assert.IsType<NotificationOutcome.Poison>(outcome);
+        Assert.Equal("InvalidJson", poison.Reason);
+        await sender.DidNotReceive().SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Corpo_que_desserializa_para_null_e_veneno()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        var sut = MakeSut(sender);
+
+        var outcome = await sut.HandleAsync("null");
+
+        var poison = Assert.IsType<NotificationOutcome.Poison>(outcome);
+        Assert.Equal("EmptyBody", poison.Reason);
+    }
+
+    /// <summary>
+    /// Tipo desconhecido é `NotSupportedException` no renderer, e template com placeholder
+    /// sem valor é `InvalidOperationException`. Os dois são defeito de código ou de
+    /// contrato: retry não conserta nenhum, então vão para a dead-letter.
+    /// </summary>
+    [Fact]
+    public async Task Tipo_desconhecido_e_veneno()
+    {
+        var sender = Substitute.For<IEmailSender>();
+        var sut = MakeSut(sender);
+
+        var outcome = await sut.HandleAsync(MakeBody("email.tipo-que-nao-existe"));
+
+        var poison = Assert.IsType<NotificationOutcome.Poison>(outcome);
+        Assert.Equal("RenderFailed", poison.Reason);
+        await sender.DidNotReceive().SendAsync(Arg.Any<OutboundEmail>(), Arg.Any<CancellationToken>());
+    }
 }

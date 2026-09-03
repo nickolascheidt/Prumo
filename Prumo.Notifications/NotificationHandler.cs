@@ -20,6 +20,14 @@ public sealed class NotificationHandler
 
     private readonly NotificationRenderer _renderer;
     private readonly IEmailSender _sender;
+
+    /// <summary>
+    /// O intervalo entre `TryGetValue` e `Set` abaixo não é atômico, e é aceito assim: com
+    /// `MaxConcurrentCalls = 4` no processor (`Program.cs`), duas reentregas do mesmo
+    /// `CorrelationId` podem passar juntas pelo `TryGetValue` e as duas enviarem. Duplicar
+    /// e-mail é chato, não perigoso — não "conserte" isto com lock em volta do `SendAsync`,
+    /// que serializaria todo envio.
+    /// </summary>
     private readonly IMemoryCache _seen;
     private readonly ILogger<NotificationHandler> _logger;
     private readonly TimeSpan _duplicateWindow;
@@ -40,7 +48,22 @@ public sealed class NotificationHandler
 
     public async Task<NotificationOutcome> HandleAsync(string body, CancellationToken cancellationToken = default)
     {
-        var message = JsonSerializer.Deserialize<NotificationMessage>(body)!;
+        NotificationMessage? message;
+
+        try
+        {
+            message = JsonSerializer.Deserialize<NotificationMessage>(body);
+        }
+        catch (JsonException ex)
+        {
+            // Corpo que não desserializa não melhora com retry. Vai direto para a
+            // dead-letter, com o motivo, em vez de girar até estourar a contagem de entrega.
+            _logger.LogError(ex, "Corpo de mensagem não é JSON válido.");
+            return new NotificationOutcome.Poison("InvalidJson", ex.Message);
+        }
+
+        if (message is null)
+            return new NotificationOutcome.Poison("EmptyBody", "O corpo desserializou para null.");
 
         if (_seen.TryGetValue(message.CorrelationId, out _))
         {
@@ -50,7 +73,19 @@ public sealed class NotificationHandler
             return new NotificationOutcome.Duplicate();
         }
 
-        var email = _renderer.Render(message);
+        OutboundEmail email;
+
+        try
+        {
+            email = _renderer.Render(message);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Notificação {CorrelationId} não pôde ser renderizada.", message.CorrelationId);
+            return new NotificationOutcome.Poison("RenderFailed", ex.Message);
+        }
+
+        // Falha aqui **sobe**: provedor fora do ar é retry, não veneno. Ver Task 4.
         await _sender.SendAsync(email, cancellationToken);
 
         _seen.Set(message.CorrelationId, true, _duplicateWindow);
