@@ -1726,5 +1726,81 @@ Se ela não seguir, nada aqui precisa ser revertido: `Notifications:Provider=Ser
 
 ## Registro de execução
 
-> Preencher ao terminar: o que a execução revelou, onde o plano errou, o que a próxima
-> pessoa precisa saber e não está no código.
+Executado em **2026-09-03**, tarefas 1 a 11 de 12. Suíte: 119 → **130**, build sem erro,
+sem warning novo. A Task 12 (verificação de ponta a ponta) **não rodou** — ver o fim.
+
+As tarefas 1 a 6 saíram por subagente, cada uma com revisão de aderência à spec e revisão
+de qualidade; da 7 em diante o limite de sessão derrubou os subagentes e o resto foi feito
+direto. Os achados abaixo vieram quase todos das revisões, e são o que o plano não previu.
+
+### Onde o plano errou, e o que as revisões acharem
+
+1. **O `default:` do switch era perda silenciosa de mensagem.** Tanto o worker do Service
+   Bus quanto o do SQS mapeavam "qualquer coisa que não seja `Poison`" para completar/
+   apagar. Um quarto `NotificationOutcome` seria descartado como se tivesse sido enviado —
+   o oposto do que o XML doc da hierarquia fechada promete. E `switch` de *statement* não
+   dá exaustividade em tempo de compilação, então listar os casos não bastaria: os dois
+   workers agora listam `Handled`/`Duplicate` explicitamente e **estouram** no `default`.
+
+2. **O `MessageId` sumiu na extração.** O worker antigo logava o identificador de
+   transporte ao falhar o parse de JSON; o `NotificationHandler` não pode, porque só
+   recebe o corpo — e essa ignorância é o ponto do seam. O worker do Service Bus passou a
+   logar `MessageId` + motivo + detalhe **antes** de dead-letterar, o que acabou virando
+   um superconjunto do log antigo: agora vale para os três casos de veneno, não só para
+   `InvalidJson`.
+
+3. **A troca do `try` que envolvia render *e* envio foi mudança de comportamento real,**
+   e está certa: um `InvalidOperationException` vindo do *sender* era dead-lettered como
+   `RenderFailed`. Agora só o render está no `try`. A Task 4 fixou isso com dois testes de
+   caracterização, ambos provados por mutação (mover `_seen.Set` para antes do envio, e
+   envolver o envio em `try/catch` — cada um derruba o teste esperado).
+
+4. **`Sanitize` no worker do SQS faz mais que truncar.** O plano só truncava. Uma revisão
+   notou que `Poison.Detail` carrega `ex.Message`, e a mensagem do
+   `InvalidOperationException` do `NotificationRenderer` embute as chaves do payload —
+   atributo de mensagem do SQS recusa caracteres de controle, e um atributo recusado no
+   publish seria pior que um truncado: a mensagem envenenada não chegaria à DLQ.
+
+5. **O `try/catch` do `SqsNotificationWorker.ProcessAsync` envolve a tradução também,** e
+   não só o `HandleAsync` como o plano escrevia. Assim, falha da própria chamada de fila
+   (ou o `throw` do `default`) deixa a mensagem reentregar em vez de derrubar o laço de
+   polling — que é o equivalente ao que o SDK do Service Bus faz sozinho do outro lado.
+
+6. **A janela de duplicata tem uma corrida conhecida e aceita.** `TryGetValue` seguido de
+   `Set` não é atômico e o processor roda com `MaxConcurrentCalls = 4`: duas reentregas do
+   mesmo `CorrelationId` podem passar as duas. Está comentado no campo `_seen` de
+   propósito, para ninguém "consertar" com um lock atravessando o `await` do envio, que
+   serializaria todos os envios.
+
+7. **Asserções fracas viraram fortes.** O teste dos três tipos só checava
+   `HtmlBody.Length > 0` — e é a **única** cobertura do `NotificationRenderer` no repo
+   inteiro. Passou a checar o assunto exato por tipo e o valor substituído. As buscas em
+   `MessageAttributes` trocaram indexer por `TryGetValue`, porque o indexer estourava
+   `KeyNotFoundException` em vez de falhar legível justamente no caso que o teste existe
+   para pegar.
+
+### Detalhes de ferramenta que confundem quem for olhar depois
+
+- **O rename do worker não aparece como rename.** `git mv` foi usado, mas o conteúdo mudou
+  ~69% e a detecção do git é por similaridade, com limiar padrão de 50%. Use
+  `git log --follow -M20%` para enxergar a história de `NotificationWorker.cs` através de
+  `ServiceBusNotificationWorker.cs`.
+- **`Prumo.Tests` não precisou de `PackageReference` da AWS**: os tipos chegam
+  transitivamente pelo `ProjectReference` de `Prumo.Infrastructure`.
+- **`AmazonSQSConfig.ServiceURL` e `RegionEndpoint` são mutuamente exclusivos** — atribuir
+  um anula o outro. Por isso a região local vai em `AuthenticationRegion`.
+
+### O que ficou pendente
+
+**A Task 12 não rodou: o Docker Desktop estava desligado** (`open
+//./pipe/dockerDesktopLinuxEngine`). Nada do caminho de runtime foi exercitado — nem o
+ElasticMQ subindo com as duas filas, nem a publicação da API, nem o e-mail em disco, nem a
+mensagem podre indo para a DLQ. O `docker compose config` valida, mas isso só prova sintaxe.
+**Antes de considerar esta fase pronta, rode a Task 12 inteira.**
+
+Um resíduo para decidir junto: a seção `ServiceBus` continua nos dois `appsettings.json`
+com a connection string do emulador (`UseDevelopmentEmulator=true`), e o emulador não
+existe mais no compose. Manter a seção é o combinado — trocar de nuvem é mudar
+`Notifications:Provider` — mas o valor agora aponta para nada em desenvolvimento. Ou vira
+string vazia (e o publisher cai no `LoggingNotificationPublisher`), ou ganha um comentário
+em algum lugar que não seja JSON.
