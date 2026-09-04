@@ -1790,13 +1790,40 @@ direto. Os achados abaixo vieram quase todos das revisões, e são o que o plano
 - **`AmazonSQSConfig.ServiceURL` e `RegionEndpoint` são mutuamente exclusivos** — atribuir
   um anula o outro. Por isso a região local vai em `AuthenticationRegion`.
 
-### O que ficou pendente
+### A Task 12 rodou — 2026-09-04
 
-**A Task 12 não rodou: o Docker Desktop estava desligado** (`open
-//./pipe/dockerDesktopLinuxEngine`). Nada do caminho de runtime foi exercitado — nem o
-ElasticMQ subindo com as duas filas, nem a publicação da API, nem o e-mail em disco, nem a
-mensagem podre indo para a DLQ. O `docker compose config` valida, mas isso só prova sintaxe.
-**Antes de considerar esta fase pronta, rode a Task 12 inteira.**
+O Docker Desktop subiu e a verificação de ponta a ponta foi executada inteira, nesta ordem:
+`docker compose --profile notifications up -d`, worker, API, `POST /api/auth/forgot-password`,
+e-mail em disco, mensagem podre na DLQ, suíte. **Passou.** O que ela mostrou:
+
+- **O ElasticMQ nasce com as duas filas**, e a `notifications` nasce com o redrive certo:
+  `DeadLettersQueueData(notifications-dlq, 5)` e visibilidade de 60 s, lidos do log do
+  próprio ElasticMQ. Nenhuma fila precisou ser criada à mão.
+- **O caminho feliz é real.** A API logou `Notificação email.password-reset publicada
+  (3910aa87-…)` pelo `SqsNotificationPublisher`, o worker consumiu e o `FileEmailSender`
+  gravou `20260904-224801-272_nickolas.scheidt@gmail.com.html`. O corpo renderizou sem
+  nenhum `{{placeholder}}` sobrando — o link de reset saiu com `uid` e `token` de verdade.
+- **O caminho do veneno é real.** Corpo `isto-nao-e-json` publicado direto na fila virou
+  `Mensagem b26d343c-… enviada para a DLQ: InvalidJson — 'i' is an invalid start of a
+  value.` no log, e a mensagem chegou na DLQ com `PoisonReason=InvalidJson` e o
+  `PoisonDetail` com o texto do erro. Os atributos sobreviveram ao `Sanitize`.
+- **A suíte:** 130 aprovados, 0 falhas.
+
+### Onde o plano errou na própria Task 12
+
+1. **`forgot-password` responde 202, não 200.** O plano esperava 200. O 202 é o certo — o
+   endpoint só publica na fila, o envio é assíncrono —, então quem for repetir a
+   verificação não deve "consertar" o endpoint para casar com o plano.
+
+2. **Trocar o emulador no compose não o tira da máquina de ninguém.** `saasbase-mssql` e
+   `saasbase-servicebus` ficaram como containers órfãos: o compose não os define mais, mas
+   eles carregam `restart: unless-stopped`, então o SQL Server **voltou sozinho** quando o
+   Docker Desktop subiu — 1,25 GiB, exatamente o peso que a troca dizia ter eliminado. O
+   `docker compose down` não os remove; só `--remove-orphans` ou `docker rm -f` resolve.
+   A economia vale para quem clonar limpo; para quem já rodava o emulador é preciso um
+   passo manual, e ele não está documentado em lugar nenhum.
+
+### O que ficou pendente
 
 Um resíduo para decidir junto: a seção `ServiceBus` continua nos dois `appsettings.json`
 com a connection string do emulador (`UseDevelopmentEmulator=true`), e o emulador não
