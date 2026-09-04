@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Prumo.Notifications.Contracts;
 
 namespace Prumo.Infrastructure.Services
@@ -44,7 +44,7 @@ namespace Prumo.Infrastructure.Services
             {
                 _logger.LogWarning(
                     "Notificação {Type} para {To} DESCARTADA ({CorrelationId}): "
-                    + "ServiceBus:ConnectionString não está configurada.",
+                    + "nenhuma fila configurada para Notifications:Provider.",
                     message.Type,
                     message.To,
                     message.CorrelationId);
