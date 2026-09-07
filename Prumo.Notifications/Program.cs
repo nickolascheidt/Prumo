@@ -25,6 +25,16 @@ builder.Services.AddSingleton(sp => new NotificationHandler(
 // sem domínio e sem custo. Em produção, ACS ou SES conforme a nuvem.
 var emailProvider = builder.Configuration["Email:Provider"] ?? "File";
 
+// O sender de arquivo grava o e-mail num diretório e não avisa ninguém. Em desenvolvimento
+// é o ponto; fora dele é o mesmo descarte silencioso que a API se recusa a fazer.
+if (!builder.Environment.IsDevelopment()
+    && string.Equals(emailProvider, "File", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException(
+        $"Email:Provider=File em {builder.Environment.EnvironmentName}. O sender de arquivo "
+        + "escreve em disco e ninguém recebe o e-mail. Configure Ses (ou Acs).");
+}
+
 if (string.Equals(emailProvider, "Acs", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.Configure<AcsEmailSenderOptions>(builder.Configuration.GetSection("Email:Acs"));
@@ -58,6 +68,26 @@ if (string.Equals(queueProvider, "Sqs", StringComparison.OrdinalIgnoreCase))
             "Notifications:Provider=Sqs mas Sqs:QueueUrl não está configurada. O serviço de "
             + "notificação não tem o que fazer sem fila — suba o ElasticMQ "
             + "(docker compose --profile notifications up -d) ou aponte para a fila real.");
+    }
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Sqs:DeadLetterQueueUrl"]))
+    {
+        throw new InvalidOperationException(
+            "Notifications:Provider=Sqs mas Sqs:DeadLetterQueueUrl não está configurada. "
+            + "Sem ela a mensagem envenenada não tem para onde ir: o publish na DLQ falharia "
+            + "e ela voltaria para a fila a cada reentrega, para sempre.");
+    }
+
+    // Mesma armadilha da API: `Sqs:ServiceUrl` preenchida aponta o SDK para o ElasticMQ e
+    // ainda troca a credencial padrão — a role da task — por uma fixa de emulador.
+    var serviceUrl = builder.Configuration["Sqs:ServiceUrl"];
+
+    if (!builder.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(serviceUrl))
+    {
+        throw new InvalidOperationException(
+            $"Sqs:ServiceUrl está preenchida ('{serviceUrl}') em {builder.Environment.EnvironmentName}. "
+            + "Ela existe para apontar o SDK ao ElasticMQ local. Deixe-a vazia para falar "
+            + "com o SQS real.");
     }
 
     builder.Services.Configure<SqsNotificationWorkerOptions>(builder.Configuration.GetSection("Sqs"));
