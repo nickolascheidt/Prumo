@@ -4,6 +4,12 @@
 > **migração full para AWS**. Isto cobre a **primeira fatia** da fase 2 — o
 > mínimo que sobe e permite fazer login de um navegador. Não cobre SES, worker,
 > rede privada, IAM database auth nem RLS; cada um vira sua própria spec.
+>
+> **Revisto em 2026-09-08**, depois que o Nickolas enquadrou este ambiente como a
+> **versão piloto para testar o mercado**, não como uma caixa de teste
+> descartável. Três consequências, todas registradas abaixo: a região virou
+> `sa-east-1` (decisão 8), passou a existir backup automático (decisão 10) e o
+> domínio deixou de ser pré-requisito para o primeiro `apply` (decisão 11).
 
 ## Objetivo
 
@@ -44,8 +50,48 @@ código** — ver "O que fica para trás", no fim.
 | 5 | Borda e TLS | **Caddy no compose, Let's Encrypt** | Sem custo de ALB, sem renovação para gerenciar. O JWT deixa de viajar em claro e o domínio já fica de pé para o SES |
 | 6 | Frontend | **A imagem nginx do Angular, intacta** | Aquele `proxy_pass` literal foi o quinto e último bug do primeiro deploy na Azure. Caddy termina TLS e repassa; o nginx continua fazendo o proxy de `/api` |
 | 7 | Deploy | **ECR + GitHub Actions, aplicado por SSM Run Command** | Sem porta 22, sem chave SSH guardada. O OIDC do GitHub para IAM substitui o do Entra. É o pedaço de CI que sobrevive a qualquer compute depois |
-| 8 | Região | **`us-east-1`** | Já é o default no `appsettings.json` e o caminho mais batido para sair do sandbox do SES. `sa-east-1` corta a latência para o Brasil e custa notavelmente mais — reabrir quando houver usuário de verdade |
+| 8 | Região | **`sa-east-1` (São Paulo)** | Revisto em 2026-09-08 — ver "Por que São Paulo" abaixo. O piloto existe para causar boa impressão em cliente brasileiro, e 120 ms de latência trabalham contra isso |
 | 9 | Terraform da Azure | **Fica onde está, intocado** | Mesma razão do código: arrancar agora não entrega nada. A árvore `azurerm` é apagada quando a AWS servir tráfego |
+| 10 | Backup | **Snapshot diário do EBS por Data Lifecycle Manager, 7 dias** | Acrescentado em 2026-09-08. O banco vive no disco da instância; sem isto, perder o volume perde o piloto inteiro. São ~10 linhas de Terraform e centavos por mês |
+| 11 | Nome de host inicial | **`sslip.io` sobre o IP elástico; domínio próprio quando houver o que mostrar** | Acrescentado em 2026-09-08. O Caddy precisa de um *nome*, não de um domínio comprado. Isto tira o registrador do caminho crítico do primeiro `apply` |
+
+## Por que São Paulo (revisão da decisão 8, 2026-09-08)
+
+A escolha original foi `us-east-1`, com dois argumentos. Um deles não sobrevive à
+verificação:
+
+- *"É o caminho mais batido para sair do sandbox do SES."* **Falso na prática.** O
+  SES roda em `sa-east-1` desde abril de 2020 e sair do sandbox é o mesmo ticket
+  de suporte em qualquer região.
+- *"Já é o default no `appsettings.json`."* Verdade, e irrelevante: é uma linha de
+  configuração. Ela passa a ser `sa-east-1` na Task 9.
+
+Sobra preço contra latência:
+
+| | `us-east-1` | `sa-east-1` |
+|---|---|---|
+| `t3.small` on-demand | US$ 0,0208/h | US$ 0,0336/h (**+62%**) |
+| Ambiente inteiro, 24/7 | ~US$ 21/mês | ~US$ 32/mês |
+| Latência do Brasil | ~120 ms | ~15 ms |
+
+**São ~US$ 10/mês para o piloto não parecer lento para quem você está tentando
+vender.** Nos primeiros meses são créditos da AWS pagando (ver "Custo e créditos").
+
+O que torna isto decisão de *agora*, e não de depois: o Postgres vive no volume
+EBS da instância. Mudar de região mais tarde não é trocar uma variável — é
+snapshot, cópia entre regiões e recriar tudo, com os dados do piloto dentro.
+
+## Custo e créditos
+
+A AWS trocou o modelo de free tier em julho de 2025. Conta nova recebe **US$ 100
+em créditos**, e mais US$ 100 completando cinco tarefas de onboarding; valem 12
+meses. Isso cobre este ambiente ligado 24/7 por **~3 meses em `sa-east-1`**.
+
+**No cadastro, escolher o Paid Plan, não o Free Plan.** Os créditos são os mesmos
+nos dois. A diferença é que o Free Plan **fecha a conta automaticamente** quando
+os créditos acabam ou em 6 meses, o que vier primeiro — comportamento inaceitável
+para um ambiente com cliente de piloto dentro. O budget alarm da Task 0 é a rede
+de proteção correta; o auto-close não é.
 
 ## A alternativa recusada: ECS Fargate
 
@@ -59,7 +105,9 @@ subnets, ALB, target group, listener, task definition — e ~US$18/mês de ALB
 enquanto ligado.
 
 A EC2 com compose chega ao "sobe e loga" com muito menos peça, e casa com o
-hábito de ligar e destruir o ambiente inteiro. **O custo é que quase todo o
+hábito de ligar e destruir o ambiente inteiro — hábito que a revisão de 2026-09-08
+aposenta: ambiente de piloto fica **ligado**, e `terraform destroy` passa a ser o
+botão de desistir, não a rotina do fim do dia. **O custo é que quase todo o
 Terraform desta spec é descartável** no dia em que rede privada e IAM auth
 entrarem na pauta: aquilo não cabe numa caixa com `docker compose`. Isto está
 escrito aqui para que esse dia não seja surpresa.
@@ -119,7 +167,13 @@ O que a árvore cria:
 - **Parâmetros SSM** (SecureString): JWT key, `Seed:AdminPassword` e as senhas dos
   roles `prumo_app` e `prumo_migrator`. Os valores **não** entram no Terraform —
   são postos à mão uma vez, e a árvore só declara os parâmetros.
-- **Route 53:** zona e registro A apontando para o IP elástico.
+- **Backup:** uma policy de Data Lifecycle Manager fazendo snapshot diário do
+  volume raiz, com retenção de 7 dias, selecionada pela tag da instância. É o
+  único mecanismo de recuperação que este desenho tem — não há réplica, não há
+  standby. Restaurar é criar um volume a partir do snapshot e reanexar.
+- **Route 53:** zona e registro A apontando para o IP elástico — **opcional**.
+  Com `route53_zone_id` vazio, a árvore não cria nada de DNS e o ambiente atende
+  pelo nome `sslip.io` do IP elástico (ver decisão 11).
 
 **O user-data** lê os parâmetros do SSM, escreve o `.env` que o compose consome,
 faz login no ECR e sobe o compose. Ligar o ambiente é `terraform apply`; desligar
@@ -133,6 +187,21 @@ da raiz do repo da aplicação, que é de desenvolvimento e monta código local.
 Quatro serviços: `caddy`, `web`, `api`, `postgres`. O `postgres` monta
 `db/roles.sql` em `docker-entrypoint-initdb.d` exatamente como no local, e o
 `Caddyfile` tem uma linha de domínio — o resto do TLS o Caddy resolve sozinho.
+
+### O nome de host, sem depender de registrador (decisão 11)
+
+O Let's Encrypt emite para qualquer nome que resolva para o IP da máquina; nada
+exige que o nome tenha sido comprado. `sslip.io` resolve
+`54-207-1-2.sslip.io` → `54.207.1.2` sem cadastro, sem DNS para configurar e sem
+custo. Como o IP elástico é fixo, o nome também é.
+
+O ambiente sobe com esse nome e o Caddy tira certificado válido. **Trocar pelo
+domínio de verdade depois é uma linha no `Caddyfile` e uma no
+`appsettings.Production.json`** — nenhum recurso muda.
+
+Isto é para destravar o primeiro `apply`, não é o estado final. O domínio próprio
+é obrigatório em duas situações que chegam logo: mostrar o produto para um cliente
+do piloto, e verificar DKIM no SES. Registrar custa ~R$ 40/ano.
 
 ## O que muda no repo da aplicação
 
@@ -174,8 +243,8 @@ ConnectionStrings__DefaultConnection=Host=postgres;...;Username=prumo_app;...
 ConnectionStrings__MigratorConnection=Host=postgres;...;Username=prumo_migrator;...
 Database__MigrateOnStartup=true
 Notifications__Provider=Sqs
-Sqs__QueueUrl=https://sqs.us-east-1.amazonaws.com/<conta>/notifications
-Sqs__Region=us-east-1
+Sqs__QueueUrl=https://sqs.sa-east-1.amazonaws.com/<conta>/notifications
+Sqs__Region=sa-east-1
 Jwt__Key=<do SSM>
 Seed__AdminPassword=<do SSM>
 ```
@@ -199,8 +268,11 @@ A fatia está pronta quando, com o ambiente aplicado do zero:
 6. `POST /api/auth/forgot-password` responde **202** e a mensagem aparece na fila
    SQS real (`aws sqs receive-message`). Ninguém a consome — é o esperado nesta
    fatia.
-7. `terraform destroy` deixa a conta em custo zero, fora do bucket de estado, do
-   ECR e da zona do Route 53.
+7. A policy de snapshot está `ENABLED` e, no dia seguinte ao primeiro boot,
+   existe um snapshot com a tag da policy (`aws ec2 describe-snapshots
+   --owner-ids self`). Backup que nunca foi visto acontecer não é backup.
+8. `terraform destroy` deixa a conta em custo zero, fora do bucket de estado, do
+   ECR, dos snapshots retidos e da zona do Route 53, se houver.
 
 ## O que fica para trás, de propósito
 
@@ -219,9 +291,15 @@ A fatia está pronta quando, com o ambiente aplicado do zero:
 
 - **`t3.small` são 2 GB para quatro containers**, um deles Postgres e outro .NET.
   Deve caber, com folga pequena. Se apertar, `t3.medium` é uma linha de Terraform.
-- **Uma caixa é um ponto único de falha, e o backup é problema seu** — snapshot do
-  volume EBS, à mão. Para um ambiente de desenvolvimento que se destrói de
-  propósito, é aceitável; para produção, não é.
+- **Uma caixa continua sendo um ponto único de falha.** A decisão 10 resolve
+  *perda de dados*, não *indisponibilidade*: se a instância morre, o piloto fica
+  fora do ar até alguém recriar a máquina e restaurar o snapshot — na melhor das
+  hipóteses meia hora, e só se alguém estiver olhando. Para um piloto com uma
+  pessoa vendendo, é aceitável; para clientes pagantes, não é.
+- **O snapshot é do volume, não do Postgres.** É um backup a frio, com o banco
+  escrevendo: recupera, mas pode exigir recuperação de crash do próprio Postgres
+  no boot. `pg_dump` para o S3 é o passo seguinte quando houver dado que doa
+  perder, e não está nesta fatia.
 - **Let's Encrypt tem limite de emissão por domínio.** Aplicar e destruir o
   ambiente muitas vezes no mesmo dia pode esbarrar nele. O volume do Caddy
   preserva o certificado entre subidas se não for destruído junto.

@@ -2,9 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Pôr o Prumo no ar numa AWS, numa única EC2 rodando `docker compose`, com TLS e domínio, ao ponto de fazer login de um navegador.
+> **Revisto em 2026-09-08**, quando o Nickolas enquadrou este ambiente como a **versão piloto para testar o mercado**, e não como caixa de teste descartável. Mudou: região `sa-east-1` (Task 0, Passo 3b), snapshot diário do disco (Task 5, Passo 2), domínio deixou de bloquear o primeiro `apply` (Task 8, Passo 0) e o `terraform destroy` deixou de ser rotina (Task 11, item 8).
 
-**Architecture:** Uma EC2 `t3.small` na VPC default roda quatro containers — Caddy na borda, o nginx do Angular, a API e o Postgres. O Terraform novo vive em `terraform/aws/dev/` no repo de DevOps, ao lado da árvore `azurerm`, que não é tocada. As imagens são construídas pelo GitHub Actions e empurradas para o ECR; o deploy é um SSM Run Command. Nenhuma chave de acesso existe: instance profile na máquina, OIDC no CI.
+**Goal:** Pôr o Prumo no ar na AWS em São Paulo, numa única EC2 rodando `docker compose`, com TLS e backup diário, ao ponto de fazer login de um navegador.
+
+**Architecture:** Uma EC2 `t3.small` na VPC default de `sa-east-1` roda quatro containers — Caddy na borda, o nginx do Angular, a API e o Postgres. Uma policy de Data Lifecycle Manager tira snapshot diário do volume raiz. O Terraform novo vive em `terraform/aws/dev/` no repo de DevOps, ao lado da árvore `azurerm`, que não é tocada. As imagens são construídas pelo GitHub Actions e empurradas para o ECR; o deploy é um SSM Run Command. Nenhuma chave de acesso existe: instance profile na máquina, OIDC no CI.
 
 **Tech Stack:** Terraform >= 1.10 (backend S3 com locking nativo), AWS provider ~> 6.0, Amazon Linux 2023, Docker + compose v2, Caddy 2, Postgres 17, .NET 10, Angular.
 
@@ -38,17 +40,21 @@ O primeiro `terraform plan` de cada task é onde a realidade corrige o HCL escri
 
 - [ ] **Passo 1: Conta AWS com o mínimo de higiene**
 
-Criar a conta. Depois, e antes de qualquer outra coisa:
+Criar a conta. Precisa de cartão de crédito mesmo com créditos — não tem como fugir disso.
+
+**No cadastro a AWS pergunta Free Plan ou Paid Plan. Escolha Paid Plan.** Os US$ 100 de crédito (US$ 200 completando as cinco tarefas de onboarding) são idênticos nos dois; a diferença é que o **Free Plan fecha a sua conta automaticamente** quando os créditos acabam ou em 6 meses, o que vier primeiro. Para um ambiente com cliente de piloto dentro, isso é destruição de dados agendada. O budget alarm do item 3 é a proteção certa contra gastar sem querer; o auto-close não é.
+
+Depois, e antes de qualquer outra coisa:
 
 1. Ativar MFA na conta raiz e **parar de usar a raiz**.
 2. Criar um usuário IAM administrativo para o dia a dia, com MFA.
-3. Criar um **budget alarm** em Billing: US$ 20/mês, alerta por e-mail em 50% e 100%. Esta é a rede de segurança contra deixar o ambiente ligado por engano.
+3. Criar um **budget alarm** em Billing: US$ 40/mês, alerta por e-mail em 50% e 100%. (Eram US$ 20 quando o alvo era `us-east-1`; São Paulo custa ~US$ 32/mês ligado 24/7, e um limite abaixo do custo real só ensina a ignorar o alerta.) Criar o budget é, de quebra, uma das cinco tarefas que liberam os US$ 100 extras de crédito.
 
 - [ ] **Passo 2: AWS CLI configurada**
 
 ```bash
 aws --version
-aws configure     # chave do usuário administrativo, região us-east-1
+aws configure     # chave do usuário administrativo, região sa-east-1
 aws sts get-caller-identity
 ```
 
@@ -56,14 +62,21 @@ Esperado: um JSON com `Account`, `Arn` terminando no nome do usuário administra
 
 Anote o número da conta. Ele aparece como `<ACCOUNT_ID>` no resto do plano.
 
-- [ ] **Passo 3: Domínio**
+- [ ] **Passo 3: Nome de host**
 
-Ter um domínio e saber onde o DNS dele é gerenciado. Duas situações, e o plano cobre as duas:
+**Este passo deixou de bloquear** na revisão de 2026-09-08. Três caminhos, e o plano cobre os três:
 
-- **Já tem domínio num registrador** (Registro.br, Namecheap, etc.): você vai criar um registro A à mão na Task 8. Mais barato, um recurso a menos.
-- **Não tem, ou quer tudo na AWS**: registre ou crie uma hosted zone no Route 53 e anote o **zone ID**.
+- **Não tem domínio, ou não quer gastar agora:** não faça nada aqui. O ambiente sobe com `sslip.io`, que resolve `<ip-com-hifens>.sslip.io` para o IP sem cadastro nenhum. O Caddy tira certificado válido do Let's Encrypt normalmente. `<DOMINIO>` no resto do plano vira esse nome, e você só o conhece depois da Task 5 (é o IP elástico) — a Task 8 diz onde preenchê-lo.
+- **Já tem domínio num registrador** (Registro.br, Namecheap): você vai criar um registro A à mão na Task 8. Deixe `route53_zone_id` vazio.
+- **Quer tudo na AWS:** registre ou crie uma hosted zone no Route 53 e anote o **zone ID**.
 
-Decida um subdomínio para este ambiente, por exemplo `dev.seudominio.com`. Ele aparece como `<DOMINIO>` no resto do plano.
+Sem domínio próprio você chega ao fim deste plano, mas não ao fim do seguinte: **o SES exige domínio verificado com DKIM**, e ninguém mostra `54-207-1-2.sslip.io` para um cliente. Registrar custa ~R$ 40/ano no Registro.br; faça antes de precisar, não depois.
+
+- [ ] **Passo 3b: Confirmar a região**
+
+Este ambiente é **`sa-east-1` (São Paulo)**, decidido em 2026-09-08 — ver "Por que São Paulo" na spec. Todo comando `aws` deste plano assume essa região, e `terraform.tfvars` a fixa.
+
+Não é uma escolha para revisitar depois de aplicar: o Postgres vive no volume EBS da instância, então trocar de região com o piloto no ar é snapshot, cópia entre regiões e recriar tudo.
 
 - [ ] **Passo 4: Terraform 1.10 ou mais novo**
 
@@ -91,9 +104,13 @@ Esperado: `Terraform v1.10.0` ou superior. O backend S3 com locking nativo (`use
 O bucket que guarda o estado não pode ser gerenciado pelo estado que ele guarda. Uma árvore Terraform separada só para isso — que é o que a Azure faz com o `terraform/core` — é mais peça do que este ambiente merece. Três comandos:
 
 ```bash
+# O --create-bucket-configuration é obrigatório fora de us-east-1: sem ele a AWS
+# responde IllegalLocationConstraintException. É a primeira pegadinha de ter
+# escolhido São Paulo, e é a única do plano inteiro.
 aws s3api create-bucket \
   --bucket prumo-tfstate-<ACCOUNT_ID> \
-  --region us-east-1
+  --region sa-east-1 \
+  --create-bucket-configuration LocationConstraint=sa-east-1
 
 aws s3api put-bucket-versioning \
   --bucket prumo-tfstate-<ACCOUNT_ID> \
@@ -125,7 +142,7 @@ terraform {
   backend "s3" {
     bucket       = "prumo-tfstate-<ACCOUNT_ID>"
     key          = "aws/dev.tfstate"
-    region       = "us-east-1"
+    region       = "sa-east-1"
     encrypt      = true
     use_lockfile = true
   }
@@ -152,7 +169,7 @@ Substitua `<ACCOUNT_ID>` pelo número real: o bloco `backend` não aceita variá
 variable "aws_region" {
   description = "Região de tudo neste ambiente."
   type        = string
-  default     = "us-east-1"
+  default     = "sa-east-1"
 }
 
 variable "project" {
@@ -231,11 +248,18 @@ output "ecr_registry" {
 - [ ] **Passo 6: `terraform.tfvars`**
 
 ```terraform
-domain = "dev.seudominio.com"
+region = "sa-east-1"
 
-# Preencha com o zone ID se o DNS estiver no Route 53. Vazio = registro A à mão.
+# Sem domínio próprio, deixe como está e volte aqui depois da Task 5: o nome vira
+# o IP elástico com hífens, ex. "54-207-1-2.sslip.io" (Task 8, Passo 0).
+domain = "PREENCHER_NA_TASK_8"
+
+# Preencha com o zone ID se o DNS estiver no Route 53. Vazio = registro A à mão,
+# ou nenhum registro, no caminho do sslip.io.
 route53_zone_id = ""
 ```
+
+`domain` é usado pelo `Caddyfile` (Task 6) e pelo `appsettings.Production.json` (Task 9), não por nenhum recurso da AWS — por isso ele pode ficar pendente até a Task 8 sem travar as tasks 1 a 7.
 
 - [ ] **Passo 7: Verificar**
 
@@ -593,6 +617,7 @@ git commit -m "feat(aws): trust GitHub Actions through OIDC for deploys"
 
 **Files:**
 - Create: `terraform/aws/dev/instance.tf`
+- Create: `terraform/aws/dev/backup.tf`
 - Create: `terraform/aws/dev/user-data.sh`
 
 - [ ] **Passo 1: `instance.tf`**
@@ -721,15 +746,75 @@ resource "aws_eip" "app" {
 }
 ```
 
-- [ ] **Passo 2: Aplicar as tasks 4 e 5 juntas**
+Repare na tag `Name = local.name` da instância: é por ela que a policy de backup do Passo 2 encontra o volume. Trocar a tag sem trocar a policy desliga o backup em silêncio.
+
+- [ ] **Passo 2: `backup.tf` — o snapshot diário**
+
+Decisão 10 da spec. O banco do piloto vive no volume raiz desta instância; isto é a única coisa entre um `terraform destroy` acidental e perder tudo.
+
+```terraform
+# O DLM precisa de uma role própria: quem tira o snapshot é o serviço, não você.
+data "aws_iam_policy_document" "dlm_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["dlm.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "dlm" {
+  name               = "${local.name}-dlm"
+  assume_role_policy = data.aws_iam_policy_document.dlm_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "dlm" {
+  role       = aws_iam_role.dlm.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
+}
+
+resource "aws_dlm_lifecycle_policy" "daily" {
+  description        = "${local.name}: snapshot diario do volume raiz"
+  execution_role_arn = aws_iam_role.dlm.arn
+  state              = "ENABLED"
+
+  policy_details {
+    resource_types = ["INSTANCE"]
+
+    # Casa com a tag Name da instância criada no Passo 1.
+    target_tags = { Name = local.name }
+
+    schedule {
+      name = "diario-7-dias"
+
+      create_rule {
+        # 06:00 UTC = 03:00 em Brasília, quando ninguém está usando o piloto.
+        cron_expression = "cron(0 6 * * ? *)"
+      }
+
+      retain_rule {
+        count = 7
+      }
+
+      # Sem isto o snapshot não herda a tag Name e fica impossível saber de quem é.
+      copy_tags = true
+    }
+  }
+}
+```
+
+Nota honesta, que também está na spec: isto é backup **a frio**, do volume, com o Postgres escrevendo. Ele recupera, mas a restauração pode passar por recuperação de crash no boot do banco. `pg_dump` para o S3 é o passo seguinte, e não está nesta fatia.
+
+- [ ] **Passo 3: Aplicar as tasks 4 e 5 juntas**
 
 ```bash
 terraform apply
 ```
 
-Esperado: o security group, as roles, o instance profile, a instância, o EIP, o OIDC provider e a role de deploy. O `user_data` ainda não existe — o Passo 3 o cria; por ora, comente a linha `user_data = local.user_data` para este primeiro apply e descomente na Task 7.
+Esperado: o security group, as roles, o instance profile, a instância, o EIP, a role e a policy do DLM, o OIDC provider e a role de deploy. O `user_data` ainda não existe — a Task 7 o cria; por ora, comente a linha `user_data = local.user_data` para este primeiro apply e descomente lá.
 
-- [ ] **Passo 3: Verificar que o SSM enxerga a instância**
+- [ ] **Passo 4: Verificar que o SSM enxerga a instância**
 
 O agente leva ~2 minutos para registrar depois do boot.
 
@@ -740,7 +825,7 @@ aws ssm describe-instance-information \
 
 Esperado: a instância listada com `PingStatus` `Online`. Se ficar vazio, o instance profile não subiu junto — confira a policy `AmazonSSMManagedInstanceCore`.
 
-- [ ] **Passo 4: Entrar na máquina sem SSH**
+- [ ] **Passo 5: Entrar na máquina sem SSH**
 
 ```bash
 aws ssm start-session --target <INSTANCE_ID>
@@ -748,11 +833,20 @@ aws ssm start-session --target <INSTANCE_ID>
 
 Esperado: um shell. Isto prova que não há motivo para abrir a porta 22.
 
-- [ ] **Passo 5: Commitar**
+- [ ] **Passo 6: Confirmar que a policy de backup está ativa**
 
 ```bash
-git add terraform/aws/dev/instance.tf
-git commit -m "feat(aws): create the instance, its profile and the security group"
+aws dlm get-lifecycle-policies \
+  --query 'Policies[].{Id:PolicyId,State:State}' --output table
+```
+
+Esperado: uma policy com `State` = `ENABLED`. Isto só prova que ela existe — **que ela realmente tira snapshot se verifica no dia seguinte**, na Task 11.
+
+- [ ] **Passo 7: Commitar**
+
+```bash
+git add terraform/aws/dev/instance.tf terraform/aws/dev/backup.tf
+git commit -m "feat(aws): create the instance, its profile, the security group and the daily snapshot"
 ```
 
 ---
@@ -884,11 +978,11 @@ Da sua máquina, com um `.env` de mentira só para a substituição de variável
 cd deploy
 cat > .env <<'EOF'
 DOMAIN=exemplo.com
-ECR_REGISTRY=000000000000.dkr.ecr.us-east-1.amazonaws.com
+ECR_REGISTRY=000000000000.dkr.ecr.sa-east-1.amazonaws.com
 API_TAG=teste
 WEB_TAG=teste
-AWS_REGION=us-east-1
-SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/000000000000/fila
+AWS_REGION=sa-east-1
+SQS_QUEUE_URL=https://sqs.sa-east-1.amazonaws.com/000000000000/fila
 JWT_KEY=x
 SEED_ADMIN_PASSWORD=x
 POSTGRES_PASSWORD=x
@@ -1039,6 +1133,35 @@ git commit -m "feat(aws): bootstrap docker and the environment file from user-da
 
 **Files:**
 - Create: `terraform/aws/dev/dns.tf`
+
+> **Se você não tem domínio** (decisão 11, 2026-09-08): faça só o Passo 0 e pule
+> direto para a Task 9. `dns.tf` continua sendo criado — com `route53_zone_id`
+> vazio ele não gera recurso nenhum — e a Task 8 inteira volta a valer no dia em
+> que o domínio existir.
+
+- [ ] **Passo 0: O caminho sem domínio, com `sslip.io`**
+
+```bash
+terraform output public_ip     # ex.: 54.207.1.2
+```
+
+O nome de host do ambiente é esse IP com hífens no lugar dos pontos, mais `.sslip.io`:
+
+```
+54.207.1.2  ->  54-207-1-2.sslip.io
+```
+
+Não há cadastro, não há DNS para configurar, não há custo: o `sslip.io` já resolve qualquer nome nesse formato. Como o IP é elástico, ele não muda entre recriações da instância.
+
+Confirme antes de deixar o Caddy tentar:
+
+```bash
+dig +short 54-207-1-2.sslip.io
+```
+
+Esperado: exatamente o IP do `terraform output public_ip`.
+
+Esse nome é o `<DOMINIO>` do resto do plano: vai no `Caddyfile` (Task 6) e no `appsettings.Production.json` (Task 9). Trocar pelo domínio de verdade depois é editar essas duas linhas e reaplicar o deploy — nenhum recurso da AWS muda.
 
 - [ ] **Passo 1: `dns.tf`**
 
@@ -1217,7 +1340,26 @@ Em `Prumo.Api/appsettings.Production.json`, trocar as três coisas. O `AllowedHo
 }
 ```
 
-- [ ] **Passo 4: Rodar e ver passar**
+- [ ] **Passo 4: Trocar a região default de `us-east-1` para `sa-east-1`**
+
+O deploy manda `Sqs__Region` por env var, então isto não muda comportamento nenhum no ambiente — muda o que acontece quando a env var **falta**, que é o caso do desenvolvedor rodando local. Um default apontando para a Virgínia enquanto tudo vive em São Paulo é uma pegadinha esperando alguém.
+
+Quatro lugares, todos com o mesmo valor:
+
+```bash
+# Os dois appsettings.json (chave Sqs:Region):
+#   Prumo.Api/appsettings.json
+#   Prumo.Notifications/appsettings.json
+# E os dois fallbacks no código:
+#   Prumo.Api/Configuration/NotificationConfiguration.cs:115
+#   Prumo.Notifications/Program.cs:130
+grep -rn '"us-east-1"\|us-east-1' --include=*.json --include=*.cs \
+  Prumo.Api Prumo.Notifications
+```
+
+Os `us-east-1` que sobram em `Prumo.Tests/Api/NotificationConfigurationTests.cs` são URLs de fila fabricadas para o teste; não têm nada a ver com a região real e podem ficar.
+
+- [ ] **Passo 5: Rodar e ver passar**
 
 ```bash
 dotnet test
@@ -1225,11 +1367,14 @@ dotnet test
 
 Esperado: **138 aprovados**, 0 falhas (136 de hoje mais os 2 novos).
 
-- [ ] **Passo 5: Commitar**
+- [ ] **Passo 6: Commitar**
 
 ```bash
-git add Prumo.Api/appsettings.Production.json Prumo.Tests/Architecture/ProductionConfigTests.cs
-git commit -m "fix(config): stop naming Azure in the production overlay"
+git add Prumo.Api/appsettings.Production.json Prumo.Api/appsettings.json \
+        Prumo.Api/Configuration/NotificationConfiguration.cs \
+        Prumo.Notifications/appsettings.json Prumo.Notifications/Program.cs \
+        Prumo.Tests/Architecture/ProductionConfigTests.cs
+git commit -m "fix(config): stop naming Azure in the production overlay and default to sa-east-1"
 ```
 
 ---
@@ -1280,7 +1425,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: sa-east-1
 
       - uses: aws-actions/amazon-ecr-login@v2
 
@@ -1318,7 +1463,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: sa-east-1
 
       - uses: aws-actions/amazon-ecr-login@v2
 
@@ -1346,7 +1491,7 @@ O job que hoje atualiza o Container App vira:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: sa-east-1
 
       - name: Ship the deploy files and restart the stack
         run: |
@@ -1366,7 +1511,7 @@ O job que hoje atualiza o Container App vira:
               \"echo $PAYLOAD | base64 -d | tar xzf - -C /opt/prumo\",
               \"cd /opt/prumo\",
               \"sed -i 's/^${{ steps.r.outputs.app == 'api' && 'API' || 'WEB' }}_TAG=.*/${{ steps.r.outputs.app == 'api' && 'API' || 'WEB' }}_TAG=${{ steps.r.outputs.tag }}/' .env\",
-              \"aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}\",
+              \"aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}\",
               \"docker compose pull\",
               \"docker compose up -d\",
               \"docker image prune -f\"
@@ -1461,7 +1606,21 @@ aws sqs receive-message --queue-url "$(terraform output -raw queue_url)" \
 
 Esperado: uma mensagem com o atributo `Type` valendo `email.password-reset`. **Ninguém a consome** — o worker é a spec seguinte, e a mensagem voltar para a fila é o comportamento correto aqui.
 
-- [ ] **7. Destruir zera a conta**
+- [ ] **7. O backup aconteceu de verdade**
+
+Este item só pode ser marcado **no dia seguinte** ao primeiro boot: a policy roda 06:00 UTC.
+
+```bash
+aws ec2 describe-snapshots --owner-ids self \
+  --query 'Snapshots[].{Id:SnapshotId,Vol:VolumeId,When:StartTime,State:State}' \
+  --output table
+```
+
+Esperado: pelo menos um snapshot `completed` do volume da instância. Policy `ENABLED` prova que a configuração existe; só isto prova que ela funciona — e é a diferença entre ter backup e achar que tem.
+
+- [ ] **8. Destruir, se for o caso — e o que sobrevive**
+
+> **Atenção, mudou em 2026-09-08:** enquanto este ambiente for o piloto, ele fica **ligado**. `terraform destroy` deixou de ser rotina e virou o botão de desistir. Rode este item só se for realmente desmontar tudo, e só depois de conferir o item 7.
 
 ```bash
 terraform destroy
@@ -1469,7 +1628,7 @@ terraform destroy
 
 Esperado: tudo removido, **incluindo os repositórios do ECR e as imagens dentro deles** — é para isso que serve o `force_delete`, e o próximo `apply` os recria vazios (o primeiro deploy depois disso precisa reconstruir as imagens).
 
-Sobrevive de propósito só o que está fora da árvore: o bucket de estado, criado pela CLI na Task 1, e a hosted zone do Route 53, se você tiver criado uma. Confira no Billing no dia seguinte que o custo corrente voltou para perto de zero.
+Sobrevive de propósito só o que está fora da árvore: o bucket de estado criado pela CLI na Task 1, a hosted zone do Route 53 se você tiver criado uma, e **os snapshots já tirados** — o DLM não os apaga junto com a policy, e é bom que não apague: é o que permite ressuscitar o piloto depois de um destroy errado. Eles custam centavos; apague à mão quando tiver certeza. Confira no Billing no dia seguinte que o custo corrente voltou para perto de zero.
 
 ---
 
@@ -1505,6 +1664,9 @@ git commit -m "docs: record what executing the AWS environment plan taught"
 - **`t3.small` são 2 GB para quatro containers.** Se o Postgres e a API brigarem por memória, `t3.medium` é uma linha.
 - **O limite de emissão do Let's Encrypt** é por domínio e por semana. Destruir e recriar o ambiente muitas vezes esbarra nele; o volume `caddy-data` preserva o certificado se não for destruído junto.
 - **A ordem das tasks 4 e 5 é circular no Terraform**, não na leitura: a policy de deploy referencia a instância. Elas se aplicam juntas, e o plano diz isso — mas quem executar fora de ordem vai ver um erro de referência não resolvida.
+- **O backup depende de uma tag.** A policy do DLM encontra o volume por `Name = local.name` na instância. Renomear a tag desliga o backup **em silêncio** — nada falha, os snapshots simplesmente param. É o que o item 7 da Task 11 existe para pegar, e é o que valeria repetir de tempos em tempos.
+- **`sslip.io` é uma dependência de terceiro no caminho do TLS.** Se o serviço sair do ar, o nome para de resolver e o Caddy não renova o certificado. Para destravar o primeiro `apply` é aceitável; para o piloto em frente a um cliente, não é — o domínio próprio resolve isso e é barato.
+- **São Paulo custa ~60% mais que a Virgínia.** Está decidido e registrado na spec, mas o número precisa aparecer no budget: US$ 40/mês, não US$ 20.
 
 ---
 
