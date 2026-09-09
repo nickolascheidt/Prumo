@@ -127,7 +127,7 @@ host.Run();
 static IAmazonSQS CreateSqsClient(IConfiguration configuration)
 {
     var serviceUrl = configuration["Sqs:ServiceUrl"];
-    var region = configuration["Sqs:Region"] ?? "us-east-1";
+    var region = configuration["Sqs:Region"] ?? "sa-east-1";
     var config = new AmazonSQSConfig();
 
     if (string.IsNullOrWhiteSpace(serviceUrl))

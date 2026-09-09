@@ -1163,7 +1163,7 @@ git commit -m "feat(aws): point the domain at the instance"
 
 Esta é a única task com teste automatizado de verdade, e ela segue o padrão do `TenantCoverageTests`: um teste de arquitetura que **quebra o build** quando a configuração de produção volta a mentir.
 
-- [ ] **Passo 1: Escrever o teste que falha**
+- [x] **Passo 1: Escrever o teste que falha**
 
 Criar `Prumo.Tests/Architecture/ProductionConfigTests.cs`:
 
@@ -1236,7 +1236,7 @@ public class ProductionConfigTests
 }
 ```
 
-- [ ] **Passo 2: Rodar e ver falhar**
+- [x] **Passo 2: Rodar e ver falhar**
 
 ```bash
 dotnet test --filter "FullyQualifiedName~ProductionConfigTests"
@@ -1244,7 +1244,7 @@ dotnet test --filter "FullyQualifiedName~ProductionConfigTests"
 
 Esperado: `O_overlay_de_producao_nao_carrega_placeholder_de_azure` **falha** — o arquivo contém `CONFIGURE_VIA_AZURE_APP_SETTINGS_OR_KEY_VAULT` e `yourdomain.com`. O segundo teste passa.
 
-- [ ] **Passo 3: Corrigir o overlay**
+- [x] **Passo 3: Corrigir o overlay**
 
 Em `Prumo.Api/appsettings.Production.json`, trocar as três coisas. O `AllowedHosts` e o CORS passam a vir do ambiente (o compose os põe), então o arquivo deixa de fingir que os conhece:
 
@@ -1279,7 +1279,7 @@ Em `Prumo.Api/appsettings.Production.json`, trocar as três coisas. O `AllowedHo
 }
 ```
 
-- [ ] **Passo 4: Trocar a região default de `us-east-1` para `sa-east-1`**
+- [x] **Passo 4: Trocar a região default de `us-east-1` para `sa-east-1`**
 
 O deploy manda `Sqs__Region` por env var, então isto não muda comportamento nenhum no ambiente — muda o que acontece quando a env var **falta**, que é o caso do desenvolvedor rodando local. Um default apontando para a Virgínia enquanto tudo vive em São Paulo é uma pegadinha esperando alguém.
 
@@ -1298,7 +1298,7 @@ grep -rn '"us-east-1"\|us-east-1' --include=*.json --include=*.cs \
 
 Os `us-east-1` que sobram em `Prumo.Tests/Api/NotificationConfigurationTests.cs` são URLs de fila fabricadas para o teste; não têm nada a ver com a região real e podem ficar.
 
-- [ ] **Passo 5: Rodar e ver passar**
+- [x] **Passo 5: Rodar e ver passar**
 
 ```bash
 dotnet test
@@ -1306,7 +1306,7 @@ dotnet test
 
 Esperado: **138 aprovados**, 0 falhas (136 de hoje mais os 2 novos).
 
-- [ ] **Passo 6: Commitar**
+- [x] **Passo 6: Commitar**
 
 ```bash
 git add Prumo.Api/appsettings.Production.json Prumo.Api/appsettings.json \
