@@ -81,17 +81,28 @@ O que torna isto decisão de *agora*, e não de depois: o Postgres vive no volum
 EBS da instância. Mudar de região mais tarde não é trocar uma variável — é
 snapshot, cópia entre regiões e recriar tudo, com os dados do piloto dentro.
 
-## Custo e créditos
+## Custo: não há crédito nenhum
 
-A AWS trocou o modelo de free tier em julho de 2025. Conta nova recebe **US$ 100
-em créditos**, e mais US$ 100 completando cinco tarefas de onboarding; valem 12
-meses. Isso cobre este ambiente ligado 24/7 por **~3 meses em `sa-east-1`**.
+Escrito primeiro assumindo conta nova, e **corrigido em 2026-09-08 depois de
+olhar a conta real** (`7673-9793-9785`) pelo console:
 
-**No cadastro, escolher o Paid Plan, não o Free Plan.** Os créditos são os mesmos
-nos dois. A diferença é que o Free Plan **fecha a conta automaticamente** quando
-os créditos acabam ou em 6 meses, o que vier primeiro — comportamento inaceitável
-para um ambiente com cliente de piloto dentro. O budget alarm da Task 0 é a rede
-de proteção correta; o auto-close não é.
+- **Créditos: US$ 0,00.** Nenhum ativo, nenhum resgatável.
+- A conta foi aberta em **junho de 2025**, então tanto o free tier de 12 meses
+  quanto os US$ 100/200 do modelo novo (que vale para contas abertas a partir de
+  julho de 2025) **não se aplicam**. Os 12 meses expiraram por volta de junho de
+  2026.
+- Custo corrente e do mês anterior: **US$ 0,00** — não há nada ligado na conta.
+
+**Consequência prática: este ambiente custa ~US$ 32/mês do primeiro dia**, do
+bolso, sem período de carência. Não existe a folga de "os primeiros meses são de
+graça" que a primeira versão desta seção prometia.
+
+Isso não muda nenhuma decisão de arquitetura — muda a expectativa, e muda o peso
+do budget alarm da Task 0, que passa a ser a única coisa entre um erro de
+configuração e uma fatura real.
+
+Toda a discussão de Free Plan × Paid Plan que estava aqui saiu por ser irrelevante:
+ela vale no cadastro de conta nova, e esta conta é anterior ao modelo.
 
 ## A alternativa recusada: ECS Fargate
 

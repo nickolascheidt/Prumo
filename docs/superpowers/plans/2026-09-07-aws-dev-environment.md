@@ -40,15 +40,29 @@ O primeiro `terraform plan` de cada task é onde a realidade corrige o HCL escri
 
 - [ ] **Passo 1: Conta AWS com o mínimo de higiene**
 
-Criar a conta. Precisa de cartão de crédito mesmo com créditos — não tem como fugir disso.
+> **Estado verificado no console em 2026-09-08** (conta `7673-9793-9785`, aberta em junho de 2025). O que já está pronto e o que falta:
+>
+> | | Estado |
+> |---|---|
+> | Conta existe, região já em São Paulo | ✅ |
+> | MFA no usuário raiz | ✅ |
+> | Raiz sem chaves de acesso | ✅ |
+> | Nada ligado (custo US$ 0,00 no mês e no anterior) | ✅ |
+> | Usuário IAM `nickolas` com `AdministratorAccess` pelo grupo `admin` | ✅ |
+> | **Acesso ao console desabilitado nesse usuário** — por isso o dia a dia acontece na raiz | ❌ |
+> | **MFA nesse usuário** | ❌ |
+> | **Chave de acesso de 448 dias, sem uso há 446** | ⚠️ |
+> | **Budget alarm** | ❌ |
+> | **Créditos: US$ 0,00** — a conta é anterior ao modelo de julho/2025 e o free tier de 12 meses expirou | ⚠️ |
 
-**No cadastro a AWS pergunta Free Plan ou Paid Plan. Escolha Paid Plan.** Os US$ 100 de crédito (US$ 200 completando as cinco tarefas de onboarding) são idênticos nos dois; a diferença é que o **Free Plan fecha a sua conta automaticamente** quando os créditos acabam ou em 6 meses, o que vier primeiro. Para um ambiente com cliente de piloto dentro, isso é destruição de dados agendada. O budget alarm do item 3 é a proteção certa contra gastar sem querer; o auto-close não é.
+Sobra fazer, nesta ordem:
 
-Depois, e antes de qualquer outra coisa:
+1. **Dar senha de console ao usuário `nickolas`** (IAM → Usuários → Credenciais de segurança → Habilitar acesso ao console) e **ativar MFA nele**. Hoje ele só tem chave programática, e é por isso que o console está sendo usado pela raiz — não por escolha, por falta de alternativa.
+2. **Passar a entrar por `https://767397939785.signin.aws.amazon.com/console`** com esse usuário, e deixar a raiz para o que só ela faz (fechar a conta, mudar plano de suporte, alterar forma de pagamento).
+3. **Rotacionar a chave de acesso.** Ela tem 448 dias e não é usada há 446 — ou seja, ninguém sabe onde ela está. Criar a chave 2, pôr no `aws configure`, confirmar com `aws sts get-caller-identity` e **desativar e apagar a chave 1**.
+4. **Criar o budget alarm** em Billing: US$ 40/mês, alerta por e-mail em 50% e 100%. (Eram US$ 20 quando o alvo era `us-east-1`; São Paulo custa ~US$ 32/mês ligado 24/7, e um limite abaixo do custo real só ensina a ignorar o alerta.) **Sem crédito nenhum na conta, este é o único aviso que existe entre um erro e uma fatura de verdade.**
 
-1. Ativar MFA na conta raiz e **parar de usar a raiz**.
-2. Criar um usuário IAM administrativo para o dia a dia, com MFA.
-3. Criar um **budget alarm** em Billing: US$ 40/mês, alerta por e-mail em 50% e 100%. (Eram US$ 20 quando o alvo era `us-east-1`; São Paulo custa ~US$ 32/mês ligado 24/7, e um limite abaixo do custo real só ensina a ignorar o alerta.) Criar o budget é, de quebra, uma das cinco tarefas que liberam os US$ 100 extras de crédito.
+As quatro políticas extras no grupo `admin` (`AmazonEC2FullAccess`, `AmazonS3FullAccess`, `AmazonVPCFullAccess`, `IAMFullAccess`) são redundantes com `AdministratorAccess` e podem sair quando der vontade. Não bloqueiam nada.
 
 - [ ] **Passo 2: AWS CLI configurada**
 
