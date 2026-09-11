@@ -138,7 +138,7 @@ aws s3api put-public-access-block \
 
 O versionamento não é opcional: é o que permite voltar um estado corrompido.
 
-- [ ] **Passo 2: `versions.tf`**
+- [x] **Passo 2: `versions.tf`**
 
 ```terraform
 terraform {
@@ -177,7 +177,7 @@ provider "aws" {
 
 Substitua `<ACCOUNT_ID>` pelo número real: o bloco `backend` não aceita variável.
 
-- [ ] **Passo 3: `variables.tf`**
+- [x] **Passo 3: `variables.tf`**
 
 ```terraform
 variable "aws_region" {
@@ -232,7 +232,7 @@ variable "github_repos" {
 }
 ```
 
-- [ ] **Passo 4: `main.tf` com os dados que todo o resto usa**
+- [x] **Passo 4: `main.tf` com os dados que todo o resto usa**
 
 ```terraform
 data "aws_caller_identity" "current" {}
@@ -246,7 +246,7 @@ locals {
 
 Repare no que **não** está aqui e estava na versão EC2 deste plano: VPC default, lista de subnets e a AMI do Amazon Linux por parâmetro público do SSM. O Lightsail não expõe nenhuma dessas coisas — ele tem rede própria, e a imagem base é escolhida por `blueprint_id`. É o primeiro sinal concreto de que a árvore ficou menor.
 
-- [ ] **Passo 5: `outputs.tf`**
+- [x] **Passo 5: `outputs.tf`**
 
 ```terraform
 output "ecr_registry" {
@@ -255,7 +255,7 @@ output "ecr_registry" {
 }
 ```
 
-- [ ] **Passo 6: `terraform.tfvars`**
+- [x] **Passo 6: `terraform.tfvars`**
 
 ```terraform
 aws_region = "sa-east-1"
@@ -281,7 +281,7 @@ terraform validate
 
 Esperado: `Terraform has been successfully initialized!` e `Success! The configuration is valid.`
 
-- [ ] **Passo 8: Commitar**
+- [x] **Passo 8: Commitar**
 
 ```bash
 git add terraform/aws/dev/
@@ -298,7 +298,7 @@ git commit -m "feat(aws): scaffold the dev environment tree with S3 state"
 - Create: `terraform/aws/dev/ecr.tf`
 - Create: `terraform/aws/dev/sqs.tf`
 
-- [ ] **Passo 1: `ecr.tf`**
+- [x] **Passo 1: `ecr.tf`**
 
 ```terraform
 resource "aws_ecr_repository" "api" {
@@ -347,7 +347,7 @@ resource "aws_ecr_lifecycle_policy" "web" {
 }
 ```
 
-- [ ] **Passo 2: `sqs.tf`**
+- [x] **Passo 2: `sqs.tf`**
 
 ```terraform
 # Os números são os mesmos do elasticmq/elasticmq.conf no repo da aplicação, de
@@ -368,7 +368,7 @@ resource "aws_sqs_queue" "notifications" {
 }
 ```
 
-- [ ] **Passo 3: Acrescentar as saídas em `outputs.tf`**
+- [x] **Passo 3: Acrescentar as saídas em `outputs.tf`**
 
 ```terraform
 output "queue_url" {
@@ -400,7 +400,7 @@ aws sqs get-queue-attributes \
 
 Esperado: `RedrivePolicy` com `"maxReceiveCount":5` apontando para o ARN da DLQ, `VisibilityTimeout` `60`, `ReceiveMessageWaitTimeSeconds` `20`. Se o redrive vier vazio, a fila envenenada não teria para onde ir — não siga.
 
-- [ ] **Passo 6: Commitar**
+- [x] **Passo 6: Commitar**
 
 ```bash
 git add terraform/aws/dev/ecr.tf terraform/aws/dev/sqs.tf terraform/aws/dev/outputs.tf
@@ -469,7 +469,7 @@ Não existe arquivo desta task no repo, e é de propósito. Se você se pegou qu
 
 Substitui as federated credentials do Entra. Nenhuma chave de acesso da AWS vai para os secrets do GitHub — o CI se autentica por OIDC, que continua valendo igual no desenho com Lightsail. **A ordem circular com a Task 5 acabou:** sem `ssm:SendCommand`, esta role não referencia mais a instância, e a Task 4 aplica sozinha.
 
-- [ ] **Passo 1: `oidc.tf`**
+- [x] **Passo 1: `oidc.tf`**
 
 ```terraform
 # Sem `thumbprint_list`: para GitHub, GitLab, Google e Auth0 a AWS valida pela
@@ -549,7 +549,7 @@ resource "aws_iam_role_policy" "github_deploy" {
 }
 ```
 
-- [ ] **Passo 2: Acrescentar a saída em `outputs.tf`**
+- [x] **Passo 2: Acrescentar a saída em `outputs.tf`**
 
 ```terraform
 output "github_deploy_role_arn" {
@@ -560,7 +560,7 @@ output "github_deploy_role_arn" {
 
 **Nota, mudou em 2026-09-08:** na versão EC2 esta task referenciava `aws_instance.app` (para o `ssm:SendCommand`) e precisava ser aplicada junto com a Task 5. Sem isso, ela é independente: pode aplicar sozinha.
 
-- [ ] **Passo 3: Commitar (sem aplicar ainda)**
+- [x] **Passo 3: Commitar (sem aplicar ainda)**
 
 ```bash
 git add terraform/aws/dev/oidc.tf terraform/aws/dev/outputs.tf
@@ -798,7 +798,7 @@ git commit -m "feat(aws): create the Lightsail box, its static IP and its scoped
 
 Este compose **não é** o `docker-compose.yml` da raiz do repo da aplicação. Aquele é de desenvolvimento, monta código local e sobe o ElasticMQ; este puxa imagens do ECR e fala com o SQS real.
 
-- [ ] **Passo 1: Copiar `db/roles.sql` do repo da aplicação**
+- [x] **Passo 1: Copiar `db/roles.sql` do repo da aplicação**
 
 ```bash
 cp ../SaaSBasePlatform/db/roles.sql deploy/db/roles.sql
@@ -813,7 +813,7 @@ Acrescente no topo do arquivo copiado:
 
 Isto é duplicação e vai derivar um dia. Está registrado como risco conhecido no fim do plano; a alternativa (assar o script na imagem da API) custa mais do que resolve nesta fatia.
 
-- [ ] **Passo 2: `deploy/Caddyfile`**
+- [x] **Passo 2: `deploy/Caddyfile`**
 
 ```
 {$DOMAIN} {
@@ -825,7 +825,7 @@ Isto é duplicação e vai derivar um dia. Está registrado como risco conhecido
 
 O nginx do Angular continua fazendo o proxy de `/api` para a API, então o Caddy só precisa conhecer o `web`.
 
-- [ ] **Passo 3: `deploy/docker-compose.yml`**
+- [x] **Passo 3: `deploy/docker-compose.yml`**
 
 ```yaml
 services:
@@ -909,7 +909,7 @@ volumes:
 
 Repare que **nenhuma porta do Postgres é publicada**: ele só existe na rede do compose.
 
-- [ ] **Passo 4: Verificar que o compose é válido**
+- [x] **Passo 4: Verificar que o compose é válido**
 
 Da sua máquina, com um `.env` de mentira só para a substituição de variável:
 
@@ -921,6 +921,8 @@ ECR_REGISTRY=000000000000.dkr.ecr.sa-east-1.amazonaws.com
 API_TAG=teste
 WEB_TAG=teste
 AWS_REGION=sa-east-1
+AWS_ACCESS_KEY_ID=x
+AWS_SECRET_ACCESS_KEY=x
 SQS_QUEUE_URL=https://sqs.sa-east-1.amazonaws.com/000000000000/fila
 JWT_KEY=x
 SEED_ADMIN_PASSWORD=x
@@ -934,7 +936,7 @@ rm .env
 
 Esperado: `OK`. Qualquer variável não substituída aparece como aviso aqui, e não em produção.
 
-- [ ] **Passo 5: Commitar**
+- [x] **Passo 5: Commitar**
 
 ```bash
 git add deploy/
@@ -1600,3 +1602,33 @@ git commit -m "docs: record what executing the AWS environment plan taught"
 ## Registro de execução
 
 _(A preencher durante a execução — o que a execução revelou e onde o plano errou.)_
+
+### 2026-09-10 — a fatia offline, antes de existir conta utilizável
+
+Sessão sem credencial da AWS: o MFA do usuário IAM não pôde ser configurado (o
+celular não estava à mão), então a **Task 0 inteira segue aberta** e com ela tudo
+o que gasta dinheiro. O que dava para adiantar sem conta foi adiantado:
+
+| Task | Estado |
+|---|---|
+| 1 | Passos 2–6 e 8 feitos. Faltam o Passo 1 (bucket, exige CLI autenticada) e o Passo 7 (`terraform init` de verdade, contra o S3). |
+| 2 | HCL escrito e commitado (passos 1–3, 6). `apply` e verificação do redrive, não. |
+| 4 | Completa — ela já previa commitar sem aplicar. |
+| 6 | Completa, incluindo a validação do compose. |
+
+**O medo do plano não se confirmou, em parte.** "Espere corrigir nomes de atributo
+no primeiro `plan`" — mas `terraform init -backend=false && terraform validate`
+roda offline, baixa o provider real (aws 6.64.0) e **valida o esquema de todo
+recurso escrito**. As tasks 1, 2 e 4 passaram sem uma correção sequer. O que
+`validate` não cobre continua de pé: valor inválido (`blueprint_id`,
+`bundle_id`), permissão, e tudo que só a API da AWS sabe. O aviso vale para a
+Task 5 em diante, não para o que já está escrito.
+
+**Um erro encontrado no plano, corrigido aqui:** o `.env` de mentira do Passo 4 da
+Task 6 não tinha `AWS_ACCESS_KEY_ID` nem `AWS_SECRET_ACCESS_KEY`, que o compose
+usa. `docker compose config` avisava sobre as duas, e o passo existe justamente
+para que aviso nenhum passe batido — um ruído fixo treinaria a ignorar o sinal.
+O `.env` real da Task 7, Passo 4, sempre teve as duas: era falha só da amostra.
+
+**Decisão ainda aberta:** domínio próprio ou `sslip.io`. Não trava este plano,
+trava o seguinte — o SES exige domínio verificado com DKIM.
