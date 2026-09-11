@@ -847,20 +847,43 @@ da exceção vai para o corpo da resposta (as atuais são seguras, mas vira cont
 
 ---
 
-## Onde o projeto está — 2026-08-28
+## Onde o projeto está — 2026-09-10
 
 > **Leia isto primeiro ao retomar.** Substitui a "ordem sugerida" antiga, que ficou
 > inteira para trás.
 
 **Tudo o que é aplicação está feito** — os itens 8 e 11 saíram em 2026-08-28. O que sobra
-é um pass único de infraestrutura, decidido nesta ordem para não pagar `terraform apply`
-(e o tempo do Nickolas) mais de uma vez:
+é infraestrutura, num pass único, ordenado para não pagar `terraform apply` (e o tempo do
+Nickolas) mais de uma vez:
 
 | Falta | Por quê ainda não |
 |---|---|
-| **O pass único de Azure** | Tudo o que é aplicação está feito. Sobra: recurso de ACS e Service Bus reais, container do worker publicado com escala a zero por KEDA, private endpoint/VNet, Entra ID + Managed Identity, o passo de migration no `deploy.yml`, `SslMode=VerifyFull` e, por último, RLS com `FORCE`. Exige `az login` — tarefa a dois. |
+| **O piloto na AWS** | Tudo o que é aplicação está feito. Sobra infraestrutura, e ela **mudou de nuvem**: ver abaixo. |
 
-Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento:
+**A infra saiu da Azure e virou um piloto na AWS** (decidido em 2026-09-07/08). Não é
+mais "ambiente de teste descartável": é a versão que vai à frente de cliente. Uma
+instância Lightsail de 2 GB em `sa-east-1` rodando `docker compose` — Caddy, o nginx do
+Angular, a API e o Postgres — com TLS e snapshot diário, por ~US$ 14/mês. O desenho está
+em `docs/superpowers/specs/2026-09-07-aws-dev-environment-design.md` e o plano, com 13
+tasks, em `docs/superpowers/plans/2026-09-07-aws-dev-environment.md`.
+
+Estado em 2026-09-10: **nada aplicado, nenhum recurso na AWS, custo US$ 0,00.** A Task 9
+(tirar os placeholders de Azure do overlay de produção) saiu em 2026-09-09. Em 2026-09-10
+todo o HCL que não exige conta foi escrito, validado offline contra o provider real e
+commitado no repo devops, branch `feature/aws-dev-environment`: tasks 1 (parcial), 2, 4 e
+6. O "Registro de execução" no fim do plano diz exatamente o que ficou de fora.
+
+**O bloqueio é a Task 0, e é trabalho humano no console:** console + MFA no usuário IAM
+`nickolas`, rotação de uma chave de acesso de 448 dias e o budget alarm. A conta **não tem
+crédito nenhum** e o free tier expirou — esse alarme é o único aviso entre um erro e uma
+fatura. Enquanto `aws sts get-caller-identity` não devolver um ARN que não termine em
+`:root`, nada que gasta dinheiro começa.
+
+A árvore `azurerm` do repo devops **não foi tocada** e o `rg-saasbase-tfstate` continua de
+pé na Azure, custando centavos. Decidir se ele morre é assunto para depois de o piloto
+subir, não antes.
+
+Além desses, seguem fora do escopo **por decisão**, não por esquecimento:
 
 - **Pass de infra** (`2026-08-11-infra-rename-pass.md`) — renomear os 3 repos e corrigir
   as federated credentials no Entra. Exige `az login`, é tarefa a dois.
@@ -886,6 +909,8 @@ Além desses dois, seguem fora do escopo **por decisão**, não por esquecimento
 | 11 | Item 11, metade local — roles do Postgres e migration fora do startup | 2026-08-28 |
 | 12 | Serviço de notificação (`Prumo.Notifications`) — fila, worker e envio | 2026-08-28 |
 | 13 | Item 8 — cadastro, confirmação, senha esquecida e convites | 2026-08-28 |
+| 14 | Fila e e-mail portáveis — provider escolhido por configuração, ElasticMQ no lugar do emulador do Service Bus | 2026-09-03 |
+| 15 | Identidade Prumo no frontend — paleta, tema M2 próprio e o selo, no lugar do deeppurple-amber | 2026-09-10 |
 
 ### Quatro coisas que valem lembrar antes de escrever código novo
 
