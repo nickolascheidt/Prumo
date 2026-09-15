@@ -182,9 +182,14 @@ namespace Prumo.Api.Controllers
             return Ok(users);
         }
 
+        /// <summary>
+        /// Resolve um e-mail qualquer para id e nome — dado de todo usuário, de todo
+        /// tenant. Só o master (auditoria de 2026-09-15).
+        /// </summary>
         [HttpGet("users/lookup")]
-        [Authorize]
+        [Authorize(Roles = "Administrador")]
         [ProducesResponseType(typeof(UserLookupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserLookupDto>> LookupUserByEmail(
             [FromQuery] string email, CancellationToken cancellationToken)
