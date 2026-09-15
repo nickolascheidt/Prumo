@@ -8,6 +8,10 @@ public static class MiddlewareConfiguration
 {
     public static WebApplication ConfigureMiddleware(this WebApplication app)
     {
+        // Primeiro de todos: tudo abaixo (log, rate limit por IP, CORS) precisa ver o
+        // IP e o scheme do cliente, não os do nginx. Ver ForwardedHeadersConfiguration.
+        app.UseForwardedHeaders();
+
         app.UseMiddleware<ExceptionHandlingMiddleware>();
 
         if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Demo"))
@@ -19,10 +23,8 @@ public static class MiddlewareConfiguration
             });
         }
 
-        if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Demo"))
-        {
-            app.UseHttpsRedirection();
-        }
+        // Sem UseHttpsRedirection: TLS termina no Caddy, que já redireciona 80 → 443.
+        // Aqui dentro ele não tinha porta HTTPS para apontar e só avisava no log.
 
         app.UseCors("AppCorsPolicy");
 

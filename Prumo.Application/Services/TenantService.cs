@@ -104,7 +104,12 @@ namespace Prumo.Application.Services
                 .Select(r => (Guid?)r.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
+            // cross-tenant: o TenantsController não usa [TenantModule], então o
+            // TenantContext vem do claim e pode ser outro tenant do chamador. A subconsulta
+            // de TenantUserRoles (ITenantScoped) fecharia nele e a lista viria sem roles.
+            // O tenant desta leitura é o da rota, filtrado nos dois Where.
             return await _db.TenantUsers
+                .IgnoreQueryFilters()
                 .Where(tu => tu.TenantId == tenantId)
                 .Select(tu => new TenantMemberDto(
                     tu.UserId,
@@ -121,8 +126,21 @@ namespace Prumo.Application.Services
                 .ToListAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Owner só nasce com o tenant (CreateAsync). Inserir membro como Owner faria um
+        /// Admin fabricar um segundo dono que RemoveMemberAsync e UpdateMemberRoleAsync
+        /// se recusam a tocar — escalonamento com persistência (auditoria de 2026-09-15).
+        /// </summary>
+        private static void RejectOwner(TenantRole role)
+        {
+            if (role == TenantRole.Owner)
+                throw new InvalidOperationException("Cannot add a member as Owner.");
+        }
+
         public async Task AddMemberAsync(Guid tenantId, Guid userId, TenantRole role, CancellationToken cancellationToken = default)
         {
+            RejectOwner(role);
+
             var exists = await _db.TenantUsers
                 .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == userId, cancellationToken);
             if (exists)
@@ -184,6 +202,18 @@ namespace Prumo.Application.Services
             if (membership.Role == TenantRole.Owner)
                 throw new InvalidOperationException("Cannot remove the tenant owner");
 
+            // As feature roles saem junto. Nada as apaga em cascata (TenantUserRoles não
+            // tem FK para TenantUsers), e deixá-las órfãs faz quem for readmitido voltar
+            // com os módulos que tinha, sem ninguém conceder de novo.
+            // cross-tenant: o TenantsController não usa [TenantModule], então o
+            // TenantContext vem do claim e pode ser outro tenant do chamador. O tenant
+            // desta remoção é o da rota, filtrado abaixo.
+            var featureRoles = await _db.TenantUserRoles
+                .IgnoreQueryFilters()
+                .Where(tur => tur.TenantId == tenantId && tur.UserId == userId)
+                .ToListAsync(cancellationToken);
+
+            _db.TenantUserRoles.RemoveRange(featureRoles);
             _db.TenantUsers.Remove(membership);
             await _db.SaveChangesAsync(cancellationToken);
         }
@@ -219,6 +249,8 @@ namespace Prumo.Application.Services
         public async Task<InviteMemberResultDto> InviteMemberAsync(
             Guid tenantId, InviteMemberRequestDto dto, Guid invitedByUserId, CancellationToken ct = default)
         {
+            RejectOwner(dto.Role);
+
             var email = dto.Email.Trim();
             if (string.IsNullOrWhiteSpace(email))
                 throw new ArgumentException("E-mail é obrigatório.", nameof(dto));
@@ -336,7 +368,10 @@ namespace Prumo.Application.Services
                     {
                         TenantId = invitation.TenantId,
                         UserId = userId,
-                        Role = invitation.Role
+                        // Convite com Owner só pode ser anterior à regra de RejectOwner.
+                        // Honrá-lo recriaria o furo; recusá-lo deixaria a pessoa fora de
+                        // um tenant que a esperava. Entra como Member.
+                        Role = invitation.Role == TenantRole.Owner ? TenantRole.Member : invitation.Role
                     });
                 }
 

@@ -158,8 +158,14 @@ namespace Prumo.Api.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Resolve um e-mail qualquer para id e nome. É dado de todo usuário do sistema,
+        /// de todo tenant, e o convite (item 8) é por e-mail e não precisa disto. Só o master.
+        /// </summary>
         [HttpGet("users/lookup")]
+        [Authorize(Roles = "Administrador")]
         [ProducesResponseType(typeof(UserLookupDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserLookupDto>> LookupUser(
             [FromQuery] string email, CancellationToken ct)
@@ -189,7 +195,10 @@ namespace Prumo.Api.Controllers
         [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IReadOnlyList<string>>> GetAssignableRoles(
             Guid tenantId, [FromServices] ITenantRoleAdminService roleAdmin, CancellationToken ct)
-            => Ok(await roleAdmin.GetAssignableRoleNamesAsync(tenantId, ct));
+        {
+            if (!await _tenantService.IsMemberAsync(tenantId, CurrentUserId, ct)) return Forbid();
+            return Ok(await roleAdmin.GetAssignableRoleNamesAsync(tenantId, ct));
+        }
 
         [HttpGet("{tenantId:guid}/members/{userId:guid}/roles")]
         [ProducesResponseType(typeof(TenantMemberRolesDto), StatusCodes.Status200OK)]

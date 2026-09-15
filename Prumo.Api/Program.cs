@@ -21,6 +21,7 @@ try
     builder.Services.AddApplicationServices();
     builder.Services.AddNotificationConfiguration(builder.Configuration, builder.Environment);
     builder.Services.AddHealthChecksConfiguration();
+    builder.Services.AddForwardedHeadersConfiguration();
     builder.Services.AddRateLimitingConfiguration(builder.Configuration);
     builder.Services.AddCorsConfiguration(builder.Configuration);
     builder.Services.AddOpenApi();

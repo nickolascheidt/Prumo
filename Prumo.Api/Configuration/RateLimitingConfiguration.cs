@@ -25,15 +25,29 @@ public static class RateLimitingConfiguration
                     });
             });
 
-            // Política para endpoints públicos (mais restritiva)
-            options.AddFixedWindowLimiter("public", options =>
-            {
-                options.PermitLimit = 10;
-                options.Window = TimeSpan.FromMinutes(1);
-                options.QueueLimit = 2;
-            });
+            // Endpoints públicos (login, cadastro, esqueci-senha): 10 por minuto POR IP.
+            // Era AddFixedWindowLimiter, que é uma janela única para o site inteiro —
+            // 10 logins por minuto somando todos os clientes, e qualquer anônimo
+            // derrubava o login de todo mundo com 10 requisições. O IP é o real só
+            // porque o ForwardedHeaders roda antes (ForwardedHeadersConfiguration).
+            options.AddPolicy("public", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: PublicPartitionKey(context),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 2
+                    }));
         });
 
         return services;
     }
+
+    /// <summary>
+    /// Chave da partição do limite público: o IP de origem. Sem IP (socket unix, teste)
+    /// cai numa partição fixa em vez de estourar.
+    /// </summary>
+    public static string PublicPartitionKey(HttpContext context) =>
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 }
