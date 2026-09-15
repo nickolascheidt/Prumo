@@ -1632,3 +1632,54 @@ O `.env` real da Task 7, Passo 4, sempre teve as duas: era falha só da amostra.
 
 **Decisão ainda aberta:** domínio próprio ou `sslip.io`. Não trava este plano,
 trava o seguinte — o SES exige domínio verificado com DKIM.
+
+### 2026-09-14 — o resto do código, ainda sem tocar na AWS
+
+A Task 0 continua aberta (`aws sts get-caller-identity` segue devolvendo
+`NoCredentials`), e a decisão foi **escrever tudo o que dá para escrever sem
+conta** em vez de esperar. Nada foi aplicado; a conta segue em US$ 0,00.
+
+| Task | Estado |
+|---|---|
+| 1, 2 | HCL já estava pronto; agora os passos de CLI viraram `scripts/aws/bootstrap-dev.sh` |
+| 3 | Virou `scripts/aws/gen-secrets.sh` |
+| 5 | `instance.tf`, `runtime-user.tf`, as duas variáveis novas e as saídas. **Escrito, não aplicado** |
+| 7 | `user-data.sh` escrito e ligado no `instance.tf` |
+| 8 | `dns.tf` escrito (inerte com `route53_zone_id` vazio) |
+| 10 | Workflows de app e angular trocados de ACR para ECR; `deploy/deploy.sh` escrito; `deploy.yml` do devops perdeu o gatilho automático |
+
+Sobram, e só saem com conta: o `apply` de tudo, o `.env` na máquina (Task 7,
+Passo 4), a chave de acesso do `prumo-dev-box`, o par SSH, os secrets do GitHub e
+a Task 11 inteira.
+
+**Três erros do plano que só apareceram agora.** Os dois primeiros o
+`terraform validate` pegaria no primeiro `plan`; o terceiro, não.
+
+1. **`snapshot_time_of_day` não existe.** O atributo do `add_on` do
+   `aws_lightsail_instance` é **`snapshot_time`**. O `validate` recusou a árvore
+   inteira até a correção — e é a prova de que rodar `validate` offline vale,
+   porque esse erro estaria esperando no primeiro apply pago.
+2. **`file("~/.ssh/prumo-dev.pub")` nunca funcionaria.** O `file()` do Terraform
+   **não expande o til** — `pathexpand()` existe exatamente para isso, e é o que
+   a documentação manda usar para chave SSH. Virou
+   `file(pathexpand(var.ssh_public_key_path))`, com a variável para não chumbar
+   caminho de máquina no HCL.
+3. **O `dns.tf` da Task 8 aponta para `aws_eip.app.public_ip`** — resíduo da
+   versão EC2, e não existe recurso `aws_eip` nesta árvore. Virou
+   `aws_lightsail_static_ip.app.ip_address`. O `validate` **pegaria** este, mas
+   só quando o arquivo fosse escrito; ele estava dormindo no texto do plano.
+
+**Uma correção de contagem:** a Task 2 diz "esperado: 6 recursos criados". São
+**9** — `oidc.tf` (Task 4) mora na mesma pasta e sobe no mesmo `apply`.
+
+**Os workflows ficaram em `workflow_dispatch`, não em `push`.** A Task 10, Passo
+5, pressupõe gatilho automático, mas com o ECR ainda inexistente e sem os secrets
+isso só produziria falha vermelha a cada commit. O comentário no topo de cada
+arquivo diz qual bloco descomentar no dia do primeiro apply. Pelo mesmo motivo o
+`deploy.yml` do repo devops perdeu o `repository_dispatch`: ele faz deploy na
+Azure, e nada mais o acordaria de propósito.
+
+**Saiu um passo do roteiro humano:** `bootstrap-dev.sh` recusa rodar com ARN de
+raiz, em conta diferente da que o backend em `versions.tf` nomeia, ou com
+Terraform anterior a 1.10, e avisa se não houver budget alarm. O portão da Task 0
+deixou de depender de alguém lembrar dele.

@@ -867,11 +867,17 @@ Angular, a API e o Postgres — com TLS e snapshot diário, por ~US$ 14/mês. O 
 em `docs/superpowers/specs/2026-09-07-aws-dev-environment-design.md` e o plano, com 13
 tasks, em `docs/superpowers/plans/2026-09-07-aws-dev-environment.md`.
 
-Estado em 2026-09-10: **nada aplicado, nenhum recurso na AWS, custo US$ 0,00.** A Task 9
+Estado em 2026-09-14: **nada aplicado, nenhum recurso na AWS, custo US$ 0,00.** A Task 9
 (tirar os placeholders de Azure do overlay de produção) saiu em 2026-09-09. Em 2026-09-10
 todo o HCL que não exige conta foi escrito, validado offline contra o provider real e
-commitado no repo devops, branch `feature/aws-dev-environment`: tasks 1 (parcial), 2, 4 e
-6. O "Registro de execução" no fim do plano diz exatamente o que ficou de fora.
+commitado no repo devops: tasks 1 (parcial), 2, 4 e 6. **Em 2026-09-14 o resto do código
+saiu** — tasks 5, 7, 8 e 10 escritas, mais dois scripts (`scripts/aws/bootstrap-dev.sh` e
+`gen-secrets.sh`) que automatizam os passos de CLI das tasks 1 a 3. Tudo em `main` nos três
+repos. O "Registro de execução" no fim do plano diz exatamente o que ficou de fora e lista
+os três erros do plano que só apareceram ao escrever o código.
+
+**O que sobrou não é código: é conta.** O `apply`, o `.env` na máquina, a chave do
+`prumo-dev-box`, o par SSH, os secrets do GitHub e a verificação da Task 11.
 
 **O bloqueio é a Task 0, e é trabalho humano no console:** console + MFA no usuário IAM
 `nickolas`, rotação de uma chave de acesso de 448 dias e o budget alarm. A conta **não tem

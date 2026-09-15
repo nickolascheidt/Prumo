@@ -1,12 +1,21 @@
 name: build-and-deploy
 
-# Manual only, on purpose. Pushing to main must never build or deploy on its own:
-# the dev stack is deliberately torn down to $0 between sessions, and the deploy
-# this workflow dispatches runs `terraform apply -auto-approve`, which recreates
-# the entire Azure environment (and its cost).
+# Constrói a imagem da API e a empurra para o ECR. Não faz deploy: no desenho de
+# Lightsail o deploy é `deploy/deploy.sh` no repo devops, rodado da máquina do
+# Nickolas. O `repository_dispatch` que existia aqui saiu — não há mais nada para
+# acordar.
 #
-# To actually ship: Actions > build-and-deploy > Run workflow. That builds the
-# image, pushes it to ACR and dispatches the dev deploy, exactly as before.
+# Manual por enquanto, de propósito: nada na AWS foi aplicado ainda (Task 0 em
+# diante do plano do piloto), então um gatilho em push só produziria falha
+# vermelha a cada commit. Quando o ECR existir e os secrets estiverem postos,
+# troque por:
+#
+#   on:
+#     push:
+#       branches: [main]
+#
+# Secrets necessários: AWS_DEPLOY_ROLE_ARN e ECR_REGISTRY, ambos vindos de
+# `terraform output` no repo devops (Task 10, Passo 1).
 on:
   workflow_dispatch:
 
@@ -20,27 +29,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: sa-east-1
 
-      - name: ACR login
-        run: az acr login --name "${{ secrets.ACR_LOGIN_SERVER }}"
+      - uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push
         run: |
-          IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/saasbase-api"
+          IMAGE="${{ secrets.ECR_REGISTRY }}/prumo-api"
           docker build -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
           docker push "$IMAGE:${{ github.sha }}"
           docker push "$IMAGE:latest"
-
-      - name: Dispatch deploy
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.DISPATCH_TOKEN }}
-          repository: nickolascheidt/SaaSBasePlatform-DevOps
-          event-type: deploy
-          client-payload: '{"app":"api","image_tag":"${{ github.sha }}","sha":"${{ github.sha }}"}'
