@@ -893,8 +893,9 @@ Além desses, seguem fora do escopo **por decisão**, não por esquecimento:
 
 - **Pass de infra** (`2026-08-11-infra-rename-pass.md`) — renomear os 3 repos e corrigir
   as federated credentials no Entra. Exige `az login`, é tarefa a dois.
-- **Preparar para publicar** — varredura de segredo no histórico, `NU1903`, README. Vão
-  juntos, num pass só, quando publicar deixar de ser "daqui a um tempo".
+- **Preparar para publicar** — sobrou **só decidir o que fazer com o histórico**. O
+  `NU1903` e o README saíram em 2026-09-16, e a varredura de segredo está feita e
+  reconfirmada (ver o registro da auditoria acima).
 - **Fora do MVP desde sempre:** dashboards como produto, e contas a pagar / plano de
   contas / razão geral.
 
@@ -965,12 +966,24 @@ ao `users/lookup` num minuto para confirmar o 429.
 **Varredura de segredos (working tree e os 248 + 128 + 60 commits, por regex, sem
 gitleaks):** nenhuma credencial real. O que há no histórico do API é senha de dev e demo
 (`postgres/postgres`, SA do SQL Server local, `.env.example`) e a `Admin@123` do
-`DbInitializer` antigo (corrigido em `7ed7048`). Dois pontos ficam abertos:
+`DbInitializer` antigo (corrigido em `7ed7048`). Dois pontos ficaram abertos, e hoje
+sobra um:
 
-- `Prumo.Api/appsettings.Demo.json` **ainda traz a chave JWT em texto no repo**. Ninguém
-  faz deploy do overlay Demo, mas vale tirar e ler por env como Production.
-- Antes de tornar qualquer repo público, o histórico do API precisa de reescrita ou de
-  aceitação consciente. Os três repos são privados e sem secret scanning do GitHub.
+- ~~`Prumo.Api/appsettings.Demo.json` traz a chave JWT em texto no repo.~~ **Fechado em
+  2026-09-16.** Nenhum overlay commita chave: dev lê de user secrets, o resto da env var
+  `Jwt__Key`, e a ausência derruba o startup como a connection string de Production.
+  Confirmado no caminho que o piloto roda `ASPNETCORE_ENVIRONMENT=Production`, **não
+  `Demo`** — o compose injeta `Jwt__Key` do `.env` do `gen-secrets.sh`. Aquela chave nunca
+  assinaria token no piloto; era higiene, não furo aberto.
+- **Segue aberto:** antes de tornar qualquer repo público, o histórico do API precisa de
+  reescrita ou de aceitação consciente. Os três repos são privados e sem secret scanning
+  do GitHub. As quatro chaves JWT de demo que o histórico guarda estão todas fora da
+  árvore e nunca assinaram nada fora de máquina local.
+
+**Varredura refeita de forma independente em 2026-09-16** (253 + 128 + 60 commits), e
+bate: nenhum `AKIA`/`ASIA`, nenhuma chave privada, nenhum token de provedor, e nenhum
+`.tfstate`, `.env` ou `.pem` jamais commitado nos três repos — só o `.env.example` da era
+BiomePampa, que carregava a senha da SA do SQL Server local e foi apagado em `368b564`.
 
 Higiene feita no mesmo dia: só `main` sobrou, local e remoto, nos três repos; `origin/HEAD`
 do API voltou a apontar para `main`.
