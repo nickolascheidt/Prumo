@@ -917,6 +917,63 @@ Além desses, seguem fora do escopo **por decisão**, não por esquecimento:
 | 13 | Item 8 — cadastro, confirmação, senha esquecida e convites | 2026-08-28 |
 | 14 | Fila e e-mail portáveis — provider escolhido por configuração, ElasticMQ no lugar do emulador do Service Bus | 2026-09-03 |
 | 15 | Identidade Prumo no frontend — paleta, tema M2 próprio e o selo, no lugar do deeppurple-amber | 2026-09-10 |
+| 16 | Auditoria adversarial de isolamento de tenant, os 4 achados fechados nos três repos (PRs #24, Angular #23, DevOps #7) e higiene de branches e segredos | 2026-09-15 |
+
+### Registro da auditoria de tenant (2026-09-15)
+
+A pergunta foi: "usuário legítimo do tenant A consegue ler, alterar ou apagar dado do
+tenant B, ou ganhar autorização que não deveria?". Leitura completa do backend (todos os
+controllers, services, os 14 `IgnoreQueryFilters`, o filtro global, o `[TenantModule]`,
+o middleware e a emissão de token). **Nenhum caminho devolve dado de negócio de outro
+tenant.** Os quatro achados viviam nos controllers isentos do `[TenantModule]`
+(`TenantsController`, `AuthController`) e estão fechados na PR #24, cada um com teste que
+falhou antes da correção:
+
+1. Admin fabricava um segundo Owner (`AddMember`, `InviteMember` e o convite aceito no
+   cadastro aceitavam `Role=Owner`), que ninguém removia nem rebaixava. Owner só nasce
+   com o tenant.
+2. Remover membro deixava as `TenantUserRoles` órfãs: readmitido, voltava com os módulos
+   antigos. Saem junto.
+3. `GET /tenants/{id}/assignable-roles` não provava associação.
+4. Os dois `users/lookup` resolviam qualquer e-mail para id e nome, para qualquer
+   autenticado, sem rate limit. Só o master.
+
+Foram junto: `RequireResourceAccessAttribute` apagado (morto e sem prova de associação);
+rate limit `public` passou de janela única do site para por IP; `ForwardedHeaders` de
+dois saltos (Caddy, nginx) para o IP real; `UseHttpsRedirection` fora. No DevOps, dois
+defeitos que derrubariam o piloto no primeiro deploy: Caddy apontava para `web:80` (o
+nginx escuta em 8080) e o compose não definia `API_HOST`, então a API recusava o `Host`
+com 400. No Angular, o dropdown de cargo oferecia Owner e havia código morto.
+
+**Verrugas conhecidas, deixadas de propósito (sem impacto de segurança):**
+
+- `WorkLogsController` ignora o `employeeId` da rota em `GetById`/`Update`/`Delete`.
+- Marcar título pago escreve no Razão (`GlPostingService`) sem permissão de Razão.
+- `Employee.ApplicationUserId` aceita qualquer GUID de usuário, sem validar tenant.
+- O header `X-Tenant-Id` do interceptor do Angular não tem efeito: a API o ignora quando
+  o token tem claim, e o SPA nunca fica sem claim.
+- Token de usuário desativado vale até expirar (até 8h). `[TenantModule]` reprova quem
+  saiu do tenant, mas `IsActive` ninguém reconfere por request.
+- `ResourcePermissionService.GetEffectiveRoleIdsAsync` resolve roles globais por nome
+  sem filtrar `TenantId`; só é seguro porque nomes canônicos são reservados.
+
+**O que só se prova contra a API viva** (não rodou: Docker parado no dia): `my-permissions`
+com token de quem acabou de ser removido; header `X-Tenant-Id` sem claim para tenant de
+que não se é membro; `caddy validate` no Caddyfile novo; `alg: none` no JWT; 200 chamadas
+ao `users/lookup` num minuto para confirmar o 429.
+
+**Varredura de segredos (working tree e os 248 + 128 + 60 commits, por regex, sem
+gitleaks):** nenhuma credencial real. O que há no histórico do API é senha de dev e demo
+(`postgres/postgres`, SA do SQL Server local, `.env.example`) e a `Admin@123` do
+`DbInitializer` antigo (corrigido em `7ed7048`). Dois pontos ficam abertos:
+
+- `Prumo.Api/appsettings.Demo.json` **ainda traz a chave JWT em texto no repo**. Ninguém
+  faz deploy do overlay Demo, mas vale tirar e ler por env como Production.
+- Antes de tornar qualquer repo público, o histórico do API precisa de reescrita ou de
+  aceitação consciente. Os três repos são privados e sem secret scanning do GitHub.
+
+Higiene feita no mesmo dia: só `main` sobrou, local e remoto, nos três repos; `origin/HEAD`
+do API voltou a apontar para `main`.
 
 ### Quatro coisas que valem lembrar antes de escrever código novo
 
