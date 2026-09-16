@@ -885,9 +885,11 @@ crédito nenhum** e o free tier expirou — esse alarme é o único aviso entre 
 fatura. Enquanto `aws sts get-caller-identity` não devolver um ARN que não termine em
 `:root`, nada que gasta dinheiro começa.
 
-A árvore `azurerm` do repo devops **não foi tocada** e o `rg-saasbase-tfstate` continua de
-pé na Azure, custando centavos. Decidir se ele morre é assunto para depois de o piloto
-subir, não antes.
+**A árvore `azurerm` do repo devops foi apagada em 2026-09-16** — os 32 arquivos de
+`terraform/core`, `envs` e `modules`, o workflow de deploy na Azure e os dois scripts de
+`az login`. Nenhum recurso foi destruído por isso: o `rg-saasbase-tfstate` continua de pé
+na Azure, custando centavos, só que agora **sem código que o gerencie**. Derrubar virou
+trabalho manual no portal, e segue sendo assunto para depois de o piloto subir.
 
 **No código da aplicação, porém, a Azure acabou em 2026-09-16.** O provider portável do
 item 14 tinha duas metades; a de Azure — `ServiceBusNotificationPublisher`,
