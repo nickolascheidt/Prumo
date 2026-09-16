@@ -12,7 +12,13 @@ public static class AuthenticationConfiguration
 {
     public static IServiceCollection AddAuthenticationConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        var jwtKey = configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+        // Nenhum overlay commita a chave: ela vem de user secrets em dev e da env var
+        // Jwt__Key fora dele (o compose do piloto a injeta do .env). Sem ela o startup
+        // morre aqui de propósito, como a connection string de Production.
+        var jwtKey = configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException(
+                "Jwt:Key não configurada. Defina a env var Jwt__Key, ou em desenvolvimento " +
+                "rode: dotnet user-secrets set \"Jwt:Key\" \"<32+ caracteres>\" -p Prumo.Api");
         var key = Encoding.UTF8.GetBytes(jwtKey);
 
         services.AddAuthentication(options =>
