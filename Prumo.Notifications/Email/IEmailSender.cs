@@ -5,7 +5,7 @@ public sealed record OutboundEmail(string To, string Subject, string HtmlBody);
 
 /// <summary>
 /// A única coisa que o serviço precisa saber sobre "enviar e-mail". Duas implementações:
-/// <c>FileEmailSender</c> em desenvolvimento e <c>AcsEmailSender</c> em produção.
+/// <c>FileEmailSender</c> em desenvolvimento e <c>SesEmailSender</c> em produção.
 /// </summary>
 public interface IEmailSender
 {

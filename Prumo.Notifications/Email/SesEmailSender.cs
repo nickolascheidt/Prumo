@@ -15,12 +15,10 @@ public sealed class SesEmailSenderOptions
 }
 
 /// <summary>
-/// Envia por Amazon SES v2. Terceiro <see cref="IEmailSender"/>, ao lado do
-/// <see cref="AcsEmailSender"/> e do <see cref="FileEmailSender"/> — o default de
-/// desenvolvimento continua sendo `File`.
+/// Envia por Amazon SES v2. O <see cref="IEmailSender"/> de produção, ao lado do
+/// <see cref="FileEmailSender"/> — o default de desenvolvimento continua sendo `File`.
 ///
-/// Sem equivalente ao <c>WaitUntil.Started</c> do ACS: o SES já é aceite-e-devolve, e o
-/// <c>MessageId</c> da resposta entra no log no lugar do <c>operation.Id</c>.
+/// O SES é aceite-e-devolve, e o <c>MessageId</c> da resposta é o que entra no log.
 ///
 /// Credencial vem da cadeia padrão do SDK — variável de ambiente, perfil, role da task.
 /// Esta classe não lê chave de configuração nenhuma, de propósito: em produção é role de

@@ -1,7 +1,6 @@
 using Amazon;
 using Amazon.Runtime;
 using Amazon.SQS;
-using Azure.Messaging.ServiceBus;
 using Prumo.Infrastructure.Services;
 
 namespace Prumo.Api.Configuration;
@@ -60,26 +59,6 @@ public static class NotificationConfiguration
                     sp.GetRequiredService<IAmazonSQS>(),
                     queueUrl,
                     sp.GetRequiredService<ILogger<SqsNotificationPublisher>>()));
-
-                return services;
-            }
-        }
-        else if (string.Equals(provider, "ServiceBus", StringComparison.OrdinalIgnoreCase))
-        {
-            var connectionString = configuration["ServiceBus:ConnectionString"];
-            var queueName = configuration["ServiceBus:QueueName"] ?? "notifications";
-
-            missingKey = "ServiceBus:ConnectionString";
-
-            if (!string.IsNullOrWhiteSpace(connectionString))
-            {
-                // Singleton pelo mesmo motivo: um cliente por requisição abriria uma
-                // conexão AMQP por chamada.
-                services.AddSingleton(_ => new ServiceBusClient(connectionString));
-                services.AddSingleton<INotificationPublisher>(sp => new ServiceBusNotificationPublisher(
-                    sp.GetRequiredService<ServiceBusClient>(),
-                    queueName,
-                    sp.GetRequiredService<ILogger<ServiceBusNotificationPublisher>>()));
 
                 return services;
             }

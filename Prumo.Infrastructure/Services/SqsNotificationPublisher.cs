@@ -7,12 +7,12 @@ using Prumo.Notifications.Contracts;
 namespace Prumo.Infrastructure.Services
 {
     /// <summary>
-    /// Espelho do <see cref="ServiceBusNotificationPublisher"/> para SQS. Os dois existem
-    /// ao mesmo tempo de propósito: a escolha de nuvem é `Notifications:Provider`, não
-    /// recompilação.
+    /// Publica na fila SQS. Teve um espelho para Service Bus enquanto a nuvem era a Azure;
+    /// desde 2026-09-16 é o único publisher, e `Notifications:Provider` sobrevive só para
+    /// recusar valor herdado em vez de subir calado com o provedor errado.
     ///
-    /// O <see cref="IAmazonSQS"/> é singleton no DI pelo mesmo motivo que o
-    /// <c>ServiceBusClient</c>: é seguro para concorrência e caro de criar.
+    /// O <see cref="IAmazonSQS"/> é singleton no DI: é seguro para concorrência e caro de
+    /// criar.
     /// </summary>
     public sealed class SqsNotificationPublisher : INotificationPublisher
     {

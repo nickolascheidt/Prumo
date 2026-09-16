@@ -2,7 +2,6 @@ using Amazon;
 using Amazon.Runtime;
 using Amazon.SimpleEmailV2;
 using Amazon.SQS;
-using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Caching.Memory;
 using Prumo.Notifications;
 using Prumo.Notifications.Email;
@@ -22,7 +21,7 @@ builder.Services.AddSingleton(sp => new NotificationHandler(
 
 // --- e-mail ---
 // Em desenvolvimento vai para disco, o que permite verificar o fluxo inteiro sem provedor,
-// sem domínio e sem custo. Em produção, ACS ou SES conforme a nuvem.
+// sem domínio e sem custo. Em produção, SES.
 var emailProvider = builder.Configuration["Email:Provider"] ?? "File";
 
 // O sender de arquivo grava o e-mail num diretório e não avisa ninguém. Em desenvolvimento
@@ -32,15 +31,10 @@ if (!builder.Environment.IsDevelopment()
 {
     throw new InvalidOperationException(
         $"Email:Provider=File em {builder.Environment.EnvironmentName}. O sender de arquivo "
-        + "escreve em disco e ninguém recebe o e-mail. Configure Ses (ou Acs).");
+        + "escreve em disco e ninguém recebe o e-mail. Configure Email:Provider=Ses.");
 }
 
-if (string.Equals(emailProvider, "Acs", StringComparison.OrdinalIgnoreCase))
-{
-    builder.Services.Configure<AcsEmailSenderOptions>(builder.Configuration.GetSection("Email:Acs"));
-    builder.Services.AddSingleton<IEmailSender, AcsEmailSender>();
-}
-else if (string.Equals(emailProvider, "Ses", StringComparison.OrdinalIgnoreCase))
+if (string.Equals(emailProvider, "Ses", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.Configure<SesEmailSenderOptions>(builder.Configuration.GetSection("Email:Ses"));
     builder.Services.AddSingleton<IAmazonSimpleEmailServiceV2>(_ => new AmazonSimpleEmailServiceV2Client());
@@ -53,69 +47,51 @@ else
 }
 
 // --- fila ---
-// A chave de decisão é `Notifications:Provider`, e não a connection string de um provedor
-// específico: com duas filas possíveis, "tem connection string do Service Bus?" deixa de
-// ser pergunta suficiente.
-var queueProvider = builder.Configuration["Notifications:Provider"] ?? "ServiceBus";
+// Sobrou um provedor, o SQS, mas a chave de decisão fica: `Notifications:Provider` ainda
+// é lida pela API, e um valor herdado — `ServiceBus`, de alguma config antiga — tem de
+// derrubar o startup em vez de subir um worker de SQS calado.
+var queueProvider = builder.Configuration["Notifications:Provider"] ?? "Sqs";
 
-if (string.Equals(queueProvider, "Sqs", StringComparison.OrdinalIgnoreCase))
+if (!string.Equals(queueProvider, "Sqs", StringComparison.OrdinalIgnoreCase))
 {
-    var queueUrl = builder.Configuration["Sqs:QueueUrl"];
-
-    if (string.IsNullOrWhiteSpace(queueUrl))
-    {
-        throw new InvalidOperationException(
-            "Notifications:Provider=Sqs mas Sqs:QueueUrl não está configurada. O serviço de "
-            + "notificação não tem o que fazer sem fila — suba o ElasticMQ "
-            + "(docker compose --profile notifications up -d) ou aponte para a fila real.");
-    }
-
-    if (string.IsNullOrWhiteSpace(builder.Configuration["Sqs:DeadLetterQueueUrl"]))
-    {
-        throw new InvalidOperationException(
-            "Notifications:Provider=Sqs mas Sqs:DeadLetterQueueUrl não está configurada. "
-            + "Sem ela a mensagem envenenada não tem para onde ir: o publish na DLQ falharia "
-            + "e ela voltaria para a fila a cada reentrega, para sempre.");
-    }
-
-    // Mesma armadilha da API: `Sqs:ServiceUrl` preenchida aponta o SDK para o ElasticMQ e
-    // ainda troca a credencial padrão — a role da task — por uma fixa de emulador.
-    var serviceUrl = builder.Configuration["Sqs:ServiceUrl"];
-
-    if (!builder.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(serviceUrl))
-    {
-        throw new InvalidOperationException(
-            $"Sqs:ServiceUrl está preenchida ('{serviceUrl}') em {builder.Environment.EnvironmentName}. "
-            + "Ela existe para apontar o SDK ao ElasticMQ local. Deixe-a vazia para falar "
-            + "com o SQS real.");
-    }
-
-    builder.Services.Configure<SqsNotificationWorkerOptions>(builder.Configuration.GetSection("Sqs"));
-    builder.Services.AddSingleton(_ => CreateSqsClient(builder.Configuration));
-    builder.Services.AddHostedService<SqsNotificationWorker>();
+    throw new InvalidOperationException(
+        $"Notifications:Provider={queueProvider} não é suportado. O provedor do Service Bus "
+        + "foi removido em 2026-09-16, junto com o resto do caminho Azure; só resta Sqs.");
 }
-else
+
+var queueUrl = builder.Configuration["Sqs:QueueUrl"];
+
+if (string.IsNullOrWhiteSpace(queueUrl))
 {
-    var connectionString = builder.Configuration["ServiceBus:ConnectionString"]
-        ?? throw new InvalidOperationException(
-            "ServiceBus:ConnectionString não configurada. O serviço de notificação não tem o que "
-            + "fazer sem fila — aponte para o recurso real ou troque Notifications:Provider para Sqs.");
-
-    var queueName = builder.Configuration["ServiceBus:QueueName"] ?? "notifications";
-
-    builder.Services.AddSingleton(_ => new ServiceBusClient(connectionString));
-    builder.Services.AddSingleton(sp => sp.GetRequiredService<ServiceBusClient>().CreateProcessor(
-        queueName,
-        new ServiceBusProcessorOptions
-        {
-            // Nós completamos a mensagem depois do envio. Com autocomplete, uma falha de
-            // envio ainda assim removeria a mensagem da fila.
-            AutoCompleteMessages = false,
-            MaxConcurrentCalls = 4
-        }));
-
-    builder.Services.AddHostedService<ServiceBusNotificationWorker>();
+    throw new InvalidOperationException(
+        "Notifications:Provider=Sqs mas Sqs:QueueUrl não está configurada. O serviço de "
+        + "notificação não tem o que fazer sem fila — suba o ElasticMQ "
+        + "(docker compose --profile notifications up -d) ou aponte para a fila real.");
 }
+
+if (string.IsNullOrWhiteSpace(builder.Configuration["Sqs:DeadLetterQueueUrl"]))
+{
+    throw new InvalidOperationException(
+        "Notifications:Provider=Sqs mas Sqs:DeadLetterQueueUrl não está configurada. "
+        + "Sem ela a mensagem envenenada não tem para onde ir: o publish na DLQ falharia "
+        + "e ela voltaria para a fila a cada reentrega, para sempre.");
+}
+
+// Mesma armadilha da API: `Sqs:ServiceUrl` preenchida aponta o SDK para o ElasticMQ e
+// ainda troca a credencial padrão — a role da task — por uma fixa de emulador.
+var serviceUrl = builder.Configuration["Sqs:ServiceUrl"];
+
+if (!builder.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(serviceUrl))
+{
+    throw new InvalidOperationException(
+        $"Sqs:ServiceUrl está preenchida ('{serviceUrl}') em {builder.Environment.EnvironmentName}. "
+        + "Ela existe para apontar o SDK ao ElasticMQ local. Deixe-a vazia para falar "
+        + "com o SQS real.");
+}
+
+builder.Services.Configure<SqsNotificationWorkerOptions>(builder.Configuration.GetSection("Sqs"));
+builder.Services.AddSingleton(_ => CreateSqsClient(builder.Configuration));
+builder.Services.AddHostedService<SqsNotificationWorker>();
 
 var host = builder.Build();
 host.Run();

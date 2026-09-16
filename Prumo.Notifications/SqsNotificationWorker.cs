@@ -12,8 +12,8 @@ public sealed class SqsNotificationWorkerOptions
 
 /// <summary>
 /// Consome a fila SQS por long polling e traduz o <see cref="NotificationOutcome"/> para a
-/// API dela. Contraparte do <see cref="ServiceBusNotificationWorker"/>; a lógica de
-/// notificação é a mesma <see cref="NotificationHandler"/>.
+/// API dela. A lógica de notificação mora no <see cref="NotificationHandler"/>, fora daqui,
+/// que foi o que permitiu trocar de fila sem reescrevê-la.
 /// </summary>
 public sealed class SqsNotificationWorker : BackgroundService
 {

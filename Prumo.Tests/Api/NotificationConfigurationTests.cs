@@ -107,14 +107,29 @@ public class NotificationConfigurationTests
     }
 
     /// <summary>
-    /// A guarda é sobre descartar notificação em produção, não sobre SQS: o provedor
-    /// antigo cai na mesma regra enquanto existir.
+    /// O provedor do Service Bus saiu em 2026-09-16 com o resto do caminho Azure. Config
+    /// herdada apontando para ele não pode virar "provedor desconhecido, segue o baile":
+    /// em produção cai na mesma guarda de descarte, e é o startup que morre.
     /// </summary>
     [Fact]
-    public void Production_com_ServiceBus_sem_connection_string_tambem_estoura()
+    public void Production_com_provedor_aposentado_estoura()
     {
         Assert.Throws<InvalidOperationException>(() => Resolve(
             Config(("Notifications:Provider", "ServiceBus")),
             Environment("Production")));
+    }
+
+    /// <summary>
+    /// E em desenvolvimento ele cai no publisher que descarta, como qualquer outra config
+    /// incompleta — rodar a API para mexer numa tela não deve exigir fila.
+    /// </summary>
+    [Fact]
+    public void Development_com_provedor_aposentado_cai_no_publisher_que_descarta()
+    {
+        var publisher = Resolve(
+            Config(("Notifications:Provider", "ServiceBus")),
+            Environment("Development"));
+
+        Assert.IsType<LoggingNotificationPublisher>(publisher);
     }
 }
