@@ -10,7 +10,7 @@ ASP.NET Core 10 REST API for a multi-tenant SaaS platform with role-based permis
 | ORM | Entity Framework Core 10 (Code-First) |
 | Database | PostgreSQL |
 | Auth | JWT Bearer tokens |
-| Logging | Serilog (Console + SQL Server sink) |
+| Logging | Serilog (Console + PostgreSQL sink) |
 | Testing | xUnit + NSubstitute |
 | Validation | FluentValidation (auto-registered) |
 

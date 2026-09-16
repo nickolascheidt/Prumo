@@ -25,7 +25,7 @@ public static class ForwardedHeadersConfiguration
             // Os IPs dos containers mudam a cada subida, então não dá para listá-los. A
             // lista vazia confia em qualquer proxy imediato — aceitável só porque a porta
             // da API não é publicada e o único caminho até ela é a rede do compose.
-            options.KnownNetworks.Clear();
+            options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
         });
 

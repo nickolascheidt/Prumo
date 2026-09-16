@@ -32,8 +32,20 @@ public static class MiddlewareConfiguration
         {
             options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
             {
-                diagnosticContext.Set("UserName", httpContext.User?.Identity?.Name);
-                diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString());
+                // Requisição anônima não tem nome, e RemoteIpAddress é nulo em transporte
+                // sem IP. Set não aceita nulo; a coluna fica NULL por ausência da
+                // propriedade, que é o que o SinglePropertyColumnWriter já faz.
+                var userName = httpContext.User?.Identity?.Name;
+                if (userName is not null)
+                {
+                    diagnosticContext.Set("UserName", userName);
+                }
+
+                var clientIp = httpContext.Connection.RemoteIpAddress?.ToString();
+                if (clientIp is not null)
+                {
+                    diagnosticContext.Set("ClientIp", clientIp);
+                }
             };
         });
         app.UseRateLimiter();
