@@ -889,6 +889,14 @@ A árvore `azurerm` do repo devops **não foi tocada** e o `rg-saasbase-tfstate`
 pé na Azure, custando centavos. Decidir se ele morre é assunto para depois de o piloto
 subir, não antes.
 
+**No código da aplicação, porém, a Azure acabou em 2026-09-16.** O provider portável do
+item 14 tinha duas metades; a de Azure — `ServiceBusNotificationPublisher`,
+`ServiceBusNotificationWorker`, `AcsEmailSender` e os três pacotes — foi removida, e não
+sobra pacote Azure no grafo nem por transitividade. Fila é SQS, e-mail é SES ou arquivo.
+`Notifications:Provider` **continua existindo**, agora com um único valor válido: é o que
+faz uma config herdada com `ServiceBus` derrubar o startup em vez de subir um worker de
+SQS calado.
+
 Além desses, seguem fora do escopo **por decisão**, não por esquecimento:
 
 - **Pass de infra** (`2026-08-11-infra-rename-pass.md`) — renomear os 3 repos e corrigir
@@ -919,6 +927,7 @@ Além desses, seguem fora do escopo **por decisão**, não por esquecimento:
 | 14 | Fila e e-mail portáveis — provider escolhido por configuração, ElasticMQ no lugar do emulador do Service Bus | 2026-09-03 |
 | 15 | Identidade Prumo no frontend — paleta, tema M2 próprio e o selo, no lugar do deeppurple-amber | 2026-09-10 |
 | 16 | Auditoria adversarial de isolamento de tenant, os 4 achados fechados nos três repos (PRs #24, Angular #23, DevOps #7) e higiene de branches e segredos | 2026-09-15 |
+| 17 | Limpeza: chave JWT fora do repo, os dois `NU1903`, os warnings do compilador e a metade Azure do provider de notificação | 2026-09-16 |
 
 ### Registro da auditoria de tenant (2026-09-15)
 
