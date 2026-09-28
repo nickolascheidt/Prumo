@@ -67,7 +67,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Confirmar o e-mail a partir do link enviado no cadastro
+        /// Confirm the e-mail from the link sent at sign-up
         /// </summary>
         [HttpPost("confirm-email")]
         [EnableRateLimiting("public")]
