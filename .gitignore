@@ -14,7 +14,10 @@
 *.sln.docstates
 *.md
 !README.md
-!docs/**/*.md
+
+# Local working notes (plans, specs, backlog) and editor/agent settings
+/docs/
+/.claude/
 
 # Secrets and sensitive configuration files
 **/appsettings.*.local.json

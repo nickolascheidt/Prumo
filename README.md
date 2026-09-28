@@ -185,4 +185,4 @@ dotnet test --filter "FullyQualifiedName~MyServiceTests.MyMethod"  # single test
 
 ## Related Repository
 
-Frontend: [SaaSBasePlatform-Angular](https://github.com/nickolascheidt/SaaSBasePlatform-Angular) — Angular 18 SPA that consumes this API.
+Frontend: [Prumo-Angular](https://github.com/nickolascheidt/Prumo-Angular) — Angular 18 SPA that consumes this API.
