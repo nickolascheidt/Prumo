@@ -4,7 +4,6 @@ using Prumo.Domain.Common;
 using Prumo.Domain.Entities;
 using Prumo.Infrastructure.Authorization;
 using Prumo.Infrastructure.Services;
-using Prumo.Notifications.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;

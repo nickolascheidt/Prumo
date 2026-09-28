@@ -19,7 +19,7 @@ try
     builder.Services.AddAuthenticationConfiguration(builder.Configuration);
     builder.Services.AddAuthorizationConfiguration();
     builder.Services.AddApplicationServices();
-    builder.Services.AddNotificationConfiguration(builder.Configuration, builder.Environment);
+    builder.Services.AddNotificationConfiguration(builder.Environment);
     builder.Services.AddHealthChecksConfiguration();
     builder.Services.AddForwardedHeadersConfiguration();
     builder.Services.AddRateLimitingConfiguration(builder.Configuration);

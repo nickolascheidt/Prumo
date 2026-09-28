@@ -24,23 +24,5 @@ services:
       timeout: 5s
       retries: 5
 
-  # Fila local, no perfil "notifications" — `docker compose up -d` sozinho não a sobe.
-  # A API roda sem ela, com um publisher que descarta e avisa no log.
-  #   docker compose --profile notifications up -d
-  #
-  # Substituiu o emulador do Service Bus, que puxava um SQL Server junto e passava de 2 GB
-  # para servir um projeto que roda em um container. Efeito colateral bem-vindo: some o
-  # ACCEPT_EULA chumbado no compose.
-  elasticmq:
-    image: softwaremill/elasticmq-native
-    container_name: saasbase-elasticmq
-    profiles: ["notifications"]
-    restart: unless-stopped
-    volumes:
-      - ./elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro
-    ports:
-      - "9324:9324"
-      - "9325:9325"
-
 volumes:
   postgres-data:

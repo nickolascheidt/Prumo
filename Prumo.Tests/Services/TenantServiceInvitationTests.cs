@@ -9,7 +9,6 @@ using Prumo.Domain.Enums;
 using Prumo.Infrastructure.Data;
 using Prumo.Infrastructure.Multitenancy;
 using Prumo.Infrastructure.Services;
-using Prumo.Notifications.Contracts;
 
 namespace Prumo.Tests.Services;
 

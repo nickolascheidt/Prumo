@@ -381,5 +381,3 @@ FodyWeavers.xsd
 /graphify-out/
 /.superpowers/
 
-# E-mails gravados pelo FileEmailSender em desenvolvimento.
-sent-emails/

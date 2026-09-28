@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.SQS" Version="4.0.100.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
@@ -23,7 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Prumo.Domain\Prumo.Domain.csproj" />
-    <ProjectReference Include="..\Prumo.Notifications.Contracts\Prumo.Notifications.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,7 +3,5 @@
   <Project Path="Prumo.Application/Prumo.Application.csproj" />
   <Project Path="Prumo.Domain/Prumo.Domain.csproj" />
   <Project Path="Prumo.Infrastructure/Prumo.Infrastructure.csproj" />
-  <Project Path="Prumo.Notifications.Contracts/Prumo.Notifications.Contracts.csproj" />
-  <Project Path="Prumo.Notifications/Prumo.Notifications.csproj" />
   <Project Path="Prumo.Tests/Prumo.Tests.csproj" />
 </Solution>

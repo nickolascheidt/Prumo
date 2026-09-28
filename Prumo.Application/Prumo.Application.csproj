@@ -22,7 +22,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Prumo.Domain\Prumo.Domain.csproj" />
     <ProjectReference Include="..\Prumo.Infrastructure\Prumo.Infrastructure.csproj" />
-    <ProjectReference Include="..\Prumo.Notifications.Contracts\Prumo.Notifications.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

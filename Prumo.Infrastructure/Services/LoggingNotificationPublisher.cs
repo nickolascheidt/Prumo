@@ -1,16 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
-using Prumo.Notifications.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace Prumo.Infrastructure.Services
 {
     /// <summary>
-    /// Registrado quando **não há fila configurada**, para que a API suba sem o emulador do
-    /// Service Bus — que puxa dois containers e nem sempre vale o custo para mexer numa tela.
-    ///
-    /// Ele **descarta** a notificação, e por isso grita: cada mensagem sai como
-    /// <see cref="LogLevel.Warning"/>. Um publisher silencioso aqui significaria "cadastrei
-    /// e não recebi o e-mail" sem nada no log explicando — e silêncio em caminho de
-    /// notificação já custou meses neste projeto.
+    /// The only publisher: it writes the notification to the log instead of sending an
+    /// e-mail. In development the log line carries the confirmation / reset / invitation
+    /// data, which is what lets you follow those flows locally.
     /// </summary>
     public sealed class LoggingNotificationPublisher : INotificationPublisher
     {
@@ -18,9 +13,9 @@ namespace Prumo.Infrastructure.Services
         private readonly bool _includePayload;
 
         /// <param name="includePayload">
-        /// Só em desenvolvimento. O <c>Data</c> carrega o token de confirmação e o de reset
-        /// de senha; num log eles são caminho de tomada de conta, e o Serilog deste projeto
-        /// tem sink para tabela. Em dev, é o que permite seguir o fluxo sem subir o worker.
+        /// Development only. <c>Data</c> carries the confirmation and password-reset tokens;
+        /// in a log they are an account-takeover path, and the Serilog setup here has a
+        /// database sink.
         /// </param>
         public LoggingNotificationPublisher(
             ILogger<LoggingNotificationPublisher> logger,
@@ -35,7 +30,7 @@ namespace Prumo.Infrastructure.Services
             if (_includePayload)
             {
                 _logger.LogWarning(
-                    "[DEV] Notificação {Type} para {To} DESCARTADA (sem fila configurada). Dados: {Data}",
+                    "[DEV] Notification {Type} to {To}. Data: {Data}",
                     message.Type,
                     message.To,
                     string.Join(", ", message.Data.Select(kv => $"{kv.Key}={kv.Value}")));
@@ -43,8 +38,8 @@ namespace Prumo.Infrastructure.Services
             else
             {
                 _logger.LogWarning(
-                    "Notificação {Type} para {To} DESCARTADA ({CorrelationId}): "
-                    + "nenhuma fila configurada para Notifications:Provider.",
+                    "Notification {Type} to {To} ({CorrelationId}) was not delivered: "
+                    + "no e-mail provider is configured.",
                     message.Type,
                     message.To,
                     message.CorrelationId);

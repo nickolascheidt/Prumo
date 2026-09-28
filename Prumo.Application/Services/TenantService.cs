@@ -8,7 +8,6 @@ using Prumo.Domain.Enums;
 using Prumo.Infrastructure.Data;
 using Prumo.Infrastructure.Data.Seeders;
 using Prumo.Infrastructure.Services;
-using Prumo.Notifications.Contracts;
 using Microsoft.Extensions.Configuration;
 
 namespace Prumo.Application.Services

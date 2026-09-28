@@ -6,7 +6,6 @@ using Prumo.Application.Services;
 using Prumo.Domain.Common;
 using Prumo.Domain.Entities;
 using Prumo.Infrastructure.Services;
-using Prumo.Notifications.Contracts;
 
 namespace Prumo.Tests.Services;
 
