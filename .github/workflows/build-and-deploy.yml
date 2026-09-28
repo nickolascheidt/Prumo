@@ -1,21 +1,18 @@
 name: build-and-deploy
 
-# Constrói a imagem da API e a empurra para o ECR. Não faz deploy: no desenho de
-# Lightsail o deploy é `deploy/deploy.sh` no repo devops, rodado da máquina do
-# Nickolas. O `repository_dispatch` que existia aqui saiu — não há mais nada para
-# acordar.
+# Builds the API image and pushes it to ECR. It does not deploy: in the Lightsail design
+# the deploy is `deploy/deploy.sh` in the Prumo-DevOps repo, run from a workstation.
 #
-# Manual por enquanto, de propósito: nada na AWS foi aplicado ainda (Task 0 em
-# diante do plano do piloto), então um gatilho em push só produziria falha
-# vermelha a cada commit. Quando o ECR existir e os secrets estiverem postos,
-# troque por:
+# Manual on purpose: the AWS infrastructure in Prumo-DevOps was designed but never
+# applied, so a push trigger would only produce a red run on every commit. Once the ECR
+# exists and the secrets are set, switch to:
 #
 #   on:
 #     push:
 #       branches: [main]
 #
-# Secrets necessários: AWS_DEPLOY_ROLE_ARN e ECR_REGISTRY, ambos vindos de
-# `terraform output` no repo devops (Task 10, Passo 1).
+# Required secrets: AWS_DEPLOY_ROLE_ARN and ECR_REGISTRY, both from `terraform output`
+# in the Prumo-DevOps repo.
 on:
   workflow_dispatch:
 

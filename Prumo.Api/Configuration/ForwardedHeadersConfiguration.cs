@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.HttpOverrides;
 namespace Prumo.Api.Configuration;
 
 /// <summary>
-/// A API nunca é alcançada direto: no piloto ela fica atrás do Caddy (TLS) e do nginx do
-/// Angular, e a porta 8080 não é publicada fora da rede do compose. Sem processar
-/// X-Forwarded-*, RemoteIpAddress é o IP do container do nginx e Request.Scheme é http:
-/// o ClientIp do log de request, o rate limit por IP e qualquer forense entre os dois
-/// clientes ficam cegos.
+/// The API is never reached directly: in the deployment design it sits behind Caddy (TLS)
+/// and the Angular nginx, and port 8080 is not published outside the compose network.
+/// Without processing X-Forwarded-*, RemoteIpAddress is the nginx container's IP and
+/// Request.Scheme is http: the request log's ClientIp, the per-IP rate limit and any
+/// forensics between two clients go blind.
 /// </summary>
 public static class ForwardedHeadersConfiguration
 {
@@ -17,14 +17,14 @@ public static class ForwardedHeadersConfiguration
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 
-            // Dois saltos, contados da direita: o nginx anexa o IP do Caddy ao cabeçalho
-            // (proxy_add_x_forwarded_for), e o Caddy pôs o do cliente. Um limite maior
-            // deixaria um cliente prefixar um IP falso e ser acreditado.
+            // Two hops, counted from the right: nginx appends Caddy's IP to the header
+            // (proxy_add_x_forwarded_for), and Caddy put the client's. A higher limit would
+            // let a client prepend a fake IP and be believed.
             options.ForwardLimit = 2;
 
-            // Os IPs dos containers mudam a cada subida, então não dá para listá-los. A
-            // lista vazia confia em qualquer proxy imediato — aceitável só porque a porta
-            // da API não é publicada e o único caminho até ela é a rede do compose.
+            // Container IPs change on every start, so they cannot be listed. The empty list
+            // trusts any immediate proxy — acceptable only because the API port is not
+            // published and the only way to it is the compose network.
             options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
         });

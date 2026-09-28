@@ -28,8 +28,8 @@ namespace Prumo.Application.Services
                 .OrderBy(r => r.Name)
                 .ToListAsync(ct);
 
-            // cross-tenant: TenantUserRole é ITenantScoped e este service roda em
-            // caminhos sem TenantContext resolvido; o Where abaixo é o filtro real.
+            // Cross-tenant: TenantUserRole is ITenantScoped and this service runs on paths
+            // with no resolved TenantContext; the Where below is the real filter.
             var counts = await _db.TenantUserRoles
                 .IgnoreQueryFilters()
                 .Where(tur => tur.TenantId == tenantId)
@@ -55,9 +55,9 @@ namespace Prumo.Application.Services
                 .Select(r => r.Name!)
                 .ToListAsync(ct);
 
-            // As canônicas vêm da lista do Domain, e não do banco, porque ela já exclui
-            // o master admin de propósito — ele existe como role mas não é concedível
-            // por um admin de tenant.
+            // Canonical roles come from the Domain list, not the database, because that
+            // list leaves out the master admin on purpose — it exists as a role but a
+            // tenant admin cannot grant it.
             return Permissions.Roles.AssignableFeatureRoles
                 .Concat(ownNames)
                 .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
@@ -71,26 +71,26 @@ namespace Prumo.Application.Services
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("O nome da role é obrigatório.");
+                throw new ArgumentException("The role name is required.");
             }
 
             if (name.Length > MaxNameLength)
             {
-                throw new ArgumentException($"O nome da role deve ter no máximo {MaxNameLength} caracteres.");
+                throw new ArgumentException($"The role name must be at most {MaxNameLength} characters.");
             }
 
             var normalized = _roleManager.NormalizeKey(name);
 
-            // Nomes canônicos são reservados: deixar um tenant criar a própria "HR"
-            // tornaria o nome ambíguo em toda tela, todo claim e todo log.
+            // Canonical names are reserved: letting a tenant create its own "HR" would make
+            // the name ambiguous on every screen, in every claim and in every log.
             if (await _db.Roles.AnyAsync(r => r.NormalizedName == normalized && r.TenantId == null, ct))
             {
-                throw new InvalidOperationException($"'{name}' é uma role do sistema e não pode ser recriada.");
+                throw new InvalidOperationException($"'{name}' is a system role and cannot be recreated.");
             }
 
             if (await _db.Roles.AnyAsync(r => r.NormalizedName == normalized && r.TenantId == tenantId, ct))
             {
-                throw new InvalidOperationException($"Já existe uma role '{name}' neste tenant.");
+                throw new InvalidOperationException($"A role named '{name}' already exists in this tenant.");
             }
 
             var role = new ApplicationRole
@@ -107,8 +107,8 @@ namespace Prumo.Application.Services
                 throw new InvalidOperationException(string.Join(" | ", result.Errors.Select(e => e.Description)));
             }
 
-            // Nasce vazia de propósito (decisão de 2026-08-18): zero ResourcePermission,
-            // zero acesso. O admin concede depois, na grade.
+            // Born empty on purpose: zero ResourcePermission, zero access. The admin
+            // grants access afterwards, in the grid.
             return new TenantRoleDto(role.Id, role.Name!, role.Description, false, 0);
         }
 
@@ -118,22 +118,22 @@ namespace Prumo.Application.Services
 
             if (role is null)
             {
-                throw new KeyNotFoundException("Role não encontrada.");
+                throw new KeyNotFoundException("Role not found.");
             }
 
             if (role.TenantId is null)
             {
-                throw new InvalidOperationException("Roles do sistema não podem ser excluídas.");
+                throw new InvalidOperationException("System roles cannot be deleted.");
             }
 
-            // O gate que impede um tenant de apagar a role de outro. 404 e não 403 de
-            // propósito: quem não é dono não deve nem saber que ela existe.
+            // The gate that stops a tenant from deleting another tenant's role. 404, not
+            // 403, on purpose: whoever does not own it should not even learn it exists.
             if (role.TenantId != tenantId)
             {
-                throw new KeyNotFoundException("Role não encontrada.");
+                throw new KeyNotFoundException("Role not found.");
             }
 
-            // cross-tenant: TenantUserRole é ITenantScoped e o Where restringe a este tenant.
+            // Cross-tenant: TenantUserRole is ITenantScoped and the Where restricts to this tenant.
             var inUse = await _db.TenantUserRoles
                 .IgnoreQueryFilters()
                 .AnyAsync(tur => tur.RoleId == roleId && tur.TenantId == tenantId, ct);
@@ -141,12 +141,12 @@ namespace Prumo.Application.Services
             if (inUse)
             {
                 throw new InvalidOperationException(
-                    "Esta role ainda está atribuída a membros. Remova-a deles antes de excluir.");
+                    "This role is still assigned to members. Remove it from them before deleting.");
             }
 
-            // As permissões de recurso morrem junto: deixá-las órfãs faria um Id
-            // reaproveitado herdar acesso que ninguém concedeu.
-            // cross-tenant: ResourcePermission é ITenantScoped e o Where restringe aqui.
+            // Resource permissions die with it: leaving them orphaned would let a reused Id
+            // inherit access nobody granted.
+            // Cross-tenant: ResourcePermission is ITenantScoped and the Where restricts here.
             var grants = await _db.ResourcePermissions
                 .IgnoreQueryFilters()
                 .Where(rp => rp.RoleId == roleId && rp.TenantId == tenantId)

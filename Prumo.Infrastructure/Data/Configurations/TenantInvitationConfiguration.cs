@@ -30,14 +30,14 @@ namespace Prumo.Infrastructure.Data.Configurations
                 .HasForeignKey(i => i.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Um convite pendente por endereço em cada tenant. O filtro é o que permite
-            // convidar de novo alguém que saiu: convite aceito não bloqueia o próximo.
+            // One pending invitation per address in each tenant. The filter is what allows
+            // inviting again someone who left: an accepted invitation does not block the next.
             builder.HasIndex(i => new { i.TenantId, i.NormalizedEmail })
                 .IsUnique()
                 .HasFilter("\"AcceptedAt\" IS NULL");
 
-            // A consulta do cadastro: "há convite pendente para este endereço?" — sem
-            // tenant, porque quem acabou de se cadastrar ainda não tem nenhum.
+            // The sign-up query: "is there a pending invitation for this address?" — without
+            // a tenant, because someone who just signed up does not have one yet.
             builder.HasIndex(i => i.NormalizedEmail);
         }
     }

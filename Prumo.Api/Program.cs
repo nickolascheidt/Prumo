@@ -6,7 +6,7 @@ Log.Logger = LoggingConfiguration.CreateBootstrapLogger();
 
 try
 {
-    Log.Information("Iniciando aplicação Prumo");
+    Log.Information("Starting Prumo");
 
     var builder = WebApplication.CreateBuilder(args);
 
@@ -36,7 +36,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Aplicação encerrada inesperadamente");
+    Log.Fatal(ex, "Application terminated unexpectedly");
 }
 finally
 {

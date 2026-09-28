@@ -131,10 +131,10 @@ namespace Prumo.Application.Services
         }
 
         /// <summary>
-        /// Não é mais a proteção de tenant — desde a fase 2 o filtro por navegação em
-        /// WorkLog cuida disso. Continua existindo pela semântica de erro: sem este guard,
-        /// pedir horas de um employee de outro tenant devolveria 200 com lista vazia em vez
-        /// de 404, vazando a informação de que o employee não existe *para você*.
+        /// No longer the tenant protection — the navigation filter on WorkLog handles that.
+        /// It stays for the error semantics: without this guard, asking for the hours of
+        /// another tenant's employee would return 200 with an empty list instead of 404,
+        /// leaking that the employee does not exist *for you*.
         /// </summary>
         private async Task RequireEmployeeAsync(Guid tenantId, Guid employeeId, CancellationToken ct)
         {

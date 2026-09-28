@@ -33,12 +33,12 @@ public static class DatabaseConfiguration
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
-        // O RoleValidator padrão do Identity rejeita qualquer nome já existente em
-        // qualquer lugar, o que torna o índice (NormalizedName, TenantId) letra morta:
-        // a escrita nunca chega ao banco para o índice ter o que decidir.
+        // Identity's default RoleValidator rejects any name that already exists anywhere,
+        // which makes the (NormalizedName, TenantId) index a dead letter: the write never
+        // reaches the database for the index to have anything to decide.
         //
-        // Precisa ser REMOVIDO, não complementado. `AddRoleValidator` acrescenta à lista
-        // e o RoleManager roda todos — o padrão continuaria recusando.
+        // It has to be REMOVED, not complemented. `AddRoleValidator` appends to the list
+        // and RoleManager runs them all — the default would keep refusing.
         services.RemoveAll<IRoleValidator<ApplicationRole>>();
         services.AddScoped<IRoleValidator<ApplicationRole>, TenantScopedRoleValidator>();
 

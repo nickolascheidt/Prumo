@@ -5,16 +5,15 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Prumo.Infrastructure.Migrations
 {
     /// <summary>
-    /// Marca como confirmado o e-mail de todo mundo que já existia.
+    /// Marks everyone who already existed as having a confirmed e-mail.
     ///
-    /// A partir do item 8 o login exige `EmailConfirmed`. Quem foi criado antes disso — o
-    /// admin semeado e todos os membros que o admin cadastrou com senha — nunca passou por
-    /// confirmação nenhuma, e sem este backfill ficaria **trancado para fora** de um dia
-    /// para o outro, sem ter feito nada.
+    /// From here on login requires `EmailConfirmed`. Whoever was created before — the
+    /// seeded admin and every member the admin registered with a password — never went
+    /// through any confirmation, and without this backfill would be **locked out**
+    /// overnight, without having done anything.
     ///
-    /// É uma migration e não rotina de startup de propósito: precisa rodar **uma vez**.
-    /// Repetida a cada boot, ela reconfirmaria contas que alguém tivesse desconfirmado —
-    /// a mesma forma dos bugs 4203a15 e do backfill de dashboard.
+    /// It is a migration and not a startup routine on purpose: it must run **once**.
+    /// Repeated on every boot, it would re-confirm accounts someone had unconfirmed.
     /// </summary>
     public partial class ConfirmExistingUserEmails : Migration
     {
@@ -29,8 +28,8 @@ namespace Prumo.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Sem reversão: não há como saber quais contas estavam não confirmadas antes,
-            // e desconfirmar todas trancaria todo mundo para fora.
+            // No revert: there is no way to know which accounts were unconfirmed before,
+            // and unconfirming all of them would lock everyone out.
         }
     }
 }

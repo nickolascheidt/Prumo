@@ -96,7 +96,7 @@ namespace Prumo.Tests.Services
 
             await using var db = NewDb(tenantId, dbName);
             db.Tenants.Add(new Tenant { Id = tenantId, Name = "T", Slug = "t", OwnerUserId = Guid.NewGuid() });
-            AddMember(db, tenantId, Guid.NewGuid(), "sem-chave@example.com");
+            AddMember(db, tenantId, Guid.NewGuid(), "no-keys@example.com");
             await db.SaveChangesAsync();
 
             var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantId);
@@ -122,7 +122,7 @@ namespace Prumo.Tests.Services
 
             await using var db = NewDb(tenantA, dbName);
             db.Tenants.Add(new Tenant { Id = tenantA, Name = "A", Slug = "a", OwnerUserId = Guid.NewGuid() });
-            AddMember(db, tenantA, userId, "viajante@example.com");
+            AddMember(db, tenantA, userId, "traveler@example.com");
             await db.SaveChangesAsync();
 
             var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantA);

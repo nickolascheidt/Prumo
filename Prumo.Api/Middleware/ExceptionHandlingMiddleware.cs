@@ -44,7 +44,7 @@ namespace Prumo.Api.Middleware
                 case ValidationException validationException:
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     errorResponse.StatusCode = (int)HttpStatusCode.BadRequest;
-                    errorResponse.Message = "Erro de validação";
+                    errorResponse.Message = "Validation error";
                     errorResponse.Errors = validationException.Errors
                         .Select(e => new ErrorDetail
                         {
@@ -63,20 +63,20 @@ namespace Prumo.Api.Middleware
                     _logger.LogWarning("Not found: {Message}", exception.Message);
                     break;
 
-                // Antes do UnauthorizedAccessException: é um caso que o SPA precisa
-                // distinguir de "credenciais inválidas", e o 401 genérico apaga a mensagem.
+                // Before UnauthorizedAccessException: the SPA needs to tell this case apart
+                // from "invalid credentials", and the generic 401 would drop the message.
                 case EmailNotConfirmedException:
                     response.StatusCode = (int)HttpStatusCode.Forbidden;
                     errorResponse.StatusCode = (int)HttpStatusCode.Forbidden;
                     errorResponse.Message = exception.Message;
                     errorResponse.Code = EmailNotConfirmedException.Code;
-                    _logger.LogInformation("Login recusado: e-mail não confirmado.");
+                    _logger.LogInformation("Login refused: e-mail not confirmed.");
                     break;
 
                 case UnauthorizedAccessException:
                     response.StatusCode = (int)HttpStatusCode.Unauthorized;
                     errorResponse.StatusCode = (int)HttpStatusCode.Unauthorized;
-                    errorResponse.Message = "Acesso não autorizado";
+                    errorResponse.Message = "Unauthorized";
                     _logger.LogWarning("Unauthorized access: {Message}", exception.Message);
                     break;
 
@@ -99,7 +99,7 @@ namespace Prumo.Api.Middleware
                 default:
                     response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     errorResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
-                    errorResponse.Message = "Erro interno do servidor";
+                    errorResponse.Message = "Internal server error";
                     _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
                     break;
             }
@@ -126,8 +126,8 @@ namespace Prumo.Api.Middleware
         public int StatusCode { get; set; }
 
         /// <summary>
-        /// Código estável para o cliente ramificar sem depender do texto da mensagem.
-        /// Preenchido só onde a distinção importa; nulo é o caso normal.
+        /// A stable code the client can branch on without depending on the message text.
+        /// Set only where the distinction matters; null is the normal case.
         /// </summary>
         public string? Code { get; set; }
 

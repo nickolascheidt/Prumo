@@ -8,13 +8,13 @@ using Prumo.Application.Services;
 namespace Prumo.Api.Controllers
 {
     /// <summary>
-    /// Roles que um tenant administra: as canônicas do sistema (só leitura) e as que ele
-    /// próprio criou.
+    /// Roles a tenant manages: the system's canonical ones (read-only) and the ones it
+    /// created itself.
     /// </summary>
     /// <remarks>
-    /// O nível exigido é inferido do verbo pelo <see cref="TenantModuleAttribute"/>:
-    /// GET → Read, POST → Write, DELETE → Full. Excluir role pedir o nível mais alto em
-    /// <c>Role.Management</c> é intencional.
+    /// The required level is inferred from the verb by <see cref="TenantModuleAttribute"/>:
+    /// GET → Read, POST → Write, DELETE → Full. Deleting a role requiring the highest level
+    /// on <c>Role.Management</c> is intentional.
     /// </remarks>
     [ApiController]
     [Route("api/tenants/{tenantId:guid}/roles")]

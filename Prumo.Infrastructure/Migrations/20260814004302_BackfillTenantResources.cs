@@ -5,16 +5,15 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Prumo.Infrastructure.Migrations
 {
     /// <summary>
-    /// Backfill do catálogo padrão de Resources para tenants que já existiam.
+    /// Backfills the default Resource catalog for tenants that already existed.
     ///
-    /// Até agora quem cobria esses tenants era o re-seed de startup
-    /// (DbInitializer.EnsureTenantBootstrapAsync), removido porque ele ressuscitava
-    /// grants revogados a cada restart. Esta migration faz o trabalho legítimo dele
-    /// uma única vez: garante que todo tenant tenha os recursos do catálogo, sem
-    /// tocar em nenhum ResourcePermission — quem concede/revoga acesso é o admin.
+    /// Until then those tenants were covered by a startup re-seed, removed because it
+    /// brought revoked grants back on every restart. This migration does its legitimate
+    /// work exactly once: it makes sure every tenant has the catalog resources, without
+    /// touching any ResourcePermission — granting and revoking access is the admin's job.
     ///
-    /// Os valores abaixo são cópia de TenantBootstrapSeeder.DefaultResources. Se o
-    /// catálogo mudar, é uma migration nova, não uma edição desta.
+    /// The values below are a copy of TenantBootstrapSeeder.DefaultResources at the time.
+    /// If the catalog changes, that is a new migration, not an edit to this one.
     /// </summary>
     public partial class BackfillTenantResources : Migration
     {
@@ -50,9 +49,9 @@ namespace Prumo.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Intencionalmente vazio. Apagar os recursos removeria em cascata os
-            // ResourcePermissions que os admins concederam depois — perder o trabalho
-            // deles é pior do que esta migration ser irreversível.
+            // Intentionally empty. Deleting the resources would cascade to the
+            // ResourcePermissions admins granted afterwards — losing their work is worse
+            // than this migration being irreversible.
         }
     }
 }

@@ -9,10 +9,10 @@ using System.Security.Claims;
 namespace Prumo.Api.Attributes
 {
     /// <summary>
-    /// Gate único dos controllers roteados por tenant. Prova a associação contra o
-    /// tenantId da ROTA, rejeita divergência com o claim, preenche o TenantContext a
-    /// partir da rota e só então checa a permissão de recurso — nessa ordem, porque a
-    /// checagem de recurso resolve as roles usando o TenantContext.
+    /// The single gate for tenant-routed controllers. Proves membership against the
+    /// ROUTE's tenantId, rejects a mismatch with the claim, fills the TenantContext from
+    /// the route and only then checks the resource permission — in that order, because
+    /// the resource check resolves roles using the TenantContext.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
     public class TenantModuleAttribute : Attribute, IAsyncAuthorizationFilter
@@ -40,7 +40,7 @@ namespace Prumo.Api.Attributes
         {
             var http = context.HttpContext;
 
-            // 1. Quem é o usuário — o único dado confiável, porque vem do token assinado.
+            // 1. Who the user is — the only trusted data, because it comes from the signed token.
             var userIdRaw = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!Guid.TryParse(userIdRaw, out var userId))
             {
@@ -48,7 +48,7 @@ namespace Prumo.Api.Attributes
                 return;
             }
 
-            // 2. Qual tenant está sendo pedido. Entrada não confiável: alvo da prova.
+            // 2. Which tenant is being requested. Untrusted input: the thing to prove.
             if (!context.RouteData.Values.TryGetValue(TenantIdRouteKey, out var routeRaw)
                 || !Guid.TryParse(routeRaw?.ToString(), out var routeTenantId))
             {
@@ -56,7 +56,7 @@ namespace Prumo.Api.Attributes
                 return;
             }
 
-            // 3. O tenant selecionado no token tem que existir e ser o mesmo da rota.
+            // 3. The tenant selected in the token must exist and match the route.
             var claimRaw = http.User.FindFirst(TenantIdClaim)?.Value;
             if (!Guid.TryParse(claimRaw, out var claimTenantId) || claimTenantId != routeTenantId)
             {
@@ -64,7 +64,7 @@ namespace Prumo.Api.Attributes
                 return;
             }
 
-            // 4. Prova de associação contra o banco.
+            // 4. Membership proof against the database.
             var tenantService = http.RequestServices.GetRequiredService<ITenantService>();
             var role = await tenantService.GetUserRoleAsync(routeTenantId, userId, http.RequestAborted);
             if (role is null)
@@ -75,11 +75,11 @@ namespace Prumo.Api.Attributes
 
             http.Items[TenantRoleItemKey] = role.Value;
 
-            // 5. TenantContext passa a vir da rota. Daqui em diante contexto e rota são
-            //    iguais por construção — é isso que torna o passo 6 correto.
+            // 5. The TenantContext now comes from the route. From here on context and route
+            //    are equal by construction — that is what makes step 6 correct.
             http.RequestServices.GetRequiredService<ITenantContext>().SetTenant(routeTenantId);
 
-            // 6. Permissão de recurso, resolvida no tenant certo.
+            // 6. Resource permission, resolved in the right tenant.
             var level = _explicitLevel ?? LevelForMethod(http.Request.Method);
             var permissions = http.RequestServices.GetRequiredService<IResourcePermissionService>();
             if (!await permissions.UserHasAccessAsync(userId, ResourceCode, level))

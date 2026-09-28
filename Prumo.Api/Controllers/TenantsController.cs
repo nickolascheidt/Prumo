@@ -39,10 +39,10 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Insere o master admin como membro de um tenant que ele não criou, para suporte.
-        /// Não existe bypass da checagem de associação: um bypass reintroduziria o vazamento
-        /// cross-tenant que o trabalho de RBAC removeu, e seria um caminho que o teste de
-        /// arquitetura não consegue ver. Aqui o acesso vira uma linha no banco, auditada.
+        /// Adds the master admin as a member of a tenant they did not create, for support.
+        /// There is no bypass of the membership check: a bypass would reintroduce the
+        /// cross-tenant leak that per-tenant RBAC removed, and would be a path the
+        /// architecture test cannot see. Here access becomes an audited row in the database.
         /// </summary>
         [HttpPost("{tenantId:guid}/support-access")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -105,8 +105,8 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Adiciona alguém pelo e-mail. Conta existente entra na hora; e-mail sem conta
-        /// vira convite pendente, que se resolve quando a pessoa se cadastrar.
+        /// Adds someone by e-mail. An existing account joins right away; an e-mail without
+        /// an account becomes a pending invitation, resolved when the person signs up.
         /// </summary>
         [HttpPost("{tenantId:guid}/invitations")]
         [ProducesResponseType(typeof(InviteMemberResultDto), StatusCodes.Status200OK)]
@@ -160,8 +160,8 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Resolve um e-mail qualquer para id e nome. É dado de todo usuário do sistema,
-        /// de todo tenant, e o convite (item 8) é por e-mail e não precisa disto. Só o master.
+        /// Resolves any e-mail to id and name. That is data about every user in every
+        /// tenant, and invitations work by e-mail without it. Master admin only.
         /// </summary>
         [HttpGet("users/lookup")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]

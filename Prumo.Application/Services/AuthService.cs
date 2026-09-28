@@ -49,20 +49,21 @@ namespace Prumo.Application.Services
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null || !user.IsActive)
-                throw new UnauthorizedAccessException("Credenciais inválidas");
+                throw new UnauthorizedAccessException("Invalid credentials");
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
             if (!result.Succeeded)
             {
                 if (result.IsLockedOut)
-                    throw new UnauthorizedAccessException("Conta bloqueada temporariamente. Tente novamente mais tarde.");
+                    throw new UnauthorizedAccessException("Account temporarily locked. Try again later.");
 
-                throw new UnauthorizedAccessException("Credenciais inválidas");
+                throw new UnauthorizedAccessException("Invalid credentials");
             }
 
-            // Depois da senha, de propósito: recusar antes contaria a qualquer um que este
-            // endereço tem conta. E é aqui, e não em SignIn.RequireConfirmedEmail, porque
-            // CheckPasswordSignInAsync não aplica aquela opção — só PasswordSignInAsync.
+            // After the password, on purpose: refusing earlier would tell anyone that this
+            // address has an account. And it is here, not in SignIn.RequireConfirmedEmail,
+            // because CheckPasswordSignInAsync does not apply that option — only
+            // PasswordSignInAsync does.
             if (!user.EmailConfirmed)
                 throw new EmailNotConfirmedException();
 
@@ -75,18 +76,18 @@ namespace Prumo.Application.Services
             {
                 var tenant = await _tenantService.GetBySlugAsync(request.TenantSlug, cancellationToken);
                 if (tenant == null)
-                    throw new UnauthorizedAccessException("Tenant não encontrado");
+                    throw new UnauthorizedAccessException("Tenant not found");
 
                 if (!await _tenantService.IsMemberAsync(tenant.Id, user.Id, cancellationToken))
-                    throw new UnauthorizedAccessException("Usuário não pertence a este tenant");
+                    throw new UnauthorizedAccessException("User does not belong to this tenant");
 
                 tenantId = tenant.Id;
             }
 
             var token = await GenerateJwtToken(user, tenantId);
-            // tenantId pode ser null (login sem slug) — e aí MapToUserDto devolve só as
-            // roles globais, que é o correto. Com slug, o corpo precisa concordar com os
-            // claims: ver o comentário em SelectTenantAsync.
+            // tenantId may be null (login without a slug) — then MapToUserDto returns only
+            // the global roles, which is correct. With a slug, the body must agree with the
+            // claims: see the comment in SelectTenantAsync.
             var userDto = await MapToUserDto(user, tenantId, cancellationToken);
 
             return new LoginResponseDto(
@@ -101,15 +102,15 @@ namespace Prumo.Application.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null || !user.IsActive)
-                throw new UnauthorizedAccessException("Usuário inválido");
+                throw new UnauthorizedAccessException("Invalid user");
 
             if (!await _tenantService.IsMemberAsync(tenantId, userId, cancellationToken))
-                throw new UnauthorizedAccessException("Usuário não pertence a este tenant");
+                throw new UnauthorizedAccessException("User does not belong to this tenant");
 
             var token = await GenerateJwtToken(user, tenantId);
-            // O corpo tem de concordar com os claims que acabaram de ser emitidos: o SPA
-            // guarda este user e desenha o dashboard a partir dele, sem reler o token.
-            // Sem o tenantId aqui, quem tem feature role vê "Nenhuma role atribuída".
+            // The body has to agree with the claims just issued: the SPA stores this user
+            // and draws the dashboard from it, without re-reading the token. Without the
+            // tenantId here, someone with a feature role sees "No role assigned".
             var userDto = await MapToUserDto(user, tenantId, cancellationToken);
 
             return new LoginResponseDto(
@@ -124,7 +125,7 @@ namespace Prumo.Application.Services
         {
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
             if (existingUser != null)
-                throw new InvalidOperationException("Email já cadastrado");
+                throw new InvalidOperationException("E-mail already registered");
 
             var user = new ApplicationUser
             {
@@ -140,16 +141,16 @@ namespace Prumo.Application.Services
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Erro ao criar usuário: {errors}");
+                throw new InvalidOperationException($"Failed to create user: {errors}");
             }
 
             // Self-registration grants no global role; tenant feature roles are assigned per-tenant.
             if (!string.IsNullOrWhiteSpace(roleName))
                 await _userManager.AddToRoleAsync(user, roleName);
 
-            // Convites que já esperavam por este endereço viram associação agora. O e-mail
-            // não é o que autoriza: quem se cadastrou com o endereço convidado provou ser
-            // dono da caixa, que é a mesma prova da confirmação.
+            // Invitations already waiting for this address become memberships now. The
+            // e-mail is not what authorizes: whoever signed up with the invited address
+            // proved they own the mailbox, which is the same proof confirmation asks for.
             await _tenantService.AcceptPendingInvitationsAsync(user.Id, user.Email!, cancellationToken);
 
             await PublishEmailConfirmationAsync(user, cancellationToken);
@@ -171,8 +172,8 @@ namespace Prumo.Application.Services
         {
             var user = await _userManager.FindByEmailAsync(email);
 
-            // Silêncio deliberado: conta inexistente e conta já confirmada saem daqui do
-            // mesmo jeito que a que recebeu o e-mail.
+            // Deliberate silence: a missing account and an already confirmed one leave here
+            // the same way as the one that got the e-mail.
             if (user is null || user.EmailConfirmed)
                 return;
 
@@ -213,9 +214,9 @@ namespace Prumo.Application.Services
             if (!result.Succeeded)
                 return false;
 
-            // Quem provou ter acesso à caixa de e-mail provou o que a confirmação pede.
-            // Sem isto, quem esqueceu a senha antes de confirmar ficaria travado para
-            // sempre: redefine e ainda assim não entra.
+            // Whoever proved access to the mailbox proved what confirmation asks for.
+            // Without this, someone who forgot their password before confirming would be
+            // stuck forever: they reset it and still cannot get in.
             if (!user.EmailConfirmed)
             {
                 user.EmailConfirmed = true;
@@ -244,8 +245,8 @@ namespace Prumo.Application.Services
                 cancellationToken);
         }
 
-        // Os tokens do Identity são opacos e contêm caracteres que não sobrevivem a uma
-        // query string. Base64 URL-safe na ida, o inverso na volta.
+        // Identity tokens are opaque and contain characters that do not survive a query
+        // string. URL-safe Base64 on the way out, the inverse on the way back.
         private static string EncodeToken(string token) =>
             WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
@@ -257,9 +258,9 @@ namespace Prumo.Application.Services
             }
             catch (FormatException)
             {
-                // Link truncado ou mexido à mão. Devolver algo inválido faz o
-                // ConfirmEmailAsync/ResetPasswordAsync responder "token inválido", que é a
-                // mesma resposta de um token expirado — e é a resposta certa.
+                // A truncated or hand-edited link. Returning something invalid makes
+                // ConfirmEmailAsync/ResetPasswordAsync answer "invalid token", which is the
+                // same answer as an expired token — and it is the right one.
                 return string.Empty;
             }
         }
@@ -304,17 +305,17 @@ namespace Prumo.Application.Services
 
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                throw new KeyNotFoundException($"Usuário com ID '{userId}' não encontrado");
+                throw new KeyNotFoundException($"User with ID '{userId}' not found");
 
             var roleExists = await _userManager.GetRolesAsync(user);
             if (roleExists.Contains(roleName))
-                throw new InvalidOperationException($"Usuário já possui a role '{roleName}'");
+                throw new InvalidOperationException($"User already has the role '{roleName}'");
 
             var result = await _userManager.AddToRoleAsync(user, roleName);
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Erro ao atribuir role: {errors}");
+                throw new InvalidOperationException($"Failed to assign role: {errors}");
             }
         }
 
@@ -322,17 +323,17 @@ namespace Prumo.Application.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                throw new KeyNotFoundException($"Usuário com ID '{userId}' não encontrado");
+                throw new KeyNotFoundException($"User with ID '{userId}' not found");
 
             var userRoles = await _userManager.GetRolesAsync(user);
             if (!userRoles.Contains(roleName))
-                throw new InvalidOperationException($"Usuário não possui a role '{roleName}'");
+                throw new InvalidOperationException($"User does not have the role '{roleName}'");
 
             var result = await _userManager.RemoveFromRoleAsync(user, roleName);
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Erro ao remover role: {errors}");
+                throw new InvalidOperationException($"Failed to remove role: {errors}");
             }
         }
 
@@ -340,7 +341,7 @@ namespace Prumo.Application.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                throw new KeyNotFoundException($"Usuário com ID '{userId}' não encontrado");
+                throw new KeyNotFoundException($"User with ID '{userId}' not found");
 
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -364,7 +365,7 @@ namespace Prumo.Application.Services
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Erro ao desativar usuário: {errors}");
+                throw new InvalidOperationException($"Failed to deactivate user: {errors}");
             }
 
             return true;
@@ -396,16 +397,14 @@ namespace Prumo.Application.Services
                 if (tenantRole.HasValue)
                     claims.Add(new Claim("tenant_role", tenantRole.Value.ToString()));
 
-                // O claim "permission" saiu no item 3B junto com o RolePermission: ele
-                // carregava as strings de um catálogo que nenhum endpoint consultava
-                // (zero [Authorize(Policy=...)]) e que o frontend nunca lia. Quem gateia
-                // é ResourcePermission, resolvida por request e não pelo token.
+                // There is no "permission" claim: access is decided by ResourcePermission,
+                // resolved per request, not by the token.
             }
 
             claims.AddRange(roleClaims.Distinct().Select(r => new Claim(ClaimTypes.Role, r)));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key não configurada")));
+                _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT key is not configured")));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(

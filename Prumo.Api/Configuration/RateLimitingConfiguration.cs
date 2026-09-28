@@ -11,7 +11,7 @@ public static class RateLimitingConfiguration
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            // Política para usuários autenticados
+            // Policy for authenticated users
             options.AddPolicy("authenticated", context =>
             {
                 var username = context.User?.Identity?.Name;
@@ -25,11 +25,11 @@ public static class RateLimitingConfiguration
                     });
             });
 
-            // Endpoints públicos (login, cadastro, esqueci-senha): 10 por minuto POR IP.
-            // Era AddFixedWindowLimiter, que é uma janela única para o site inteiro —
-            // 10 logins por minuto somando todos os clientes, e qualquer anônimo
-            // derrubava o login de todo mundo com 10 requisições. O IP é o real só
-            // porque o ForwardedHeaders roda antes (ForwardedHeadersConfiguration).
+            // Public endpoints (login, sign-up, forgot password): 10 per minute PER IP.
+            // A plain fixed window would be one window for the whole site — 10 logins per
+            // minute across every client, so any anonymous caller could lock everyone out
+            // with 10 requests. The IP is the real one only because ForwardedHeaders runs
+            // first (ForwardedHeadersConfiguration).
             options.AddPolicy("public", context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: PublicPartitionKey(context),
@@ -45,8 +45,8 @@ public static class RateLimitingConfiguration
     }
 
     /// <summary>
-    /// Chave da partição do limite público: o IP de origem. Sem IP (socket unix, teste)
-    /// cai numa partição fixa em vez de estourar.
+    /// Partition key for the public limit: the source IP. Without an IP (unix socket,
+    /// tests) it falls into a fixed partition instead of throwing.
     /// </summary>
     public static string PublicPartitionKey(HttpContext context) =>
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown";

@@ -20,11 +20,11 @@ namespace Prumo.Application.DTOs.Tenants
 
     public record AddTenantMemberRequestDto(Guid UserId, TenantRole Role);
 
-    /// <param name="Role">Cargo administrativo no tenant (Owner/Admin/Member).</param>
-    /// <param name="Roles">Feature roles concedidas <b>neste</b> tenant — as "chaves de módulo".</param>
+    /// <param name="Role">Administrative position in the tenant (Owner/Admin/Member).</param>
+    /// <param name="Roles">Feature roles granted in <b>this</b> tenant — the "module keys".</param>
     /// <param name="IsMasterAdmin">
-    /// Role global do Identity. Fica fora de <paramref name="Roles"/> de propósito: a tela de
-    /// membros gerencia feature roles do tenant, e o master não é revogável por lá.
+    /// Global Identity role. Kept out of <paramref name="Roles"/> on purpose: the members
+    /// screen manages the tenant's feature roles, and the master role cannot be revoked there.
     /// </param>
     public record TenantMemberDto(
         Guid UserId,
@@ -36,17 +36,17 @@ namespace Prumo.Application.DTOs.Tenants
         bool IsMasterAdmin);
 
     /// <summary>
-    /// O admin convida por e-mail e escolhe o cargo. **Não há senha aqui** — quem define a
-    /// senha é a própria pessoa, ao se cadastrar.
+    /// The admin invites by e-mail and picks the position. **There is no password here** —
+    /// the person sets their own password when signing up.
     /// </summary>
     public record InviteMemberRequestDto(
         string Email,
         TenantRole Role);
 
     /// <param name="JoinedImmediately">
-    /// Verdadeiro quando o e-mail já tinha conta e a pessoa virou membro na hora; falso
-    /// quando ficou um convite pendente, esperando o cadastro. A tela usa isto para dizer
-    /// qual das duas coisas aconteceu.
+    /// True when the e-mail already had an account and the person became a member right
+    /// away; false when a pending invitation was left, waiting for sign-up. The screen uses
+    /// this to say which of the two happened.
     /// </param>
     public record InviteMemberResultDto(
         bool JoinedImmediately,

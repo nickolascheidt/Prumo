@@ -32,8 +32,7 @@ namespace Prumo.Infrastructure.Data.Configurations
             builder.HasIndex(a => a.TenantId);
             builder.HasIndex(a => a.RoleId);
             builder.HasIndex(a => a.ResourceId);
-            // O índice que a consulta natural usa: "o que mudou neste tenant, do mais
-            // recente para o mais antigo".
+            // The index the natural query uses: "what changed in this tenant, newest first".
             builder.HasIndex(a => new { a.TenantId, a.PerformedAt });
         }
     }

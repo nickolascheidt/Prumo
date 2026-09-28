@@ -80,8 +80,8 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<PaymentPeriodSummaryDto>> ListByEmployeeAsync(
             Guid tenantId, Guid employeeId, CancellationToken ct = default)
         {
-            // Guard de semântica, não de tenant: sem ele, pedir períodos de um employee de
-            // outro tenant devolveria 200 com lista vazia em vez de 404.
+            // A semantics guard, not a tenant guard: without it, asking for the periods of
+            // another tenant's employee would return 200 with an empty list instead of 404.
             var exists = await _db.Employees.AnyAsync(e => e.Id == employeeId, ct);
             if (!exists) throw new KeyNotFoundException("Employee not found.");
 

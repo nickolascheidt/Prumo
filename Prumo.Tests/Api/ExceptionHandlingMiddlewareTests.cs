@@ -52,7 +52,7 @@ namespace Prumo.Tests.Api
             var (statusCode, message) = await InvokeThrowing(new ArgumentNullException("request"));
 
             Assert.Equal(500, statusCode);
-            Assert.Equal("Erro interno do servidor", message);
+            Assert.Equal("Internal server error", message);
         }
     }
 }

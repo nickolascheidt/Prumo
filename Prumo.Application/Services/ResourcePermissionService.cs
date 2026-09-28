@@ -11,14 +11,14 @@ namespace Prumo.Application.Services
 {
     public interface IResourcePermissionService
     {
-        // Gerenciamento de Resources
+        // Resource management
         Task<List<ResourceDto>> GetAllResourcesAsync();
         Task<ResourceDto?> GetResourceByIdAsync(Guid id);
         Task<ResourceDto> CreateResourceAsync(CreateResourceDto dto);
         Task<ResourceDto?> UpdateResourceAsync(Guid id, UpdateResourceDto dto);
         Task<bool> DeleteResourceAsync(Guid id);
 
-        // Gerenciamento de Permissões
+        // Permission management
         Task<bool> AssignPermissionAsync(
             AssignResourcePermissionDto dto, string? grantedByEmail = null, Guid? performedByUserId = null);
 
@@ -26,7 +26,7 @@ namespace Prumo.Application.Services
             Guid roleId, Guid resourceId, string? removedByEmail = null, Guid? performedByUserId = null);
         Task<List<ResourcePermissionDto>> GetRolePermissionsAsync(Guid roleId);
 
-        // Consulta de Permissões do Usuário
+        // Current user's permissions
         Task<UserPermissionsDto?> GetUserPermissionsAsync(Guid userId);
         Task<UserPermissionsDto?> GetUserPermissionsByEmailAsync(string email);
         Task<PermissionLevel> GetUserPermissionForResourceAsync(Guid userId, string resourceCode);
@@ -243,8 +243,8 @@ namespace Prumo.Application.Services
         }
 
         /// <summary>
-        /// Registra a mudança de nível. Nomes de role e recurso são <b>copiados</b>: a
-        /// role pode ser excluída depois, e o histórico não pode virar uma lista de GUIDs.
+        /// Records the level change. Role and resource names are <b>copied</b>: the role
+        /// may be deleted later, and the history must not turn into a list of GUIDs.
         /// </summary>
         private void WriteAudit(
             ApplicationRole role,
@@ -258,8 +258,9 @@ namespace Prumo.Application.Services
 
             _context.ResourcePermissionAuditLogs.Add(new ResourcePermissionAuditLog
             {
-                // O TenantId sai do próprio recurso, que é ITenantScoped: o SaveChanges
-                // preencheria pelo TenantContext, e este caminho nem sempre tem um.
+                // TenantId comes from the resource itself, which is ITenantScoped:
+                // SaveChanges would fill it from the TenantContext, and this path does not
+                // always have one.
                 TenantId = resource.TenantId,
                 RoleId = role.Id,
                 RoleName = role.Name ?? role.Id.ToString(),
@@ -454,7 +455,7 @@ namespace Prumo.Application.Services
 
             var roleIds = await GetEffectiveRoleIdsAsync(user.Id, userRoles);
 
-            // Busca todas as permissões do usuário (agregando por resource, pegando o maior nível)
+            // Every permission of the user, aggregated per resource, keeping the highest level
             var userResourcePermissions = await _context.ResourcePermissions
                 .Where(rp => roleIds.Contains(rp.RoleId))
                 .Include(rp => rp.Resource)

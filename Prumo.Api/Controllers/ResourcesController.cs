@@ -9,7 +9,7 @@ using System.Security.Claims;
 namespace Prumo.Api.Controllers
 {
     /// <summary>
-    /// Controller para gerenciamento de recursos de UI e controle de acesso granular
+    /// UI resources and fine-grained access control
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -24,8 +24,8 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Obtém todas as permissões de recursos do usuário atual
-        /// Este endpoint é fundamental para o frontend construir o menu e controlar acesso às telas
+        /// Gets every resource permission of the current user. This is what the frontend
+        /// uses to build the menu and control access to screens.
         /// </summary>
         [HttpGet("my-permissions")]
         [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
@@ -49,7 +49,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Verifica se o usuário atual tem acesso a um recurso específico
+        /// Checks whether the current user can access a specific resource
         /// </summary>
         [HttpGet("check-access/{resourceCode}")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -79,7 +79,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Obtém permissões de um usuário específico (apenas admins)
+        /// Gets a specific user's permissions (master admin only)
         /// </summary>
         [HttpGet("user/{userId}")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -99,7 +99,7 @@ namespace Prumo.Api.Controllers
         #region Resource Management (Admin Only)
 
         /// <summary>
-        /// Lista todos os recursos disponíveis no sistema
+        /// Lists every resource in the system
         /// </summary>
         [HttpGet]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -111,7 +111,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Obtém um recurso específico
+        /// Gets a specific resource
         /// </summary>
         [HttpGet("{id}")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -129,7 +129,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Cria um novo recurso
+        /// Creates a resource
         /// </summary>
         [HttpPost]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -148,7 +148,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Atualiza um recurso existente
+        /// Updates an existing resource
         /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -166,7 +166,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Deleta um recurso (soft delete)
+        /// Deletes a resource (soft delete)
         /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -188,7 +188,7 @@ namespace Prumo.Api.Controllers
         #region Role Permission Management (Admin Only)
 
         /// <summary>
-        /// Atribui ou atualiza permissão de uma role para um recurso
+        /// Assigns or updates a role's permission on a resource
         /// </summary>
         [HttpPost("assign")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -207,7 +207,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Remove permissão de uma role para um recurso
+        /// Removes a role's permission on a resource
         /// </summary>
         [HttpDelete("remove")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -227,7 +227,7 @@ namespace Prumo.Api.Controllers
         }
 
         /// <summary>
-        /// Obtém todas as permissões de uma role
+        /// Gets every permission of a role
         /// </summary>
         [HttpGet("role/{roleId}")]
         [Authorize(Roles = Permissions.Roles.MasterAdmin)]
@@ -241,8 +241,8 @@ namespace Prumo.Api.Controllers
         #endregion
 
         /// <summary>
-        /// Id do usuário autenticado, ou <see cref="Guid.Empty"/> se o claim faltar —
-        /// a auditoria não deve derrubar a operação por não saber o autor.
+        /// Id of the authenticated user, or <see cref="Guid.Empty"/> if the claim is
+        /// missing — auditing must not bring the operation down for not knowing the author.
         /// </summary>
         private Guid CurrentUserId()
         {

@@ -7,23 +7,23 @@ namespace Prumo.Application.Services
         Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default);
         Task<LoginResponseDto> SelectTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default);
         /// <summary>
-        /// Cria a conta **não confirmada** e publica o e-mail de confirmação. Não devolve
-        /// sessão: confirmar o endereço é pré-requisito para entrar.
+        /// Creates the account **unconfirmed** and publishes the confirmation e-mail. Does
+        /// not return a session: confirming the address is a prerequisite for signing in.
         /// </summary>
         Task<RegistrationResultDto> RegisterAsync(RegisterRequestDto request, string? roleName, CancellationToken cancellationToken = default);
 
         Task<bool> ConfirmEmailAsync(ConfirmEmailRequestDto request, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Reenvia a confirmação. **Não revela** se o e-mail existe ou se já foi
-        /// confirmado — a resposta é a mesma nos três casos.
+        /// Resends the confirmation. **Does not reveal** whether the e-mail exists or was
+        /// already confirmed — the answer is the same in all three cases.
         /// </summary>
         Task ResendConfirmationAsync(string email, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Dispara o e-mail de redefinição. **Não revela** se o e-mail existe: responder
-        /// diferente para endereço desconhecido transformaria o endpoint num enumerador de
-        /// contas.
+        /// Sends the password reset e-mail. **Does not reveal** whether the e-mail exists:
+        /// answering differently for an unknown address would turn the endpoint into an
+        /// account enumerator.
         /// </summary>
         Task ForgotPasswordAsync(string email, CancellationToken cancellationToken = default);
 

@@ -13,16 +13,15 @@ using Prumo.Infrastructure.Services;
 namespace Prumo.Tests.Services;
 
 /// <summary>
-/// Substitui `TenantServiceCreateUserTests`. Aquele arquivo cobria o admin criar a conta
-/// com uma senha digitada por ele; o item 8 trocou isso por convite, para a senha inicial
-/// de ninguém passar pelo administrador.
+/// Admins add people by invitation instead of creating their account with a password they
+/// typed, so nobody's initial password passes through the administrator.
 /// </summary>
 public class TenantServiceInvitationTests
 {
     /// <summary>
-    /// `TenantInvitation` é `ITenantScoped`, então o filtro global fail-closed vale para
-    /// ele. Sem um `ITenantContext`, qualquer consulta filtrada estoura — o contexto vem
-    /// junto, e os testes o apontam para o tenant semeado.
+    /// `TenantInvitation` is `ITenantScoped`, so the fail-closed global filter applies to it.
+    /// Without an `ITenantContext`, any filtered query throws — the context comes along, and
+    /// the tests point it at the seeded tenant.
     /// </summary>
     private static ApplicationDbContext MakeDb(TenantContext tenantContext) =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -45,7 +44,7 @@ public class TenantServiceInvitationTests
             notifications ?? Substitute.For<INotificationPublisher>(),
             Substitute.For<IConfiguration>());
 
-    /// <summary>Cria o banco já apontado para um tenant novo, e devolve os dois.</summary>
+    /// <summary>Creates the database already pointing at a new tenant, and returns both.</summary>
     private static (ApplicationDbContext Db, Guid TenantId) MakeDbWithTenant(string name = "Acme")
     {
         var tenantContext = new TenantContext();
@@ -65,13 +64,13 @@ public class TenantServiceInvitationTests
         var (db, tenantId) = MakeDbWithTenant();
         var userManager = MakeUserManager();
 
-        var existing = new ApplicationUser { Id = Guid.NewGuid(), Email = "ana@exemplo.com" };
-        userManager.FindByEmailAsync("ana@exemplo.com").Returns(existing);
+        var existing = new ApplicationUser { Id = Guid.NewGuid(), Email = "ana@example.com" };
+        userManager.FindByEmailAsync("ana@example.com").Returns(existing);
 
         var sut = MakeSut(db, userManager);
 
         var result = await sut.InviteMemberAsync(
-            tenantId, new InviteMemberRequestDto("ana@exemplo.com", TenantRole.Member), Guid.NewGuid());
+            tenantId, new InviteMemberRequestDto("ana@example.com", TenantRole.Member), Guid.NewGuid());
 
         Assert.True(result.JoinedImmediately);
         Assert.True(await db.TenantUsers.AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == existing.Id));
@@ -89,7 +88,7 @@ public class TenantServiceInvitationTests
         var sut = MakeSut(db, userManager, notifications);
 
         var result = await sut.InviteMemberAsync(
-            tenantId, new InviteMemberRequestDto("novo@exemplo.com", TenantRole.Admin), Guid.NewGuid());
+            tenantId, new InviteMemberRequestDto("new@example.com", TenantRole.Admin), Guid.NewGuid());
 
         Assert.False(result.JoinedImmediately);
 
@@ -97,8 +96,8 @@ public class TenantServiceInvitationTests
         Assert.Equal(TenantRole.Admin, invitation.Role);
         Assert.Null(invitation.AcceptedAt);
 
-        // Guardado normalizado, senão "Novo@exemplo.com" viraria um segundo convite.
-        Assert.Equal("NOVO@EXEMPLO.COM", invitation.NormalizedEmail);
+        // Stored normalized, otherwise "New@example.com" would become a second invitation.
+        Assert.Equal("NEW@EXAMPLE.COM", invitation.NormalizedEmail);
 
         await notifications.Received(1).PublishAsync(
             Arg.Is<NotificationMessage>(m => m.Type == NotificationTypes.TenantInvitation),
@@ -114,8 +113,8 @@ public class TenantServiceInvitationTests
         db.TenantInvitations.Add(new TenantInvitation
         {
             TenantId = tenantId,
-            Email = "Convidado@Exemplo.com",
-            NormalizedEmail = "CONVIDADO@EXEMPLO.COM",
+            Email = "Invited@Example.com",
+            NormalizedEmail = "INVITED@EXAMPLE.COM",
             Role = TenantRole.Member,
             InvitedByUserId = Guid.NewGuid()
         });
@@ -124,9 +123,9 @@ public class TenantServiceInvitationTests
         var sut = MakeSut(db, userManager);
         var newUserId = Guid.NewGuid();
 
-        // Casa por caixa diferente da que o admin digitou — é o caso comum, e sem
-        // normalizar dos dois lados a pessoa se cadastraria e não entraria em lugar nenhum.
-        var joined = await sut.AcceptPendingInvitationsAsync(newUserId, "convidado@exemplo.com");
+        // Matches with a different case from what the admin typed — the common case, and
+        // without normalizing on both sides the person would sign up and join nothing.
+        var joined = await sut.AcceptPendingInvitationsAsync(newUserId, "invited@example.com");
 
         Assert.Equal(1, joined);
         Assert.True(await db.TenantUsers.AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == newUserId));
@@ -142,8 +141,8 @@ public class TenantServiceInvitationTests
         db.TenantInvitations.Add(new TenantInvitation
         {
             TenantId = tenantId,
-            Email = "outra.pessoa@exemplo.com",
-            NormalizedEmail = "OUTRA.PESSOA@EXEMPLO.COM",
+            Email = "someone.else@example.com",
+            NormalizedEmail = "SOMEONE.ELSE@EXAMPLE.COM",
             Role = TenantRole.Member,
             InvitedByUserId = Guid.NewGuid()
         });
@@ -151,10 +150,10 @@ public class TenantServiceInvitationTests
 
         var sut = MakeSut(db, userManager);
 
-        var joined = await sut.AcceptPendingInvitationsAsync(Guid.NewGuid(), "estranho@exemplo.com");
+        var joined = await sut.AcceptPendingInvitationsAsync(Guid.NewGuid(), "stranger@example.com");
 
-        // O convite de outra pessoa não pode ser aproveitado por quem se cadastrou depois:
-        // é o e-mail que amarra o convite, e ele acabou de ser provado no cadastro.
+        // Someone else's invitation cannot be claimed by whoever signed up later: the e-mail
+        // is what ties the invitation, and it was just proved at sign-up.
         Assert.Equal(0, joined);
         Assert.False(await db.TenantUsers.AnyAsync());
     }
@@ -167,7 +166,7 @@ public class TenantServiceInvitationTests
         userManager.FindByEmailAsync(Arg.Any<string>()).Returns((ApplicationUser?)null);
 
         var sut = MakeSut(db, userManager);
-        var request = new InviteMemberRequestDto("novo@exemplo.com", TenantRole.Member);
+        var request = new InviteMemberRequestDto("new@example.com", TenantRole.Member);
 
         await sut.InviteMemberAsync(tenantId, request, Guid.NewGuid());
 
@@ -181,8 +180,8 @@ public class TenantServiceInvitationTests
         var (db, tenantId) = MakeDbWithTenant();
         var userManager = MakeUserManager();
 
-        var existing = new ApplicationUser { Id = Guid.NewGuid(), Email = "ana@exemplo.com" };
-        userManager.FindByEmailAsync("ana@exemplo.com").Returns(existing);
+        var existing = new ApplicationUser { Id = Guid.NewGuid(), Email = "ana@example.com" };
+        userManager.FindByEmailAsync("ana@example.com").Returns(existing);
 
         db.TenantUsers.Add(new TenantUser { TenantId = tenantId, UserId = existing.Id, Role = TenantRole.Member });
         await db.SaveChangesAsync();
@@ -190,6 +189,6 @@ public class TenantServiceInvitationTests
         var sut = MakeSut(db, userManager);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.InviteMemberAsync(
-            tenantId, new InviteMemberRequestDto("ana@exemplo.com", TenantRole.Member), Guid.NewGuid()));
+            tenantId, new InviteMemberRequestDto("ana@example.com", TenantRole.Member), Guid.NewGuid()));
     }
 }

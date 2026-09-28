@@ -8,20 +8,20 @@ using Prumo.Infrastructure.Multitenancy;
 namespace Prumo.Tests.Services
 {
     /// <summary>
-    /// GetTenantRoleNamesAsync tem um requisito que o tipo da entidade esconde: ele roda
-    /// durante a emissão do token, quando ainda NÃO existe tenant resolvido.
+    /// GetTenantRoleNamesAsync has a requirement the entity type hides: it runs while the
+    /// token is being issued, when there is NO resolved tenant yet.
     ///
-    /// O TenantResolutionMiddleware preenche o TenantContext a partir do claim `tenant_id`,
-    /// e em POST /api/tenants/select o token de ENTRADA ainda não tem esse claim — é
-    /// justamente o token que está sendo emitido que vai passar a ter. No login o usuário
-    /// nem autenticado está quando o token é gerado.
+    /// TenantResolutionMiddleware fills the TenantContext from the `tenant_id` claim, and in
+    /// POST /api/tenants/select the INCOMING token does not have that claim yet — it is the
+    /// token being issued that will have it. At login the user is not even authenticated
+    /// when the token is generated.
     ///
-    /// TenantUserRole é ITenantScoped, então o filtro global fail-closed se aplica a ele.
-    /// Sem o IgnoreQueryFilters este método devolveria lista vazia nesse momento, e o
-    /// usuário receberia um token sem nenhuma feature role — menu vazio, o bug 73dc458.
+    /// TenantUserRole is ITenantScoped, so the fail-closed global filter applies to it.
+    /// Without IgnoreQueryFilters this method would return an empty list at that moment,
+    /// and the user would get a token with no feature role — an empty menu.
     ///
-    /// Por isso aquele IgnoreQueryFilters é cross-tenant legítimo e NÃO saiu na fase 2.
-    /// Este teste existe para que remover a chamada quebre o build em vez de quebrar o login.
+    /// That is why that IgnoreQueryFilters is legitimately cross-tenant. This test exists
+    /// so removing the call breaks the build instead of breaking login.
     /// </summary>
     public class TenantRoleServiceTenantlessTests
     {
@@ -47,7 +47,7 @@ namespace Prumo.Tests.Services
                 await seed.SaveChangesAsync();
             }
 
-            // O estado real do POST /tenants/select: autenticado, mas sem tenant resolvido.
+            // The real state of POST /tenants/select: authenticated, but no resolved tenant.
             await using var db = NewDb(new TenantContext(), dbName);
             var service = new TenantRoleService(db);
 

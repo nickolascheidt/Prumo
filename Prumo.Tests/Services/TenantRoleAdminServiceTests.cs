@@ -10,9 +10,9 @@ using Prumo.Infrastructure.Multitenancy;
 namespace Prumo.Tests.Services
 {
     /// <summary>
-    /// Uma role criada por um tenant não pode aparecer para outro. É a mesma classe de
-    /// vazamento que originou o rework de RBAC — roles do Identity eram globais e o
-    /// acesso vazava entre tenants. Backlog item 3A.
+    /// A role created by one tenant must not show up for another. It is the same class of
+    /// leak that started the per-tenant RBAC rework — Identity roles were global and access
+    /// leaked between tenants.
     /// </summary>
     public class TenantRoleAdminServiceTests
     {
@@ -29,9 +29,9 @@ namespace Prumo.Tests.Services
         }
 
         /// <summary>
-        /// RoleManager fino sobre o próprio DbContext: só precisamos de NormalizeKey,
-        /// CreateAsync e DeleteAsync, e queremos que escrevam no mesmo banco em memória
-        /// que o service consulta.
+        /// A thin RoleManager over the DbContext itself: we only need NormalizeKey,
+        /// CreateAsync and DeleteAsync, and we want them to write to the same in-memory
+        /// database the service reads.
         /// </summary>
         private static RoleManager<ApplicationRole> RoleManagerOver(ApplicationDbContext db)
         {
@@ -79,168 +79,167 @@ namespace Prumo.Tests.Services
             new(db, RoleManagerOver(db));
 
         [Fact]
-        public async Task Role_criada_por_um_tenant_aparece_na_lista_dele()
+        public async Task A_role_created_by_a_tenant_shows_in_its_list()
         {
-            using var db = NewDb(TenantA, nameof(Role_criada_por_um_tenant_aparece_na_lista_dele));
+            using var db = NewDb(TenantA, nameof(A_role_created_by_a_tenant_shows_in_its_list));
             var service = ServiceOver(db);
 
-            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
-            var visiveis = await service.GetVisibleRolesAsync(TenantA);
+            var visible = await service.GetVisibleRolesAsync(TenantA);
 
-            Assert.Contains(visiveis, r => r.Name == "Leitura" && !r.IsCanonical);
+            Assert.Contains(visible, r => r.Name == "Viewer" && !r.IsCanonical);
         }
 
         [Fact]
-        public async Task Role_criada_por_um_tenant_NAO_aparece_para_outro()
+        public async Task A_role_created_by_a_tenant_does_NOT_show_for_another()
         {
-            using var db = NewDb(TenantA, nameof(Role_criada_por_um_tenant_NAO_aparece_para_outro));
+            using var db = NewDb(TenantA, nameof(A_role_created_by_a_tenant_does_NOT_show_for_another));
             var service = ServiceOver(db);
 
-            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
-            var visiveisEmB = await service.GetVisibleRolesAsync(TenantB);
+            var visibleInB = await service.GetVisibleRolesAsync(TenantB);
 
-            Assert.DoesNotContain(visiveisEmB, r => r.Name == "Leitura");
+            Assert.DoesNotContain(visibleInB, r => r.Name == "Viewer");
         }
 
         [Fact]
-        public async Task As_roles_canonicas_continuam_visiveis_em_qualquer_tenant()
+        public async Task Canonical_roles_stay_visible_in_every_tenant()
         {
-            using var db = NewDb(TenantA, nameof(As_roles_canonicas_continuam_visiveis_em_qualquer_tenant));
+            using var db = NewDb(TenantA, nameof(Canonical_roles_stay_visible_in_every_tenant));
             SeedCanonicalRole(db, "HR");
             var service = ServiceOver(db);
 
-            var visiveisEmB = await service.GetVisibleRolesAsync(TenantB);
+            var visibleInB = await service.GetVisibleRolesAsync(TenantB);
 
-            Assert.Contains(visiveisEmB, r => r.Name == "HR" && r.IsCanonical);
+            Assert.Contains(visibleInB, r => r.Name == "HR" && r.IsCanonical);
         }
 
         [Fact]
-        public async Task Role_do_tenant_vira_chave_atribuivel_so_no_tenant_dono()
+        public async Task A_tenant_role_is_assignable_only_in_its_owner_tenant()
         {
-            using var db = NewDb(TenantA, nameof(Role_do_tenant_vira_chave_atribuivel_so_no_tenant_dono));
+            using var db = NewDb(TenantA, nameof(A_tenant_role_is_assignable_only_in_its_owner_tenant));
             var service = ServiceOver(db);
 
-            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
-            var atribuiveisEmA = await service.GetAssignableRoleNamesAsync(TenantA);
-            var atribuiveisEmB = await service.GetAssignableRoleNamesAsync(TenantB);
+            var assignableInA = await service.GetAssignableRoleNamesAsync(TenantA);
+            var assignableInB = await service.GetAssignableRoleNamesAsync(TenantB);
 
-            Assert.Contains("Leitura", atribuiveisEmA);
-            Assert.DoesNotContain("Leitura", atribuiveisEmB);
+            Assert.Contains("Viewer", assignableInA);
+            Assert.DoesNotContain("Viewer", assignableInB);
 
-            // As canônicas seguem atribuíveis nos dois, e o master continua fora.
-            Assert.Contains("HR", atribuiveisEmA);
-            Assert.Contains("HR", atribuiveisEmB);
-            Assert.DoesNotContain("Administrator", atribuiveisEmA);
+            // Canonical roles stay assignable in both, and the master stays out.
+            Assert.Contains("HR", assignableInA);
+            Assert.Contains("HR", assignableInB);
+            Assert.DoesNotContain("Administrator", assignableInA);
         }
 
         /// <summary>
-        /// ATENÇÃO: este teste cobre a lógica do service, <b>não</b> o
-        /// <c>IRoleValidator</c> do Identity — o RoleManager aqui é um substituto que
-        /// grava direto no contexto e não roda validador nenhum. O defeito real ("Role
-        /// name is already taken", vindo do validador padrão) passava por este teste sem
-        /// ser notado, e só apareceu contra a API viva. Ao mexer em unicidade de nome,
-        /// verifique também com a API de pé.
+        /// WARNING: this test covers the service logic, <b>not</b> Identity's
+        /// <c>IRoleValidator</c> — the RoleManager here is a stand-in that writes straight to
+        /// the context and runs no validator. The real defect ("Role name is already taken",
+        /// from the default validator) passed this test unnoticed and only showed up against
+        /// the live API. When touching name uniqueness, also check with the API running.
         /// </summary>
         [Fact]
-        public async Task Dois_tenants_podem_ter_cada_um_a_sua_role_com_o_mesmo_nome()
+        public async Task Two_tenants_can_each_have_a_role_with_the_same_name()
         {
-            using var db = NewDb(TenantA, nameof(Dois_tenants_podem_ter_cada_um_a_sua_role_com_o_mesmo_nome));
+            using var db = NewDb(TenantA, nameof(Two_tenants_can_each_have_a_role_with_the_same_name));
             var service = ServiceOver(db);
 
-            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
-            await service.CreateAsync(TenantB, new CreateTenantRoleDto("Leitura", null));
+            await service.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
+            await service.CreateAsync(TenantB, new CreateTenantRoleDto("Viewer", null));
 
-            var emA = await service.GetVisibleRolesAsync(TenantA);
-            var emB = await service.GetVisibleRolesAsync(TenantB);
+            var inA = await service.GetVisibleRolesAsync(TenantA);
+            var inB = await service.GetVisibleRolesAsync(TenantB);
 
-            Assert.Single(emA, r => r.Name == "Leitura");
-            Assert.Single(emB, r => r.Name == "Leitura");
+            Assert.Single(inA, r => r.Name == "Viewer");
+            Assert.Single(inB, r => r.Name == "Viewer");
 
-            // E são linhas diferentes, não a mesma role aparecendo duas vezes.
-            var idA = emA.Single(r => r.Name == "Leitura").Id;
-            var idB = emB.Single(r => r.Name == "Leitura").Id;
+            // And they are different rows, not the same role showing up twice.
+            var idA = inA.Single(r => r.Name == "Viewer").Id;
+            var idB = inB.Single(r => r.Name == "Viewer").Id;
             Assert.NotEqual(idA, idB);
         }
 
         [Fact]
-        public async Task Uma_role_criada_pelo_tenant_pode_ser_concedida_a_um_membro()
+        public async Task A_role_created_by_the_tenant_can_be_granted_to_a_member()
         {
-            using var db = NewDb(TenantA, nameof(Uma_role_criada_pelo_tenant_pode_ser_concedida_a_um_membro));
+            using var db = NewDb(TenantA, nameof(A_role_created_by_the_tenant_can_be_granted_to_a_member));
             var admin = ServiceOver(db);
             var roles = new TenantRoleService(db);
 
-            await admin.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            await admin.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
             var userId = Guid.NewGuid();
-            await roles.AssignFeatureRoleAsync(TenantA, userId, "Leitura");
+            await roles.AssignFeatureRoleAsync(TenantA, userId, "Viewer");
 
-            var concedidas = await roles.GetTenantRoleNamesAsync(userId, TenantA);
-            Assert.Contains("Leitura", concedidas);
+            var granted = await roles.GetTenantRoleNamesAsync(userId, TenantA);
+            Assert.Contains("Viewer", granted);
         }
 
         [Fact]
-        public async Task Nao_deixa_conceder_a_role_de_outro_tenant()
+        public async Task Cannot_grant_another_tenants_role()
         {
-            using var db = NewDb(TenantA, nameof(Nao_deixa_conceder_a_role_de_outro_tenant));
+            using var db = NewDb(TenantA, nameof(Cannot_grant_another_tenants_role));
             var admin = ServiceOver(db);
             var roles = new TenantRoleService(db);
 
-            // A role existe, mas pertence ao tenant A.
-            await admin.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            // The role exists, but it belongs to tenant A.
+            await admin.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
-            // O tenant B não pode concedê-la só por saber o nome.
+            // Tenant B cannot grant it just by knowing the name.
             await Assert.ThrowsAsync<InvalidOperationException>(
-                () => roles.AssignFeatureRoleAsync(TenantB, Guid.NewGuid(), "Leitura"));
+                () => roles.AssignFeatureRoleAsync(TenantB, Guid.NewGuid(), "Viewer"));
         }
 
         [Fact]
-        public async Task Nao_deixa_recriar_uma_role_do_sistema()
+        public async Task Cannot_recreate_a_system_role()
         {
-            using var db = NewDb(TenantA, nameof(Nao_deixa_recriar_uma_role_do_sistema));
+            using var db = NewDb(TenantA, nameof(Cannot_recreate_a_system_role));
             SeedCanonicalRole(db, "HR");
             var service = ServiceOver(db);
 
-            var erro = await Assert.ThrowsAsync<InvalidOperationException>(
+            var error = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.CreateAsync(TenantA, new CreateTenantRoleDto("hr", null)));
 
-            Assert.Contains("role do sistema", erro.Message);
+            Assert.Contains("system role", error.Message);
         }
 
         [Fact]
-        public async Task Nao_deixa_um_tenant_excluir_a_role_de_outro()
+        public async Task A_tenant_cannot_delete_another_tenants_role()
         {
-            using var db = NewDb(TenantA, nameof(Nao_deixa_um_tenant_excluir_a_role_de_outro));
+            using var db = NewDb(TenantA, nameof(A_tenant_cannot_delete_another_tenants_role));
             var service = ServiceOver(db);
 
-            var criada = await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            var created = await service.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
             await Assert.ThrowsAsync<KeyNotFoundException>(
-                () => service.DeleteAsync(TenantB, criada.Id));
+                () => service.DeleteAsync(TenantB, created.Id));
         }
 
         [Fact]
-        public async Task Nao_deixa_excluir_role_ainda_atribuida_a_um_membro()
+        public async Task Cannot_delete_a_role_still_assigned_to_a_member()
         {
-            using var db = NewDb(TenantA, nameof(Nao_deixa_excluir_role_ainda_atribuida_a_um_membro));
+            using var db = NewDb(TenantA, nameof(Cannot_delete_a_role_still_assigned_to_a_member));
             var service = ServiceOver(db);
 
-            var criada = await service.CreateAsync(TenantA, new CreateTenantRoleDto("Leitura", null));
+            var created = await service.CreateAsync(TenantA, new CreateTenantRoleDto("Viewer", null));
 
             db.TenantUserRoles.Add(new TenantUserRole
             {
                 TenantId = TenantA,
                 UserId = Guid.NewGuid(),
-                RoleId = criada.Id
+                RoleId = created.Id
             });
             await db.SaveChangesAsync();
 
-            var erro = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.DeleteAsync(TenantA, criada.Id));
+            var error = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.DeleteAsync(TenantA, created.Id));
 
-            Assert.Contains("atribuída a membros", erro.Message);
+            Assert.Contains("assigned to members", error.Message);
         }
     }
 }

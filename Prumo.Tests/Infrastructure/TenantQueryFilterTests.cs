@@ -28,7 +28,7 @@ namespace Prumo.Tests.Infrastructure
                 await db.SaveChangesAsync();
             }
 
-            // Contexto sem tenant: fail-closed devolve vazio, não tudo.
+            // Context without a tenant: fail-closed returns nothing, not everything.
             await using var noTenant = NewDb(new TenantContext(), dbName);
             var visible = await noTenant.Resources.ToListAsync();
 

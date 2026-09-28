@@ -3,10 +3,10 @@ namespace Prumo.Application.DTOs.Roles
     public record CreateTenantRoleDto(string Name, string? Description);
 
     /// <param name="IsCanonical">
-    /// Role do sistema (<c>TenantId</c> nulo): visível em todo tenant, não pode ser
-    /// excluída por ninguém.
+    /// System role (null <c>TenantId</c>): visible in every tenant, cannot be deleted by
+    /// anyone.
     /// </param>
-    /// <param name="MemberCount">Quantos membros <b>deste</b> tenant carregam a role.</param>
+    /// <param name="MemberCount">How many members of <b>this</b> tenant carry the role.</param>
     public record TenantRoleDto(
         Guid Id,
         string Name,

@@ -10,10 +10,10 @@ namespace Prumo.Infrastructure.Data.Configurations
         {
             builder.Property(r => r.Description).HasMaxLength(256);
 
-            // O índice do Identity precisa SAIR do modelo, não apenas ser sobreposto:
-            // enquanto ele existir, NormalizedName segue único globalmente e dois tenants
-            // nunca conseguiriam ter cada um a sua "Leitura". Sem esta remoção o EF ainda
-            // recusa o modelo, porque dois índices diferentes disputam o mesmo nome.
+            // Identity's index has to LEAVE the model, not just be overridden: while it
+            // exists, NormalizedName stays globally unique and two tenants could never each
+            // have their own "Viewer". Without removing it EF also rejects the model,
+            // because two different indexes compete for the same name.
             var normalizedName = builder.Metadata.FindProperty(nameof(ApplicationRole.NormalizedName));
             if (normalizedName is not null)
             {
@@ -24,16 +24,16 @@ namespace Prumo.Infrastructure.Data.Configurations
                 }
             }
 
-            // O Identity cria RoleNameIndex único sobre NormalizedName. Com role por
-            // tenant, dois tenants podem ter a sua própria "Leitura", então a unicidade
-            // passa a valer para o par.
+            // Identity creates a unique RoleNameIndex over NormalizedName. With per-tenant
+            // roles, two tenants can each have their own "Viewer", so uniqueness applies to
+            // the pair.
             builder.HasIndex(r => new { r.NormalizedName, r.TenantId })
                    .HasDatabaseName("RoleNameIndex")
                    .IsUnique()
-                   // OBRIGATÓRIO. No Postgres NULL não é igual a NULL, então sem isto
-                   // duas roles canônicas "HR" (ambas com TenantId null) passariam pelo
-                   // índice. Verificado em PG 17.9: sem a flag insere as duas; com ela,
-                   // a segunda viola a constraint. Requer PG 15+.
+                   // REQUIRED. In Postgres NULL is not equal to NULL, so without this two
+                   // canonical "HR" roles (both with a null TenantId) would pass the index.
+                   // Checked on PG 17.9: without the flag both rows go in; with it, the
+                   // second violates the constraint. Requires PG 15+.
                    .AreNullsDistinct(false);
         }
     }

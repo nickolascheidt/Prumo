@@ -8,9 +8,9 @@ using System.Security.Claims;
 namespace Prumo.Tests.Api
 {
     /// <summary>
-    /// O TenantsController é isento do [TenantModule] (gerencia associação, seria
-    /// circular), então cada action com {tenantId} prova a associação à mão. Este teste
-    /// existe porque uma delas não provava.
+    /// TenantsController is exempt from [TenantModule] (it manages membership, so it would
+    /// be circular), so every action with {tenantId} proves membership by hand. This test
+    /// exists because one of them did not.
     /// </summary>
     public class TenantsControllerTests
     {

@@ -4,13 +4,13 @@ using Prumo.Domain.Enums;
 namespace Prumo.Domain.Entities
 {
     /// <summary>
-    /// Um e-mail que o admin adicionou ao tenant e que ainda não tem conta.
+    /// An e-mail the admin added to the tenant that does not have an account yet.
     ///
-    /// **Não é um link com token.** O convite não autoriza nada: ele é uma anotação de que
-    /// aquele endereço, quando existir, entra neste tenant com este cargo. Quem se cadastra
-    /// com o endereço convidado é admitido porque provou ser dono da caixa — a mesma prova
-    /// que a confirmação de e-mail exige. Isso é o que permite o aviso por e-mail ser
-    /// best-effort: se ele não chegar, ninguém entra em tenant nenhum por engano.
+    /// **It is not a link with a token.** The invitation authorizes nothing: it is a note
+    /// that this address, once it exists, joins this tenant with this position. Whoever
+    /// signs up with the invited address is admitted because they proved they own the
+    /// mailbox — the same proof e-mail confirmation requires. That is what lets the e-mail
+    /// notice be best-effort: if it never arrives, nobody joins a tenant by mistake.
     /// </summary>
     public class TenantInvitation : EntityBase, ITenantScoped
     {
@@ -18,19 +18,19 @@ namespace Prumo.Domain.Entities
         public Tenant Tenant { get; set; } = null!;
 
         /// <summary>
-        /// Guardado **normalizado** (maiúsculas), como o Identity faz com
-        /// `NormalizedEmail` — senão "Ana@x.com" e "ana@x.com" viram convites diferentes.
+        /// Stored **normalized** (upper case), as Identity does with `NormalizedEmail` —
+        /// otherwise "Ana@x.com" and "ana@x.com" become different invitations.
         /// </summary>
         public string NormalizedEmail { get; set; } = string.Empty;
 
-        /// <summary>O endereço como o admin digitou, para exibir na tela.</summary>
+        /// <summary>The address as the admin typed it, for display.</summary>
         public string Email { get; set; } = string.Empty;
 
         public TenantRole Role { get; set; } = TenantRole.Member;
 
         public Guid InvitedByUserId { get; set; }
 
-        /// <summary>Nulo enquanto pendente. Preenchido quando alguém se cadastra com o endereço.</summary>
+        /// <summary>Null while pending. Set when someone signs up with the address.</summary>
         public DateTime? AcceptedAt { get; set; }
     }
 }

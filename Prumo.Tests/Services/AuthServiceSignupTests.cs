@@ -10,11 +10,11 @@ using Prumo.Infrastructure.Services;
 namespace Prumo.Tests.Services;
 
 /// <summary>
-/// O ciclo de conta do item 8: cadastrar sem sessão, não entrar antes de confirmar, e não
-/// contar a estranhos quais e-mails existem.
+/// The account lifecycle: sign up without a session, no sign-in before confirming, and
+/// not telling strangers which e-mails exist.
 ///
-/// O que **não** dá para cobrir aqui: o e-mail sair de verdade. Isso é do serviço de
-/// notificação, do outro lado da fila, e está no registro de verificação manual.
+/// What **cannot** be covered here: the e-mail actually going out. There is no e-mail
+/// provider; notifications are written to the log.
 /// </summary>
 public class AuthServiceSignupTests
 {
@@ -46,9 +46,9 @@ public class AuthServiceSignupTests
     private static ApplicationUser AUser(bool emailConfirmed) => new()
     {
         Id = Guid.NewGuid(),
-        Email = "pessoa@exemplo.com",
-        UserName = "pessoa@exemplo.com",
-        FullName = "Pessoa Exemplo",
+        Email = "person@example.com",
+        UserName = "person@example.com",
+        FullName = "Example Person",
         IsActive = true,
         EmailConfirmed = emailConfirmed
     };
@@ -67,16 +67,16 @@ public class AuthServiceSignupTests
         var sut = MakeSut(userManager, notifications);
 
         var result = await sut.RegisterAsync(
-            new RegisterRequestDto("pessoa@exemplo.com", "Senha@123", "Pessoa Exemplo", null), null);
+            new RegisterRequestDto("person@example.com", "Password@123", "Example Person", null), null);
 
-        Assert.Equal("pessoa@exemplo.com", result.Email);
+        Assert.Equal("person@example.com", result.Email);
 
-        // O tipo de retorno não tem token — se um dia alguém devolver LoginResponseDto
-        // daqui, a confirmação de e-mail vira decoração e este teste deixa de compilar.
+        // The return type has no token — if someone ever returns LoginResponseDto from
+        // here, e-mail confirmation becomes decoration and this test stops compiling.
         await notifications.Received(1).PublishAsync(
             Arg.Is<NotificationMessage>(m =>
                 m.Type == NotificationTypes.EmailConfirmation
-                && m.To == "pessoa@exemplo.com"
+                && m.To == "person@example.com"
                 && m.Data.ContainsKey("link")),
             Arg.Any<CancellationToken>());
     }
@@ -89,15 +89,15 @@ public class AuthServiceSignupTests
         userManager.FindByEmailAsync(user.Email!).Returns(user);
 
         var signInManager = MakeSignInManager(userManager);
-        signInManager.CheckPasswordSignInAsync(user, "Senha@123", true)
+        signInManager.CheckPasswordSignInAsync(user, "Password@123", true)
             .Returns(SignInResult.Success);
 
         var sut = MakeSut(userManager, Substitute.For<INotificationPublisher>(), signInManager);
 
-        // Um tipo próprio, e não UnauthorizedAccessException: o SPA precisa mandar esta
-        // pessoa para "reenviar confirmação", e o 401 genérico apaga a mensagem.
+        // Its own type, not UnauthorizedAccessException: the SPA needs to send this person
+        // to "resend confirmation", and the generic 401 would drop the message.
         await Assert.ThrowsAsync<EmailNotConfirmedException>(
-            () => sut.LoginAsync(new LoginRequestDto(user.Email!, "Senha@123")));
+            () => sut.LoginAsync(new LoginRequestDto(user.Email!, "Password@123")));
     }
 
     [Fact]
@@ -109,11 +109,11 @@ public class AuthServiceSignupTests
         var notifications = Substitute.For<INotificationPublisher>();
         var sut = MakeSut(userManager, notifications);
 
-        await sut.ForgotPasswordAsync("nao-existe@exemplo.com");
+        await sut.ForgotPasswordAsync("nobody@example.com");
 
-        // O endpoint responde 202 de qualquer jeito; o que não pode é sair e-mail. Se um
-        // dia alguém "melhorar" isso lançando para e-mail desconhecido, o endpoint vira
-        // enumerador de contas.
+        // The endpoint answers 202 either way; what must not happen is an e-mail going out.
+        // If someone ever "improves" this by throwing for an unknown e-mail, the endpoint
+        // becomes an account enumerator.
         await notifications.DidNotReceive().PublishAsync(
             Arg.Any<NotificationMessage>(), Arg.Any<CancellationToken>());
     }
@@ -140,7 +140,7 @@ public class AuthServiceSignupTests
         var user = AUser(emailConfirmed: false);
         var userManager = MakeUserManager();
         userManager.FindByIdAsync(user.Id.ToString()).Returns(user);
-        userManager.ResetPasswordAsync(user, Arg.Any<string>(), "NovaSenha@123")
+        userManager.ResetPasswordAsync(user, Arg.Any<string>(), "NovaPassword@123")
             .Returns(IdentityResult.Success);
 
         var sut = MakeSut(userManager, Substitute.For<INotificationPublisher>());
@@ -149,13 +149,13 @@ public class AuthServiceSignupTests
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
         var ok = await sut.ResetPasswordAsync(
-            new ResetPasswordRequestDto(user.Id, encodedToken, "NovaSenha@123"));
+            new ResetPasswordRequestDto(user.Id, encodedToken, "NovaPassword@123"));
 
         Assert.True(ok);
 
-        // Quem abriu o link provou ter acesso à caixa de e-mail — que é exatamente o que a
-        // confirmação verifica. Sem isto, quem esqueceu a senha antes de confirmar
-        // redefiniria e ainda assim não conseguiria entrar.
+        // Whoever opened the link proved access to the mailbox — which is exactly what
+        // confirmation checks. Without this, someone who forgot their password before
+        // confirming would reset it and still not be able to sign in.
         Assert.True(user.EmailConfirmed);
     }
 }

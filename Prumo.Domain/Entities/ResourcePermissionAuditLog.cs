@@ -4,17 +4,15 @@ using Prumo.Domain.Enums;
 namespace Prumo.Domain.Entities
 {
     /// <summary>
-    /// Histórico de mudanças de nível de acesso: quem deu ou tirou o quê, de quem, quando.
+    /// History of access level changes: who granted or removed what, from whom, when.
     /// </summary>
     /// <remarks>
-    /// Substitui o <c>PermissionAuditLog</c>, que auditava o sistema de
-    /// <c>RolePermission</c> — desconectado de qualquer gate e aposentado no item 3B.
-    /// Este audita <c>ResourcePermission</c>, que é o que de fato controla o menu, os
-    /// guards e a API.
+    /// Audits <c>ResourcePermission</c>, which is what actually controls the menu, the
+    /// route guards and the API.
     ///
-    /// Guarda <b>nomes</b> além dos ids de propósito: excluir uma role apaga suas
-    /// permissões, e sem o nome copiado aqui o histórico viraria uma lista de GUIDs
-    /// órfãos — justamente quando se quer saber o que aconteceu.
+    /// Stores <b>names</b> besides the ids on purpose: deleting a role deletes its
+    /// permissions, and without the name copied here the history would turn into a list of
+    /// orphaned GUIDs — exactly when you want to know what happened.
     /// </remarks>
     public class ResourcePermissionAuditLog : EntityBase, ITenantScoped
     {
@@ -26,10 +24,10 @@ namespace Prumo.Domain.Entities
         public Guid ResourceId { get; set; }
         public string ResourceCode { get; set; } = null!;
 
-        /// <summary>Nível antes da mudança. <c>None</c> quando o acesso não existia.</summary>
+        /// <summary>Level before the change. <c>None</c> when there was no access.</summary>
         public PermissionLevel PreviousLevel { get; set; }
 
-        /// <summary>Nível depois da mudança. <c>None</c> quando foi revogado.</summary>
+        /// <summary>Level after the change. <c>None</c> when it was revoked.</summary>
         public PermissionLevel NewLevel { get; set; }
 
         public Guid PerformedByUserId { get; set; }

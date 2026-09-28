@@ -7,10 +7,10 @@ using Prumo.Infrastructure.Multitenancy;
 namespace Prumo.Tests.Infrastructure
 {
     /// <summary>
-    /// WorkLog, Payment, PaymentPeriod e JournalLine não têm coluna TenantId — são
-    /// escopados pelo pai. Sem filtro por navegação, o isolamento deles depende
-    /// inteiramente de o service lembrar do join, que é a disciplina que a fase 2
-    /// troca por estrutura.
+    /// WorkLog, Payment, PaymentPeriod and JournalLine have no TenantId column — they are
+    /// scoped by their parent. Without a navigation filter, their isolation depends entirely
+    /// on the service remembering the join, which is the discipline this filter replaces
+    /// with structure.
     /// </summary>
     public class NavigationTenantFilterTests
     {
@@ -42,7 +42,7 @@ namespace Prumo.Tests.Infrastructure
             ctx.SetTenant(tenantA);
             await using var db = NewDb(ctx, dbName);
 
-            // Sem nenhum Where de tenant e sem guard: só o filtro pode proteger.
+            // No tenant Where and no guard: only the filter can protect.
             var visible = await db.WorkLogs.ToListAsync();
 
             Assert.Single(visible);
@@ -64,7 +64,7 @@ namespace Prumo.Tests.Infrastructure
                 await seed.SaveChangesAsync();
             }
 
-            // Fail-closed: sem tenant resolvido, nada volta.
+            // Fail-closed: with no resolved tenant, nothing comes back.
             await using var db = NewDb(new TenantContext(), dbName);
 
             Assert.Empty(await db.WorkLogs.ToListAsync());

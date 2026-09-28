@@ -1,14 +1,15 @@
 namespace Prumo.Tests.Architecture
 {
     /// <summary>
-    /// A fase 2 removeu 68 IgnoreQueryFilters que tinham virado redundantes ou que nunca
-    /// fizeram nada. O que sobra é legítimo e está documentado. Este teste existe para que
-    /// o próximo não entre sem justificativa — sem ele, a limpeza se desfaz sozinha.
+    /// A cleanup pass removed 68 IgnoreQueryFilters calls that had become redundant or had
+    /// never done anything. What is left is legitimate and documented. This test exists so
+    /// the next one does not get in without a justification — without it, the cleanup
+    /// undoes itself.
     ///
-    /// A justificativa tem que dizer *por que* a leitura é cross-tenant, não só que é.
-    /// Os dois motivos que sobreviveram à fase 2: código de startup que roda sem
-    /// TenantContext (DbInitializer, seeders) e emissão de token, que acontece antes de o
-    /// claim tenant_id existir (TenantRoleService, PermissionService).
+    /// The justification has to say *why* the read is cross-tenant, not just that it is.
+    /// The two reasons that survived: startup code that runs without a TenantContext
+    /// (DbInitializer, seeders) and token issuing, which happens before the tenant_id claim
+    /// exists (TenantRoleService).
     /// </summary>
     public class DataAccessHygieneTests
     {
@@ -30,10 +31,10 @@ namespace Prumo.Tests.Architecture
                 {
                     if (!lines[i].Contains("IgnoreQueryFilters")) continue;
 
-                    // Justificativa = comentário nas 6 linhas acima contendo "cross-tenant".
-                    // A comparação ignora maiúsculas: o comentário costuma abrir a frase
-                    // com "Cross-tenant de propósito:", e uma checagem sensível a caixa
-                    // passaria a aceitar/rejeitar por detalhe de redação, não por conteúdo.
+                    // Justification = a comment in the 6 lines above containing "cross-tenant".
+                    // The comparison ignores case: the comment usually opens the sentence with
+                    // "Cross-tenant on purpose:", and a case-sensitive check would accept or
+                    // reject on wording, not on content.
                     var start = Math.Max(0, i - 6);
                     var justified = lines[start..i].Any(l =>
                         l.TrimStart().StartsWith("//")
@@ -45,9 +46,9 @@ namespace Prumo.Tests.Architecture
             }
 
             Assert.True(offenders.Count == 0,
-                "IgnoreQueryFilters sem justificativa. Ou o filtro global já cobre este caso "
-                + "e a chamada deve sair, ou a leitura é cross-tenant de propósito e precisa "
-                + "de um comentário acima contendo 'cross-tenant' explicando por quê.\n  "
+                "IgnoreQueryFilters without a justification. Either the global filter already covers "
+                + "this case and the call should go, or the read is cross-tenant on purpose and needs "
+                + "a comment above containing 'cross-tenant' explaining why.\n  "
                 + string.Join("\n  ", offenders));
         }
 
@@ -56,7 +57,7 @@ namespace Prumo.Tests.Architecture
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
             while (dir != null && !File.Exists(Path.Combine(dir.FullName, "Prumo.slnx")))
                 dir = dir.Parent;
-            return dir?.FullName ?? throw new InvalidOperationException("Prumo.slnx não encontrado.");
+            return dir?.FullName ?? throw new InvalidOperationException("Prumo.slnx not found.");
         }
     }
 }

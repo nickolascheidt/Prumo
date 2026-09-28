@@ -9,9 +9,9 @@ public static class LoggingConfiguration
 {
     public static Serilog.ILogger CreateBootstrapLogger()
     {
-        // Falha de sink é silenciosa por design no Serilog: a exceção morre dentro do
-        // batch periódico. Foi assim que o sink do Postgres passou meses sem escrever
-        // uma linha sem ninguém notar. O SelfLog só fala quando algo quebra.
+        // Sink failures are silent by design in Serilog: the exception dies inside the
+        // periodic batch. That is how the Postgres sink once went months without writing a
+        // row with nobody noticing. SelfLog only speaks when something breaks.
         Serilog.Debugging.SelfLog.Enable(message => Console.Error.WriteLine($"[serilog] {message}"));
 
         return new LoggerConfiguration()
@@ -52,10 +52,11 @@ public static class LoggingConfiguration
                     { "client_ip", new SinglePropertyColumnWriter("ClientIp", PropertyWriteMethod.ToString, NpgsqlDbType.Varchar, "l") }
                 };
 
-                // `needAutoCreateTable: false` porque a aplicação conecta como `prumo_app`,
-                // que não faz DDL (ver `db/roles.sql`). A tabela `logs` é criada pela
-                // migration `CreateLogsTable`, junto do resto do schema — se ela faltar, o
-                // sink falha aqui em vez de o Postgres recusar um CREATE TABLE silencioso.
+                // `needAutoCreateTable: false` because the app connects as `prumo_app`,
+                // which does not run DDL (see `db/roles.sql`). The `logs` table is created by
+                // the `CreateLogsTable` migration, with the rest of the schema — if it is
+                // missing, the sink fails here instead of Postgres silently refusing a
+                // CREATE TABLE.
                 configuration.WriteTo.PostgreSQL(
                     connectionString: connectionString,
                     tableName: "logs",

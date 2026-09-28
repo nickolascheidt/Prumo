@@ -380,7 +380,7 @@ FodyWeavers.xsd
 /Prumo-Postman-Collection.json
 /manage-migrations.ps1
 /quick-start.ps1
-# Saída de ferramentas locais (graphify, superpowers) — artefatos gerados
+# Output of local tools (graphify, superpowers) — generated artifacts
 /graphify-out/
 /.superpowers/
 

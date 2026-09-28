@@ -5,23 +5,24 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Prumo.Infrastructure.Migrations
 {
     /// <summary>
-    /// Traz a tabela `logs` do Serilog para o schema versionado.
+    /// Brings Serilog's `logs` table into the versioned schema.
     ///
-    /// Ela era criada pelo próprio sink (`needAutoCreateTable: true`), o que significava
-    /// **DDL na conexão da aplicação** a cada startup. Com `prumo_app` restrito a DML
-    /// (item 11), isso passaria a falhar; e mesmo antes disso, era schema fora do
-    /// controle das migrations.
+    /// It used to be created by the sink itself (`needAutoCreateTable: true`), which meant
+    /// **DDL over the application connection** on every startup. With `prumo_app` limited
+    /// to DML that would start failing; and even before that, it was schema outside the
+    /// migrations' control.
     ///
-    /// As colunas espelham exatamente os `ColumnWriter`s de
-    /// `Prumo.Api/Configuration/LoggingConfiguration.cs` — mudar um exige mudar o outro.
+    /// The columns mirror the `ColumnWriter`s in
+    /// `Prumo.Api/Configuration/LoggingConfiguration.cs` exactly — changing one means
+    /// changing the other.
     /// </summary>
     public partial class CreateLogsTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // IF NOT EXISTS porque em qualquer banco que já rodou a aplicação a tabela
-            // existe, criada pelo sink. Esta migration adota a que está lá.
+            // IF NOT EXISTS because on any database that already ran the app the table
+            // exists, created by the sink. This migration adopts the one that is there.
             migrationBuilder.Sql("""
                 CREATE TABLE IF NOT EXISTS logs (
                     message          text,
@@ -40,9 +41,9 @@ namespace Prumo.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Sem DROP de propósito. Na maioria dos bancos esta tabela é anterior à
-            // migration e guarda histórico de log; reverter o schema não é motivo para
-            // apagá-lo. Quem quiser removê-la faz na mão, conscientemente.
+            // No DROP on purpose. On most databases this table predates the migration and
+            // holds log history; reverting the schema is no reason to delete it. Whoever
+            // wants it gone drops it by hand, deliberately.
         }
     }
 }

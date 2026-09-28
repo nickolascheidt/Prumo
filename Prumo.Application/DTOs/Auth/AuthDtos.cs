@@ -23,8 +23,9 @@ namespace Prumo.Application.DTOs.Auth
     );
 
     /// <summary>
-    /// O que o cadastro devolve. **Não tem token**: quem acabou de se cadastrar ainda não
-    /// provou que o e-mail é seu, e devolver sessão aqui tornaria a confirmação decorativa.
+    /// What sign-up returns. **No token**: someone who just signed up has not proved the
+    /// e-mail is theirs yet, and returning a session here would make confirmation
+    /// decorative.
     /// </summary>
     public record RegistrationResultDto(
         Guid UserId,

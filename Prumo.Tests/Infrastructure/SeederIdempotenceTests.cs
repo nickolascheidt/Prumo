@@ -24,8 +24,8 @@ namespace Prumo.Tests.Infrastructure
 
             await using var db = NewDb(ctx, dbName);
 
-            // O seeder só concede ResourcePermissions para roles do Identity que existam.
-            // Sem esta linha nada é semeado e o teste passaria por vacuidade.
+            // The seeder only grants ResourcePermissions to Identity roles that exist.
+            // Without this line nothing is seeded and the test would pass vacuously.
             db.Roles.Add(new ApplicationRole { Name = "Administrator", NormalizedName = "ADMINISTRADOR" });
             await db.SaveChangesAsync();
 
@@ -35,12 +35,12 @@ namespace Prumo.Tests.Infrastructure
                 .Where(rp => rp.TenantId == tenantId).ToListAsync();
             Assert.NotEmpty(granted);
 
-            // Um admin revoga um grant.
+            // An admin revokes a grant.
             var revoked = granted[0];
             db.ResourcePermissions.Remove(revoked);
             await db.SaveChangesAsync();
 
-            // Reaplicar o seeder é o que o startup faz hoje.
+            // Re-applying the seeder, as a startup routine would.
             await TenantBootstrapSeeder.SeedAsync(db, tenantId);
 
             var stillRevoked = !await db.ResourcePermissions.IgnoreQueryFilters()
@@ -48,13 +48,13 @@ namespace Prumo.Tests.Infrastructure
                              && rp.RoleId == revoked.RoleId
                              && rp.ResourceId == revoked.ResourceId);
 
-            // Contrato: o seeder é chamado UMA vez, na criação do tenant. Reaplicá-lo
-            // ressuscitaria grants revogados, e é por isso que EnsureTenantBootstrapAsync
-            // foi removido do startup. Este teste existe para que ninguém o traga de volta.
+            // Contract: the seeder is called ONCE, when the tenant is created. Re-applying it
+            // would bring revoked grants back, which is why it does not run at startup. This
+            // test exists so nobody brings it back.
             Assert.False(stillRevoked,
-                "O seeder continua ressuscitando grants ao ser reaplicado — por isso ele NUNCA "
-                + "pode voltar a rodar no startup. Se este teste falhar porque o seeder passou a "
-                + "ser seguro para reaplicação, ótimo: ajuste a asserção e registre a mudança.");
+                "The seeder still brings grants back when re-applied — so it must NEVER run at "
+                + "startup again. If this test fails because the seeder became safe to re-apply, "
+                + "great: adjust the assertion.");
         }
     }
 }

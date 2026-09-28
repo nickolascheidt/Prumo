@@ -3,15 +3,15 @@ using System.Text.Json;
 namespace Prumo.Tests.Architecture
 {
     /// <summary>
-    /// O overlay de produção carregou placeholders de Azure por meses — a connection
-    /// string dizia CONFIGURE_VIA_AZURE_APP_SETTINGS_OR_KEY_VAULT e o AllowedHosts
-    /// dizia yourdomain.com —, e o deploy os contornava com variável de ambiente.
-    /// Contornar em silêncio é como eles sobreviveram tanto tempo.
+    /// The production overlay once carried cloud placeholders for months — the connection
+    /// string said CONFIGURE_VIA_AZURE_APP_SETTINGS_OR_KEY_VAULT and AllowedHosts said
+    /// yourdomain.com — and the deploy worked around them with environment variables.
+    /// Working around them silently is how they survived so long.
     ///
-    /// Este teste quebra o build se algum voltar. Ele NÃO exige que o arquivo tenha o
-    /// valor real: em produção a connection string continua vindo do ambiente, e o
-    /// placeholder que quebra o startup de propósito continua sendo o certo — ele só
-    /// não pode nomear uma nuvem que não usamos mais.
+    /// This test breaks the build if one comes back. It does NOT require the file to hold
+    /// the real value: in production the connection string still comes from the
+    /// environment, and the placeholder that breaks startup on purpose is still the right
+    /// thing — it just must not name a cloud the project no longer uses.
     /// </summary>
     public class ProductionConfigTests
     {
@@ -35,7 +35,7 @@ namespace Prumo.Tests.Architecture
         }
 
         [Fact]
-        public void O_overlay_de_producao_nao_carrega_placeholder_de_azure()
+        public void Production_overlay_carries_no_azure_placeholder()
         {
             var content = File.ReadAllText(ProductionConfigPath());
 
@@ -46,12 +46,12 @@ namespace Prumo.Tests.Architecture
         }
 
         /// <summary>
-        /// A falha segura que já existe e deve continuar existindo: sem a env var
-        /// ConnectionStrings__DefaultConnection, o startup quebra em vez de cair num
-        /// banco default.
+        /// The existing fail-safe that must stay: without the
+        /// ConnectionStrings__DefaultConnection environment variable, startup breaks instead
+        /// of falling back to a default database.
         /// </summary>
         [Fact]
-        public void O_overlay_de_producao_mantem_a_connection_string_como_placeholder()
+        public void Production_overlay_keeps_the_connection_string_as_a_placeholder()
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(ProductionConfigPath()));
 

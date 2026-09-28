@@ -12,13 +12,13 @@ public static class AuthenticationConfiguration
 {
     public static IServiceCollection AddAuthenticationConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        // Nenhum overlay commita a chave: ela vem de user secrets em dev e da env var
-        // Jwt__Key fora dele (o compose do piloto a injeta do .env). Sem ela o startup
-        // morre aqui de propósito, como a connection string de Production.
+        // No overlay commits the key: it comes from user secrets in development and from
+        // the Jwt__Key environment variable elsewhere. Without it startup dies here on
+        // purpose, like the Production connection string.
         var jwtKey = configuration["Jwt:Key"]
             ?? throw new InvalidOperationException(
-                "Jwt:Key não configurada. Defina a env var Jwt__Key, ou em desenvolvimento " +
-                "rode: dotnet user-secrets set \"Jwt:Key\" \"<32+ caracteres>\" -p Prumo.Api");
+                "Jwt:Key is not set. Set the Jwt__Key environment variable, or in development " +
+                "run: dotnet user-secrets set \"Jwt:Key\" \"<32+ characters>\" -p Prumo.Api");
         var key = Encoding.UTF8.GetBytes(jwtKey);
 
         services.AddAuthentication(options =>
@@ -58,9 +58,8 @@ public static class AuthenticationConfiguration
                 .Build();
         });
 
-        // As policies por permissão saíram no item 3B. Uma era registrada por string do
-        // catálogo, e nenhum endpoint jamais as consumiu (zero [Authorize(Policy=...)]);
-        // quem gateia é [TenantModule] contra ResourcePermission.
+        // There are no per-permission policies: access is gated by [TenantModule] against
+        // ResourcePermission.
 
         return services;
     }

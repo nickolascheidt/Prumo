@@ -2,7 +2,7 @@ namespace Prumo.Application.Services
 {
     public interface ITenantRoleService
     {
-        /// <summary>Global roles (e.g. master Administrador) ∪ per-tenant feature roles.</summary>
+        /// <summary>Global roles (e.g. master Administrator) ∪ per-tenant feature roles.</summary>
         Task<IReadOnlyList<string>> GetEffectiveRoleNamesAsync(
             Guid userId, Guid tenantId, IReadOnlyCollection<string> globalRoleNames,
             CancellationToken ct = default);

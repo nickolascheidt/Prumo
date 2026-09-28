@@ -5,10 +5,10 @@ using System.Net;
 namespace Prumo.Tests.Api
 {
     /// <summary>
-    /// O limite dos endpoints públicos (login, cadastro, esqueci-senha) era uma janela
-    /// única para o site inteiro: 10 requisições por minuto somando todo mundo. Com dois
-    /// clientes, o pico de login das 8h já batia nisso, e um anônimo derrubava o login de
-    /// todos com 10 requisições. A partição é por IP de origem.
+    /// The limit on public endpoints (login, sign-up, forgot password) used to be a single
+    /// window for the whole site: 10 requests per minute across everyone. With two clients,
+    /// the morning login peak already hit it, and one anonymous caller could lock everyone
+    /// out with 10 requests. The partition is per source IP.
     /// </summary>
     public class RateLimitingConfigurationTests
     {
@@ -40,7 +40,7 @@ namespace Prumo.Tests.Api
         [Fact]
         public void Unknown_remote_ip_still_gets_a_partition()
         {
-            // Sem IP (teste, socket unix) não pode estourar: cai numa partição fixa.
+            // Without an IP (tests, unix socket) it must not throw: it falls into a fixed partition.
             var key = RateLimitingConfiguration.PublicPartitionKey(WithRemoteIp(null));
 
             Assert.False(string.IsNullOrEmpty(key));

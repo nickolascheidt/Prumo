@@ -10,11 +10,11 @@ using System.Net;
 namespace Prumo.Tests.Api
 {
     /// <summary>
-    /// No piloto a API fica atrás de dois proxies: Caddy (TLS) e o nginx do Angular.
-    /// Sem processar X-Forwarded-*, RemoteIpAddress é o IP do container do nginx e o
-    /// scheme é http — o log de request, o rate limit por IP e qualquer forense entre os
-    /// dois clientes ficam cegos. O nginx anexa o seu próprio salto ao cabeçalho, então
-    /// a cadeia vista pela API é "cliente, caddy".
+    /// In the deployment design the API sits behind two proxies: Caddy (TLS) and the Angular
+    /// nginx. Without processing X-Forwarded-*, RemoteIpAddress is the nginx container's IP
+    /// and the scheme is http — the request log, the per-IP rate limit and any forensics
+    /// between two clients go blind. nginx appends its own hop to the header, so the chain
+    /// the API sees is "client, caddy".
     /// </summary>
     public class ForwardedHeadersConfigurationTests
     {
@@ -51,8 +51,8 @@ namespace Prumo.Tests.Api
         [Fact]
         public async Task A_client_cannot_spoof_its_ip_by_prepending_to_the_chain()
         {
-            // O Caddy descarta X-Forwarded-For de quem não é proxy confiável, mas a API não
-            // depende disso: só anda dois saltos a partir da direita.
+            // Caddy drops X-Forwarded-For from anyone who is not a trusted proxy, but the API
+            // does not depend on that: it only walks two hops from the right.
             var ctx = await Run("10.0.0.1, 203.0.113.5, 172.18.0.3", "https");
 
             Assert.Equal(IPAddress.Parse("203.0.113.5"), ctx.Connection.RemoteIpAddress);

@@ -5,16 +5,16 @@ using Serilog.Sinks.PostgreSQL;
 namespace Prumo.Api.Configuration;
 
 /// <summary>
-/// Escreve o instante do evento em UTC na coluna `raise_date`.
+/// Writes the event instant in UTC to the `raise_date` column.
 ///
-/// O `TimestampColumnWriter` do sink entrega o `LogEvent.Timestamp` cru, que é um
-/// `DateTimeOffset` no fuso local. O Npgsql recusa qualquer offset diferente de zero em
-/// `timestamp with time zone`, então **todo batch morria** com
-/// `Cannot write DateTimeOffset with Offset=-03:00:00`. A tabela `logs` existia e nunca
-/// recebeu uma linha — a exceção acontece dentro do batch periódico do Serilog, que a
-/// engole a menos que o `SelfLog` esteja ligado.
+/// The sink's `TimestampColumnWriter` passes the raw `LogEvent.Timestamp`, a
+/// `DateTimeOffset` in the local time zone. Npgsql rejects any non-zero offset for
+/// `timestamp with time zone`, so **every batch died** with
+/// `Cannot write DateTimeOffset with Offset=-03:00:00`. The `logs` table existed and never
+/// got a row — the exception happens inside Serilog's periodic batch, which swallows it
+/// unless `SelfLog` is on.
 ///
-/// `UtcDateTime` devolve um `DateTime` com `Kind=Utc`, que é o que o Npgsql aceita.
+/// `UtcDateTime` returns a `DateTime` with `Kind=Utc`, which is what Npgsql accepts.
 /// </summary>
 public sealed class UtcTimestampColumnWriter : ColumnWriterBase
 {

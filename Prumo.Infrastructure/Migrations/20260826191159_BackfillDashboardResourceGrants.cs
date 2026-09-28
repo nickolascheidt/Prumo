@@ -6,24 +6,23 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Prumo.Infrastructure.Migrations
 {
     /// <summary>
-    /// Dá a cada role o acesso ao dashboard que ela já enxergava pelo recurso do módulo.
+    /// Gives each role access to the dashboard it already saw through the module resource.
     /// </summary>
     /// <remarks>
-    /// As abas do dashboard passaram a ter recurso próprio (<c>Dashboard.HR</c> e afins)
-    /// em vez de emprestar o do módulo vizinho. Sem este backfill, todo mundo perderia as
-    /// abas na troca.
+    /// Dashboard tabs got their own resource (<c>Dashboard.HR</c> and so on) instead of
+    /// borrowing the neighboring module's. Without this backfill, everyone would lose the
+    /// tabs in the switch.
     ///
-    /// <b>Por que migration e não uma rotina de startup:</b> a primeira versão disto
-    /// rodava a cada boot, e por isso <b>desfazia revogações</b> — tirar
-    /// <c>Dashboard.HR</c> de uma role que ainda tivesse <c>HR.Employees</c> durava até o
-    /// próximo restart. É a mesma forma do bug 4203a15, em que re-semear ressuscitava
-    /// grants revogados. Migration roda uma vez, por definição, e o problema desaparece.
+    /// <b>Why a migration and not a startup routine:</b> the first version of this ran on
+    /// every boot, and so it <b>undid revocations</b> — removing <c>Dashboard.HR</c> from a
+    /// role that still had <c>HR.Employees</c> lasted until the next restart. A migration
+    /// runs once by definition, and the problem goes away.
     ///
-    /// O <c>WHERE NOT EXISTS</c> mantém a operação idempotente mesmo assim.
+    /// The <c>WHERE NOT EXISTS</c> keeps it idempotent anyway.
     /// </remarks>
     public partial class BackfillDashboardResourceGrants : Migration
     {
-        /// <summary>Aba do dashboard → recurso que ela gateava antes.</summary>
+        /// <summary>Dashboard tab → the resource that gated it before.</summary>
         private static readonly (string Dashboard, string Source)[] Map =
         {
             ("Dashboard.Accounting", "GeneralLedger.Management"),
@@ -36,10 +35,10 @@ namespace Prumo.Infrastructure.Migrations
         {
             foreach (var (dashboard, source) in Map)
             {
-                // Nível fixo em 1 (Read): dashboard só mostra números, então Write e Full
-                // não significariam nada ali.
-                // A chave é composta (TenantId, RoleId, ResourceId) — a tabela não tem Id
-                // próprio nem IsActive.
+                // Level fixed at 1 (Read): a dashboard only shows numbers, so Write and Full
+                // would mean nothing there.
+                // The key is composite (TenantId, RoleId, ResourceId) — the table has no Id
+                // of its own and no IsActive.
                 migrationBuilder.Sql($@"
                     INSERT INTO ""ResourcePermissions""
                         (""TenantId"", ""RoleId"", ""ResourceId"", ""Level"", ""CreatedAt"")
@@ -60,9 +59,9 @@ namespace Prumo.Infrastructure.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Remove só os grants de dashboard. Não dá para distinguir os que vieram
-            // deste backfill dos concedidos à mão depois — e reverter esta migration
-            // significa voltar ao mundo em que as abas nem tinham recurso próprio.
+            // Removes only the dashboard grants. There is no way to tell the ones from this
+            // backfill from those granted by hand later — and reverting this migration means
+            // going back to a world where the tabs did not even have their own resource.
             var codes = string.Join(", ", Map.Select(m => $"'{m.Dashboard}'"));
 
             migrationBuilder.Sql($@"

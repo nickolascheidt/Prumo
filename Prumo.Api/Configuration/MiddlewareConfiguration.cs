@@ -8,8 +8,8 @@ public static class MiddlewareConfiguration
 {
     public static WebApplication ConfigureMiddleware(this WebApplication app)
     {
-        // Primeiro de todos: tudo abaixo (log, rate limit por IP, CORS) precisa ver o
-        // IP e o scheme do cliente, não os do nginx. Ver ForwardedHeadersConfiguration.
+        // First of all: everything below (logging, per-IP rate limit, CORS) must see the
+        // client's IP and scheme, not nginx's. See ForwardedHeadersConfiguration.
         app.UseForwardedHeaders();
 
         app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -23,8 +23,8 @@ public static class MiddlewareConfiguration
             });
         }
 
-        // Sem UseHttpsRedirection: TLS termina no Caddy, que já redireciona 80 → 443.
-        // Aqui dentro ele não tinha porta HTTPS para apontar e só avisava no log.
+        // No UseHttpsRedirection: TLS terminates at Caddy, which already redirects
+        // 80 → 443. In here there was no HTTPS port to point to and it only logged a warning.
 
         app.UseCors("AppCorsPolicy");
 
@@ -32,9 +32,9 @@ public static class MiddlewareConfiguration
         {
             options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
             {
-                // Requisição anônima não tem nome, e RemoteIpAddress é nulo em transporte
-                // sem IP. Set não aceita nulo; a coluna fica NULL por ausência da
-                // propriedade, que é o que o SinglePropertyColumnWriter já faz.
+                // An anonymous request has no name, and RemoteIpAddress is null on transports
+                // without an IP. Set does not accept null; the column stays NULL because the
+                // property is absent, which is what SinglePropertyColumnWriter already does.
                 var userName = httpContext.User?.Identity?.Name;
                 if (userName is not null)
                 {

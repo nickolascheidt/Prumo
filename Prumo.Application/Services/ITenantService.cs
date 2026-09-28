@@ -17,8 +17,8 @@ namespace Prumo.Application.Services
         Task<TenantRole?> GetUserRoleAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
         Task<UserLookupDto?> LookupUserByEmailAsync(string email, CancellationToken ct = default);
         /// <summary>
-        /// Admite pelo e-mail: conta existente entra na hora, e-mail sem conta vira convite
-        /// pendente. Substituiu a criação de conta com senha digitada pelo admin.
+        /// Admits by e-mail: an existing account joins right away, an e-mail without an
+        /// account becomes a pending invitation.
         /// </summary>
         Task<InviteMemberResultDto> InviteMemberAsync(Guid tenantId, InviteMemberRequestDto dto, Guid invitedByUserId, CancellationToken ct = default);
 
@@ -27,8 +27,8 @@ namespace Prumo.Application.Services
         Task CancelInvitationAsync(Guid tenantId, Guid invitationId, CancellationToken ct = default);
 
         /// <summary>
-        /// Consome os convites pendentes do endereço recém-cadastrado. Devolve quantos
-        /// tenants a pessoa acabou de entrar.
+        /// Consumes the pending invitations for a newly registered address. Returns how many
+        /// tenants the person just joined.
         /// </summary>
         Task<int> AcceptPendingInvitationsAsync(Guid userId, string email, CancellationToken ct = default);
         Task UpdateMemberRoleAsync(Guid tenantId, Guid userId, TenantRole newRole, CancellationToken ct = default);

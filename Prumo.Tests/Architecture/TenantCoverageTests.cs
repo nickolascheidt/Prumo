@@ -9,9 +9,9 @@ namespace Prumo.Tests.Architecture
     public class TenantCoverageTests
     {
         /// <summary>
-        /// Exceções declaradas de propósito, para que sejam visíveis e revisáveis.
-        /// TenantsController gerencia associação — exigir associação provada nele seria
-        /// circular. Os outros três não são roteados por tenant.
+        /// Exceptions declared on purpose, so they are visible and reviewable.
+        /// TenantsController manages membership — requiring proven membership there would be
+        /// circular. The other three are not tenant-routed.
         /// </summary>
         private static readonly string[] Exempt =
         {
@@ -60,7 +60,7 @@ namespace Prumo.Tests.Architecture
 
             Assert.True(
                 offenders.Count == 0,
-                "Actions roteadas por tenant sem [TenantModule] e fora da lista de exceções: "
+                "Tenant-routed actions without [TenantModule] and not in the exception list: "
                 + string.Join(", ", offenders));
         }
 
@@ -90,8 +90,8 @@ namespace Prumo.Tests.Architecture
 
             Assert.True(
                 unknown.Count == 0,
-                "resourceCode declarado que não existe no catálogo — negaria o endpoint para todos, "
-                + "para sempre: " + string.Join(", ", unknown));
+                "Declared resourceCode that does not exist in the catalog — it would deny the endpoint to everyone, "
+                + "forever: " + string.Join(", ", unknown));
         }
     }
 }

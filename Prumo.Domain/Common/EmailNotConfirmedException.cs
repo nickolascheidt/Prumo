@@ -1,21 +1,21 @@
 namespace Prumo.Domain.Common
 {
     /// <summary>
-    /// A senha está certa, mas o e-mail nunca foi confirmado.
+    /// The password is right, but the e-mail was never confirmed.
     ///
-    /// É um tipo próprio, e não `UnauthorizedAccessException`, porque o SPA precisa
-    /// **distinguir** este caso de "credenciais inválidas" — um manda para a tela de
-    /// reenviar confirmação, o outro não pode dizer nada.
+    /// It is its own type, not `UnauthorizedAccessException`, because the SPA needs to
+    /// **tell** this case apart from "invalid credentials" — one sends the user to the
+    /// resend-confirmation screen, the other must not say anything.
     ///
-    /// Só é lançada **depois** da checagem de senha. Antes dela, responder "e-mail não
-    /// confirmado" contaria a qualquer um que aquele endereço tem conta.
+    /// Only thrown **after** the password check. Before it, answering "e-mail not
+    /// confirmed" would tell anyone that the address has an account.
     /// </summary>
     public class EmailNotConfirmedException : Exception
     {
         public const string Code = "email_not_confirmed";
 
         public EmailNotConfirmedException()
-            : base("Confirme seu e-mail para entrar. Reenviamos o link se precisar.")
+            : base("Confirm your e-mail to sign in. We can resend the link if you need it.")
         {
         }
     }

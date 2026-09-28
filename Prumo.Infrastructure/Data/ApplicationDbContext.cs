@@ -19,11 +19,11 @@ namespace Prumo.Infrastructure.Data
             _tenantContext = tenantContext;
         }
 
-        // DbSets para Controle de Acesso e Permissões
+        // Access control
         public DbSet<ResourcePermissionAuditLog> ResourcePermissionAuditLogs => Set<ResourcePermissionAuditLog>();
         public DbSet<SupportAccessLog> SupportAccessLogs => Set<SupportAccessLog>();
 
-        // DbSets para Controle de Acesso Baseado em Recursos
+        // Resource-based access control
         public DbSet<Resource> Resources => Set<Resource>();
         public DbSet<ResourcePermission> ResourcePermissions => Set<ResourcePermission>();
 
@@ -33,7 +33,7 @@ namespace Prumo.Infrastructure.Data
         public DbSet<TenantUserRole> TenantUserRoles => Set<TenantUserRole>();
         public DbSet<TenantInvitation> TenantInvitations => Set<TenantInvitation>();
 
-        // Accounts Payable (Contas a Pagar)
+        // Accounts Payable
         public DbSet<AccountsPayableCategory> AccountsPayableCategories => Set<AccountsPayableCategory>();
         public DbSet<AccountsPayableEntry> AccountsPayableEntries => Set<AccountsPayableEntry>();
 
@@ -60,14 +60,14 @@ namespace Prumo.Infrastructure.Data
         }
 
         /// <summary>
-        /// WorkLog, Payment, PaymentPeriod e JournalLine não carregam TenantId — o dono do
-        /// tenant é o pai (Employee ou JournalEntry). Sem estes filtros o isolamento delas
-        /// depende de todo service lembrar do join, e o próprio EF avisa disso no startup
-        /// (PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning), pedindo
-        /// "matching query filters for both entities". Isto é esse matching filter.
+        /// WorkLog, Payment, PaymentPeriod and JournalLine carry no TenantId — the tenant
+        /// owner is the parent (Employee or JournalEntry). Without these filters their
+        /// isolation depends on every service remembering the join, and EF itself warns
+        /// about it at startup (PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning),
+        /// asking for "matching query filters for both entities". This is that matching filter.
         ///
-        /// Não dá para reusar SetTenantQueryFilter: aquele exige ITenantScoped, e o ponto
-        /// aqui é justamente que estas entidades não têm a coluna.
+        /// SetTenantQueryFilter cannot be reused: it requires ITenantScoped, and the point
+        /// here is exactly that these entities do not have the column.
         /// </summary>
         private void ApplyNavigationTenantQueryFilters(ModelBuilder modelBuilder)
         {
@@ -104,11 +104,11 @@ namespace Prumo.Infrastructure.Data
 
         private void SetTenantQueryFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantScoped
         {
-            // Fail-closed: sem tenant resolvido não volta linha nenhuma. O construtor sem
-            // ITenantContext (usado pelo ApplicationDbContextFactory em design-time) deixa
-            // _tenantContext nulo e portanto filtra tudo — inofensivo, porque design-time só
-            // roda migration e migration não faz query. Quem precisa ler cross-tenant de
-            // propósito usa IgnoreQueryFilters() explicitamente.
+            // Fail-closed: with no resolved tenant, no row comes back. The constructor
+            // without ITenantContext (used by ApplicationDbContextFactory at design time)
+            // leaves _tenantContext null and therefore filters everything — harmless, because
+            // design time only runs migrations and migrations do not query. A cross-tenant
+            // read on purpose has to call IgnoreQueryFilters() explicitly.
             modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
                 _tenantContext != null
                 && _tenantContext.HasTenant

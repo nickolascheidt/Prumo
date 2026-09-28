@@ -7,12 +7,13 @@ using Prumo.Infrastructure.Multitenancy;
 namespace Prumo.Tests.Infrastructure
 {
     /// <summary>
-    /// Cobre o pouco do item 11 que é testável em memória: qual credencial o caminho de
-    /// migration escolhe, e o fato de o guard de schema não estorvar os testes.
+    /// Covers the little of the least-privilege setup that is testable in memory: which
+    /// credential the migration path picks, and the schema guard not getting in the tests'
+    /// way.
     ///
-    /// A prova de que vale a pena — `CREATE TABLE` pela conexão da aplicação devolvendo
-    /// "permission denied" — exige Postgres de verdade e está no registro de execução do
-    /// plano, não aqui. Um teste em memória sobre isso passaria por vacuidade.
+    /// The proof that it matters — `CREATE TABLE` over the app connection returning
+    /// "permission denied" — needs a real Postgres. An in-memory test of that would pass
+    /// vacuously.
     /// </summary>
     public class SchemaGuardTests
     {
@@ -37,8 +38,8 @@ namespace Prumo.Tests.Infrastructure
         [Fact]
         public void Migration_falls_back_to_the_application_credential()
         {
-            // Banco anterior à separação de roles: sem MigratorConnection, `dotnet ef`
-            // ainda precisa funcionar.
+            // A database that predates the role split: without MigratorConnection, `dotnet ef`
+            // still has to work.
             var configuration = Config(
                 ("ConnectionStrings:DefaultConnection", "Host=db;Username=postgres"));
 
@@ -50,8 +51,8 @@ namespace Prumo.Tests.Infrastructure
         [Fact]
         public void An_empty_migrator_connection_does_not_win_over_the_default()
         {
-            // Variável de ambiente definida como string vazia é o jeito mais comum de
-            // "desligar" uma configuração sem removê-la.
+            // An environment variable set to an empty string is the most common way to
+            // "turn off" a setting without removing it.
             var configuration = Config(
                 ("ConnectionStrings:DefaultConnection", "Host=db;Username=postgres"),
                 ("ConnectionStrings:MigratorConnection", ""));
@@ -69,8 +70,8 @@ namespace Prumo.Tests.Infrastructure
                     .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options,
                 new TenantContext());
 
-            // GetPendingMigrationsAsync lança em provider não relacional; sem a guarda,
-            // qualquer teste que chamasse o initializer morreria aqui.
+            // GetPendingMigrationsAsync throws on a non-relational provider; without the
+            // guard, any test calling the initializer would die here.
             await DbInitializer.EnsureSchemaUpToDateAsync(db, Config(), NullLogger.Instance);
         }
     }

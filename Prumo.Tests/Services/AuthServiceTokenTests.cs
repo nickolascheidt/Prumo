@@ -152,11 +152,10 @@ namespace Prumo.Tests.Services
             Assert.True(root.TryGetProperty("tenant_role", out var tenantRoleEl), "Expected 'tenant_role' claim");
             Assert.Equal("Admin", tenantRoleEl.GetString());
 
-            // O claim "permission" saiu no item 3B junto com o catálogo de strings, que
-            // nenhum endpoint consultava. Asserção invertida de propósito: se ele voltar,
-            // é porque alguém ressuscitou o sistema aposentado.
+            // There is no "permission" claim. The assertion is inverted on purpose: if it
+            // comes back, someone revived a retired permission system.
             Assert.False(root.TryGetProperty("permission", out _),
-                "O claim 'permission' foi aposentado no item 3B e não deve voltar.");
+                "The 'permission' claim was retired and must not come back.");
 
             // tenant_id claim is present.
             Assert.True(root.TryGetProperty("tenant_id", out var tenantIdEl), "Expected 'tenant_id' claim");
@@ -166,8 +165,8 @@ namespace Prumo.Tests.Services
         /// <summary>
         /// The SPA stores <c>response.user</c> from POST /tenants/select and renders the
         /// dashboard from it — it does not re-read the token. So the body has to agree with
-        /// the claims; when it did not, the dashboard said "Nenhuma role atribuída" to a
-        /// user whose menu and API access proved otherwise. Backlog item 4.
+        /// the claims; when it did not, the dashboard said "No role assigned" to a user
+        /// whose menu and API access proved otherwise.
         /// </summary>
         [Fact]
         public async Task Select_tenant_response_body_carries_the_same_roles_as_the_token()
@@ -225,8 +224,8 @@ namespace Prumo.Tests.Services
                 Email = "admin@x.com",
                 FullName = "Admin User",
                 IsActive = true,
-                // Desde o item 8 o login exige e-mail confirmado. Sem esta linha o teste
-                // morre antes de chegar ao token, que é o que ele quer inspecionar.
+                // Login requires a confirmed e-mail. Without this line the test dies
+                // before reaching the token, which is what it wants to inspect.
                 EmailConfirmed = true
             };
 

@@ -4,7 +4,7 @@ using Prumo.Domain.Enums;
 namespace Prumo.Domain.Entities
 {
     /// <summary>
-    /// Define o nível de acesso que uma Role tem sobre um Resource
+    /// The access level a Role has on a Resource
     /// </summary>
     public class ResourcePermission : ITenantScoped
     {
@@ -17,7 +17,7 @@ namespace Prumo.Domain.Entities
         public Resource Resource { get; set; } = null!;
 
         /// <summary>
-        /// Nível de acesso concedido (None, Read, Write, Full)
+        /// Granted access level (None, Read, Write, Full)
         /// </summary>
         public PermissionLevel Level { get; set; }
 

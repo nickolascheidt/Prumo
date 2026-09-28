@@ -3,17 +3,12 @@ using Prumo.Domain.Common;
 namespace Prumo.Domain.Entities
 {
     /// <summary>
-    /// Registro de quando o master admin se inseriu num tenant para dar suporte.
+    /// Record of when the master admin added themselves to a tenant to give support.
     /// </summary>
     /// <remarks>
-    /// Decisão de 2026-08-18, executada no item 3B: o suporte do master admin é por
-    /// <b>associação auditada, sem bypass</b> — dar a ele um atalho reintroduziria o
-    /// vazamento cross-tenant que o RBAC removeu. O rastro é o que torna isso aceitável,
-    /// então ele merece entidade própria.
-    ///
-    /// Antes isto era gravado no <c>PermissionAuditLog</c> com sentinelas
-    /// (<c>RoleId = Guid.Empty</c>, <c>PermissionName = "SupportAccess"</c>), porque
-    /// aquela tabela era modelada para grants de permissão e não para isto.
+    /// Master admin support works by <b>audited membership, with no bypass</b> — giving them
+    /// a shortcut would reintroduce the cross-tenant leak that RBAC removed. The trail is
+    /// what makes that acceptable, so it gets its own entity.
     /// </remarks>
     public class SupportAccessLog : EntityBase, ITenantScoped
     {
@@ -24,7 +19,7 @@ namespace Prumo.Domain.Entities
 
         public DateTime GrantedAt { get; set; }
 
-        /// <summary>Por que o acesso foi concedido. Texto livre, para leitura humana.</summary>
+        /// <summary>Why access was granted. Free text, for humans.</summary>
         public string? Reason { get; set; }
     }
 }

@@ -6,19 +6,19 @@ using Prumo.Infrastructure.Data;
 namespace Prumo.Infrastructure.Authorization
 {
     /// <summary>
-    /// Valida unicidade de nome de role <b>por tenant</b>, e não globalmente.
+    /// Validates role name uniqueness <b>per tenant</b>, not globally.
     /// </summary>
     /// <remarks>
-    /// O <see cref="RoleValidator{TRole}"/> padrão do Identity rejeita qualquer nome já
-    /// existente, em qualquer lugar. Isso torna o índice
-    /// <c>(NormalizedName, TenantId)</c> letra morta: o banco aceitaria a segunda
-    /// "Leitura", mas o validador nunca deixa a escrita chegar lá.
+    /// Identity's default <see cref="RoleValidator{TRole}"/> rejects any name that already
+    /// exists anywhere. That makes the <c>(NormalizedName, TenantId)</c> index a dead
+    /// letter: the database would accept a second "Viewer", but the validator never lets
+    /// the write get there.
     ///
-    /// A regra aqui:
+    /// The rule here:
     /// <list type="bullet">
-    ///   <item>role canônica (TenantId nulo) — nome único no sistema inteiro;</item>
-    ///   <item>role de tenant — nome único <b>dentro daquele tenant</b>, e nunca igual
-    ///         ao de uma canônica.</item>
+    ///   <item>canonical role (null TenantId) — name unique across the whole system;</item>
+    ///   <item>tenant role — name unique <b>within that tenant</b>, and never equal to a
+    ///         canonical one.</item>
     /// </list>
     /// </remarks>
     public class TenantScopedRoleValidator : IRoleValidator<ApplicationRole>
@@ -37,14 +37,14 @@ namespace Prumo.Infrastructure.Authorization
                 return IdentityResult.Failed(new IdentityError
                 {
                     Code = "InvalidRoleName",
-                    Description = "O nome da role é obrigatório."
+                    Description = "The role name is required."
                 });
             }
 
             var normalized = manager.NormalizeKey(name);
 
-            // Uma canônica com este nome bloqueia todo mundo — inclusive um tenant que
-            // tentasse criar a sua própria "HR".
+            // A canonical role with this name blocks everyone — including a tenant trying
+            // to create its own "HR".
             var clashesWithCanonical = await _db.Roles
                 .AnyAsync(r => r.NormalizedName == normalized
                             && r.TenantId == null
@@ -55,7 +55,7 @@ namespace Prumo.Infrastructure.Authorization
                 return IdentityResult.Failed(new IdentityError
                 {
                     Code = "DuplicateRoleName",
-                    Description = $"'{name}' é uma role do sistema e não pode ser recriada."
+                    Description = $"'{name}' is a system role and cannot be recreated."
                 });
             }
 
@@ -71,7 +71,7 @@ namespace Prumo.Infrastructure.Authorization
                     return IdentityResult.Failed(new IdentityError
                     {
                         Code = "DuplicateRoleName",
-                        Description = $"Já existe uma role '{name}' neste tenant."
+                        Description = $"A role named '{name}' already exists in this tenant."
                     });
                 }
             }

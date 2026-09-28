@@ -5,9 +5,9 @@ using System.Reflection;
 namespace Prumo.Tests.Architecture
 {
     /// <summary>
-    /// Resolver um e-mail qualquer para id e nome completo é dado de todo mundo, de todo
-    /// tenant. Um Member de A não tem por que enumerar quem de B tem conta. Desde o item 8
-    /// o convite é por e-mail e não precisa mais do lookup, então ele fica só com o master.
+    /// Resolving any e-mail to id and full name is data about everyone, in every tenant. A
+    /// Member of A has no reason to enumerate who in B has an account. Invitations work by
+    /// e-mail and do not need the lookup, so it stays master-only.
     /// </summary>
     public class MasterOnlyEndpointsTests
     {

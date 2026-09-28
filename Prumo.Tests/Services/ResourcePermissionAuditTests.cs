@@ -11,9 +11,9 @@ using Prumo.Infrastructure.Multitenancy;
 namespace Prumo.Tests.Services
 {
     /// <summary>
-    /// Conceder e revogar nível de recurso é o que de fato dá e tira acesso, e até o
-    /// item 3B isso não deixava rastro nenhum: a linha guardava quem criou, mas revogar
-    /// apagava a linha e o histórico junto.
+    /// Granting and revoking a resource level is what actually gives and takes access, so
+    /// it has to leave a trail: revoking deletes the permission row, and the history must
+    /// not go with it.
     /// </summary>
     public class ResourcePermissionAuditTests
     {
@@ -39,8 +39,8 @@ namespace Prumo.Tests.Services
             var role = new ApplicationRole
             {
                 Id = Guid.NewGuid(),
-                Name = "Leitura",
-                NormalizedName = "LEITURA",
+                Name = "Viewer",
+                NormalizedName = "VIEWER",
                 TenantId = TenantId
             };
             var resource = new Resource
@@ -48,7 +48,7 @@ namespace Prumo.Tests.Services
                 Id = Guid.NewGuid(),
                 TenantId = TenantId,
                 Code = "HR.Employees",
-                Name = "Funcionários",
+                Name = "Employees",
                 Module = "HR"
             };
 
@@ -63,9 +63,9 @@ namespace Prumo.Tests.Services
             new(db, MockUserManager(), new TenantContext());
 
         [Fact]
-        public async Task Conceder_nivel_registra_quem_deu_o_que_e_para_quem()
+        public async Task Granting_a_level_records_who_gave_what_to_whom()
         {
-            await using var db = NewDb(nameof(Conceder_nivel_registra_quem_deu_o_que_e_para_quem));
+            await using var db = NewDb(nameof(Granting_a_level_records_who_gave_what_to_whom));
             var (roleId, resourceId) = await SeedAsync(db);
             var service = ServiceOver(db);
 
@@ -75,7 +75,7 @@ namespace Prumo.Tests.Services
 
             var log = await db.ResourcePermissionAuditLogs.IgnoreQueryFilters().SingleAsync();
 
-            Assert.Equal("Leitura", log.RoleName);
+            Assert.Equal("Viewer", log.RoleName);
             Assert.Equal("HR.Employees", log.ResourceCode);
             Assert.Equal(PermissionLevel.None, log.PreviousLevel);
             Assert.Equal(PermissionLevel.Read, log.NewLevel);
@@ -84,9 +84,9 @@ namespace Prumo.Tests.Services
         }
 
         [Fact]
-        public async Task Revogar_registra_a_volta_para_None()
+        public async Task Revoking_records_the_return_to_None()
         {
-            await using var db = NewDb(nameof(Revogar_registra_a_volta_para_None));
+            await using var db = NewDb(nameof(Revoking_records_the_return_to_None));
             var (roleId, resourceId) = await SeedAsync(db);
             var service = ServiceOver(db);
 
@@ -107,9 +107,9 @@ namespace Prumo.Tests.Services
         }
 
         [Fact]
-        public async Task Regravar_o_mesmo_nivel_nao_polui_o_historico()
+        public async Task Rewriting_the_same_level_does_not_pollute_the_history()
         {
-            await using var db = NewDb(nameof(Regravar_o_mesmo_nivel_nao_polui_o_historico));
+            await using var db = NewDb(nameof(Rewriting_the_same_level_does_not_pollute_the_history));
             var (roleId, resourceId) = await SeedAsync(db);
             var service = ServiceOver(db);
 
@@ -129,9 +129,9 @@ namespace Prumo.Tests.Services
         }
 
         [Fact]
-        public async Task O_nome_da_role_sobrevive_a_exclusao_dela()
+        public async Task The_role_name_survives_its_deletion()
         {
-            await using var db = NewDb(nameof(O_nome_da_role_sobrevive_a_exclusao_dela));
+            await using var db = NewDb(nameof(The_role_name_survives_its_deletion));
             var (roleId, resourceId) = await SeedAsync(db);
             var service = ServiceOver(db);
 
@@ -139,12 +139,12 @@ namespace Prumo.Tests.Services
                 new AssignResourcePermissionDto { RoleId = roleId, ResourceId = resourceId, Level = PermissionLevel.Read },
                 "admin@x.com", PerformerId);
 
-            // A role some; o histórico não pode virar uma lista de GUIDs órfãos.
+            // The role goes away; the history must not turn into a list of orphaned GUIDs.
             db.Roles.Remove(await db.Roles.SingleAsync(r => r.Id == roleId));
             await db.SaveChangesAsync();
 
             var log = await db.ResourcePermissionAuditLogs.IgnoreQueryFilters().SingleAsync();
-            Assert.Equal("Leitura", log.RoleName);
+            Assert.Equal("Viewer", log.RoleName);
         }
     }
 }

@@ -96,17 +96,18 @@ namespace Prumo.Application.Services
 
         public async Task<IReadOnlyList<TenantMemberDto>> GetMembersAsync(Guid tenantId, CancellationToken cancellationToken = default)
         {
-            // As feature roles vêm na mesma query, como subconsulta correlacionada. Buscá-las
-            // por membro seria N+1 — e é a razão de a tela de roles nunca as ter mostrado.
+            // Feature roles come in the same query, as a correlated subquery. Fetching them
+            // per member would be N+1.
             var masterAdminRoleId = await _db.Roles
                 .Where(r => r.Name == Permissions.Roles.MasterAdmin)
                 .Select(r => (Guid?)r.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            // cross-tenant: o TenantsController não usa [TenantModule], então o
-            // TenantContext vem do claim e pode ser outro tenant do chamador. A subconsulta
-            // de TenantUserRoles (ITenantScoped) fecharia nele e a lista viria sem roles.
-            // O tenant desta leitura é o da rota, filtrado nos dois Where.
+            // Cross-tenant: TenantsController does not use [TenantModule], so the
+            // TenantContext comes from the claim and may be another of the caller's tenants.
+            // The TenantUserRoles subquery (ITenantScoped) would close over it and the list
+            // would come back without roles. This read's tenant is the route's, filtered in
+            // both Where clauses.
             return await _db.TenantUsers
                 .IgnoreQueryFilters()
                 .Where(tu => tu.TenantId == tenantId)
@@ -126,9 +127,9 @@ namespace Prumo.Application.Services
         }
 
         /// <summary>
-        /// Owner só nasce com o tenant (CreateAsync). Inserir membro como Owner faria um
-        /// Admin fabricar um segundo dono que RemoveMemberAsync e UpdateMemberRoleAsync
-        /// se recusam a tocar — escalonamento com persistência (auditoria de 2026-09-15).
+        /// An Owner is only born with the tenant (CreateAsync). Adding a member as Owner would
+        /// let an Admin manufacture a second owner that RemoveMemberAsync and
+        /// UpdateMemberRoleAsync refuse to touch — a privilege escalation that sticks.
         /// </summary>
         private static void RejectOwner(TenantRole role)
         {
@@ -150,10 +151,10 @@ namespace Prumo.Application.Services
         }
 
         /// <summary>
-        /// Insere o master admin como membro de um tenant que ele não criou, para suporte.
-        /// Não existe bypass da checagem de associação: um bypass reintroduziria o vazamento
-        /// cross-tenant que o trabalho de RBAC removeu, e seria um caminho que o teste de
-        /// arquitetura não consegue ver. Aqui o acesso vira uma linha no banco, auditada.
+        /// Adds the master admin as a member of a tenant they did not create, for support.
+        /// There is no bypass of the membership check: a bypass would reintroduce the
+        /// cross-tenant leak that per-tenant RBAC removed, and would be a path the
+        /// architecture test cannot see. Here access becomes an audited row in the database.
         /// </summary>
         public async Task<bool> GrantSupportAccessAsync(
             Guid tenantId, Guid masterAdminUserId, CancellationToken ct = default)
@@ -175,9 +176,8 @@ namespace Prumo.Application.Services
                 Role = TenantRole.Admin
             });
 
-            // Entidade própria desde o item 3B. Antes isto ia no PermissionAuditLog com
-            // sentinelas (RoleId vazio, PermissionName "SupportAccess"), porque aquela
-            // tabela era modelada para grants de permissão e não para isto.
+            // Support access has its own audit table, separate from the permission audit
+            // log: that one is modeled for role × resource level changes, not for this.
             var admin = await _userManager.FindByIdAsync(masterAdminUserId.ToString());
             _db.SupportAccessLogs.Add(new SupportAccessLog
             {
@@ -185,7 +185,7 @@ namespace Prumo.Application.Services
                 MasterAdminUserId = masterAdminUserId,
                 MasterAdminEmail = admin?.Email ?? masterAdminUserId.ToString(),
                 GrantedAt = DateTime.UtcNow,
-                Reason = $"Master admin inseriu-se como Admin do tenant {tenantId} para suporte."
+                Reason = $"Master admin added themselves as Admin of tenant {tenantId} for support."
             });
 
             await _db.SaveChangesAsync(ct);
@@ -201,12 +201,13 @@ namespace Prumo.Application.Services
             if (membership.Role == TenantRole.Owner)
                 throw new InvalidOperationException("Cannot remove the tenant owner");
 
-            // As feature roles saem junto. Nada as apaga em cascata (TenantUserRoles não
-            // tem FK para TenantUsers), e deixá-las órfãs faz quem for readmitido voltar
-            // com os módulos que tinha, sem ninguém conceder de novo.
-            // cross-tenant: o TenantsController não usa [TenantModule], então o
-            // TenantContext vem do claim e pode ser outro tenant do chamador. O tenant
-            // desta remoção é o da rota, filtrado abaixo.
+            // Feature roles go too. Nothing deletes them in cascade (TenantUserRoles has no
+            // FK to TenantUsers), and leaving them orphaned would let someone who is
+            // re-admitted come back with the modules they had, without anyone granting
+            // them again.
+            // Cross-tenant: TenantsController does not use [TenantModule], so the
+            // TenantContext comes from the claim and may be another of the caller's tenants.
+            // This removal's tenant is the route's, filtered below.
             var featureRoles = await _db.TenantUserRoles
                 .IgnoreQueryFilters()
                 .Where(tur => tur.TenantId == tenantId && tur.UserId == userId)
@@ -239,11 +240,11 @@ namespace Prumo.Application.Services
         }
 
         /// <summary>
-        /// O admin digita um e-mail. Se já existe conta, a pessoa entra na hora; se não,
-        /// fica um convite pendente que o cadastro resolve sozinho.
+        /// The admin types an e-mail. If an account already exists, the person joins right
+        /// away; if not, a pending invitation is left for sign-up to resolve.
         ///
-        /// Substituiu a criação de conta com senha digitada pelo admin, que fazia a senha
-        /// inicial de todo mundo passar por ele.
+        /// Replaced creating accounts with a password typed by the admin, which made
+        /// everyone's initial password pass through them.
         /// </summary>
         public async Task<InviteMemberResultDto> InviteMemberAsync(
             Guid tenantId, InviteMemberRequestDto dto, Guid invitedByUserId, CancellationToken ct = default)
@@ -252,7 +253,7 @@ namespace Prumo.Application.Services
 
             var email = dto.Email.Trim();
             if (string.IsNullOrWhiteSpace(email))
-                throw new ArgumentException("E-mail é obrigatório.", nameof(dto));
+                throw new ArgumentException("E-mail is required.", nameof(dto));
 
             var normalized = email.ToUpperInvariant();
 
@@ -267,7 +268,7 @@ namespace Prumo.Application.Services
                 var alreadyMember = await _db.TenantUsers
                     .AnyAsync(tu => tu.TenantId == tenantId && tu.UserId == existingUser.Id, ct);
                 if (alreadyMember)
-                    throw new InvalidOperationException($"'{email}' já é membro desta empresa.");
+                    throw new InvalidOperationException($"'{email}' is already a member of this company.");
 
                 _db.TenantUsers.Add(new TenantUser
                 {
@@ -282,15 +283,15 @@ namespace Prumo.Application.Services
                 return new InviteMemberResultDto(true, existingUser.Id, email);
             }
 
-            // cross-tenant: o TenantsController é isento de [TenantModule] (exigir
-            // associação provada em quem gerencia associação seria circular), então aqui o
-            // TenantContext viria do claim, que pode divergir da rota. O tenant desta
-            // consulta é o da rota, o mesmo que o guard do controller já provou.
+            // Cross-tenant: TenantsController is exempt from [TenantModule] (requiring proven
+            // membership from whoever manages membership would be circular), so the
+            // TenantContext here would come from the claim, which may differ from the route.
+            // This query's tenant is the route's, the same one the controller guard proved.
             var pending = await _db.TenantInvitations
                 .IgnoreQueryFilters()
                 .AnyAsync(i => i.TenantId == tenantId && i.NormalizedEmail == normalized && i.AcceptedAt == null, ct);
             if (pending)
-                throw new InvalidOperationException($"Já existe um convite pendente para '{email}'.");
+                throw new InvalidOperationException($"There is already a pending invitation for '{email}'.");
 
             _db.TenantInvitations.Add(new TenantInvitation
             {
@@ -310,8 +311,8 @@ namespace Prumo.Application.Services
         public async Task<IReadOnlyList<TenantInvitationDto>> GetPendingInvitationsAsync(
             Guid tenantId, CancellationToken ct = default)
         {
-            // cross-tenant: mesma razão do InviteMemberAsync — o tenant vem da rota, já
-            // provada pelo guard do controller, e não do claim que o filtro global usaria.
+            // Cross-tenant: same reason as InviteMemberAsync — the tenant comes from the route,
+            // already proven by the controller guard, not from the claim the global filter uses.
             return await _db.TenantInvitations
                 .IgnoreQueryFilters()
                 .Where(i => i.TenantId == tenantId && i.AcceptedAt == null)
@@ -322,29 +323,29 @@ namespace Prumo.Application.Services
 
         public async Task CancelInvitationAsync(Guid tenantId, Guid invitationId, CancellationToken ct = default)
         {
-            // cross-tenant: mesma razão do InviteMemberAsync. O `i.TenantId == tenantId` é
-            // o que impede cancelar convite de outra empresa, e vem da rota.
+            // Cross-tenant: same reason as InviteMemberAsync. `i.TenantId == tenantId` is what
+            // prevents cancelling another company's invitation, and it comes from the route.
             var invitation = await _db.TenantInvitations
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(i => i.Id == invitationId && i.TenantId == tenantId && i.AcceptedAt == null, ct)
-                ?? throw new KeyNotFoundException("Convite não encontrado.");
+                ?? throw new KeyNotFoundException("Invitation not found.");
 
             _db.TenantInvitations.Remove(invitation);
             await _db.SaveChangesAsync(ct);
         }
 
         /// <summary>
-        /// Chamado no cadastro: admite quem acabou de criar a conta nos tenants que já
-        /// tinham convidado aquele endereço.
+        /// Called at sign-up: admits the person who just created an account into the tenants
+        /// that had invited that address.
         /// </summary>
         public async Task<int> AcceptPendingInvitationsAsync(
             Guid userId, string email, CancellationToken ct = default)
         {
             var normalized = email.Trim().ToUpperInvariant();
 
-            // cross-tenant de propósito: quem acabou de se cadastrar não pertence a tenant
-            // nenhum, então não há TenantContext para o filtro global resolver. A consulta
-            // é fechada pelo e-mail, que a pessoa acabou de provar ser dela.
+            // Cross-tenant on purpose: someone who just signed up belongs to no tenant, so
+            // there is no TenantContext for the global filter to resolve. The query is
+            // closed by the e-mail, which the person just proved is theirs.
             var invitations = await _db.TenantInvitations
                 .IgnoreQueryFilters()
                 .Where(i => i.NormalizedEmail == normalized && i.AcceptedAt == null)
@@ -355,8 +356,8 @@ namespace Prumo.Application.Services
 
             foreach (var invitation in invitations)
             {
-                // cross-tenant: mesma razão da consulta acima — no cadastro não há tenant
-                // selecionado, e o vínculo é o e-mail que a pessoa acabou de provar.
+                // Cross-tenant: same reason as the query above — there is no selected tenant
+                // at sign-up, and the link is the e-mail the person just proved.
                 var alreadyMember = await _db.TenantUsers
                     .IgnoreQueryFilters()
                     .AnyAsync(tu => tu.TenantId == invitation.TenantId && tu.UserId == userId, ct);
@@ -367,9 +368,9 @@ namespace Prumo.Application.Services
                     {
                         TenantId = invitation.TenantId,
                         UserId = userId,
-                        // Convite com Owner só pode ser anterior à regra de RejectOwner.
-                        // Honrá-lo recriaria o furo; recusá-lo deixaria a pessoa fora de
-                        // um tenant que a esperava. Entra como Member.
+                        // An invitation with Owner can only predate the reject-Owner rule.
+                        // Honoring it would reopen the hole; refusing it would leave the person
+                        // out of a tenant that expected them. They join as Member.
                         Role = invitation.Role == TenantRole.Owner ? TenantRole.Member : invitation.Role
                     });
                 }
@@ -393,7 +394,7 @@ namespace Prumo.Application.Services
                     Data = new Dictionary<string, string>
                     {
                         ["tenantName"] = tenantName,
-                        ["invitedBy"] = invitedBy?.FullName ?? invitedBy?.Email ?? "Um administrador",
+                        ["invitedBy"] = invitedBy?.FullName ?? invitedBy?.Email ?? "An administrator",
                         ["link"] = AppBaseUrl
                     }
                 },

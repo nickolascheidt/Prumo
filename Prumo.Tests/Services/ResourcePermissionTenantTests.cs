@@ -205,7 +205,7 @@ namespace Prumo.Tests.Services
                     Id = Guid.NewGuid(),
                     TenantId = tenant,
                     Code = "HR.Employees",
-                    Name = "Funcionários",
+                    Name = "Employees",
                     Module = "HR",
                     IsActive = true
                 });

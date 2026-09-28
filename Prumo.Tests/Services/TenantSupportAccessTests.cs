@@ -64,8 +64,8 @@ namespace Prumo.Tests.Services
             await service.GrantSupportAccessAsync(tenantId, adminId);
             await service.GrantSupportAccessAsync(tenantId, adminId);
 
-            // Entidade própria desde o item 3B: antes isto ia no PermissionAuditLog com
-            // sentinelas, porque aquela tabela era modelada para grants de permissão.
+            // Support access has its own audit entity, separate from the permission audit
+            // log, which is modeled for role × resource level changes.
             var audit = await db.SupportAccessLogs.IgnoreQueryFilters()
                 .Where(a => a.TenantId == tenantId).ToListAsync();
 

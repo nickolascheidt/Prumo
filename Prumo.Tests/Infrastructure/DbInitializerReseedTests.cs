@@ -8,14 +8,15 @@ using Prumo.Infrastructure.Multitenancy;
 namespace Prumo.Tests.Infrastructure
 {
     /// <summary>
-    /// A lacuna que este arquivo fecha: nenhum teste exercitava o DbInitializer, e por
-    /// isso o bug 4203a15 passou por 83 testes verdes. O SeederIdempotenceTests prova
-    /// que o seeder ressuscita grants quando reaplicado; o que faltava era provar que o
-    /// initializer NÃO o reaplica.
+    /// The gap this file closes: no test exercised the DbInitializer, and so a bug where
+    /// startup re-seeded revoked grants passed a green suite. SeederIdempotenceTests proves
+    /// the seeder brings grants back when re-applied; what was missing was proof that the
+    /// initializer does NOT re-apply it.
     ///
-    /// O InitializeAsync inteiro não é testável aqui — ele chama MigrateAsync, que exige
-    /// provider relacional, e o catch dele engoliria a exceção fazendo o teste passar por
-    /// vacuidade. Por isso o alvo é EnsureDefaultTenantAsync, que é onde o bug morava.
+    /// The whole InitializeAsync is not testable here — it calls MigrateAsync, which needs
+    /// a relational provider, and its catch would swallow the exception, letting the test
+    /// pass vacuously. So the target is EnsureDefaultTenantAsync, which is where the bug
+    /// lived.
     /// </summary>
     public class DbInitializerReseedTests
     {
@@ -30,9 +31,8 @@ namespace Prumo.Tests.Infrastructure
             var ctx = new TenantContext();
             await using var db = NewDb(ctx, dbName);
 
-            // O TenantBootstrapSeeder só concede ResourcePermissions para roles do
-            // Identity que existam. Sem esta linha nada é semeado e o teste passaria
-            // por vacuidade — foi exatamente o erro que o plano da fase 1 cometeu.
+            // TenantBootstrapSeeder only grants ResourcePermissions to Identity roles that
+            // exist. Without this line nothing is seeded and the test would pass vacuously.
             db.Roles.Add(new ApplicationRole { Name = "Administrator", NormalizedName = "ADMINISTRADOR" });
             var admin = new ApplicationUser
             {
@@ -50,12 +50,12 @@ namespace Prumo.Tests.Infrastructure
             var granted = await db.ResourcePermissions.IgnoreQueryFilters().ToListAsync();
             Assert.NotEmpty(granted);
 
-            // Um admin revoga um grant entre os dois boots.
+            // An admin revokes a grant between the two boots.
             var revoked = granted[0];
             db.ResourcePermissions.Remove(revoked);
             await db.SaveChangesAsync();
 
-            // Segundo boot: o tenant já existe, então nada pode ser re-semeado.
+            // Second boot: the tenant already exists, so nothing may be re-seeded.
             await DbInitializer.EnsureDefaultTenantAsync(db, admin, NullLogger.Instance);
 
             var resurrected = await db.ResourcePermissions.IgnoreQueryFilters()
@@ -63,9 +63,9 @@ namespace Prumo.Tests.Infrastructure
                              && rp.ResourceId == revoked.ResourceId);
 
             Assert.False(resurrected,
-                "O grant revogado voltou depois de um restart. Os seeders só podem rodar "
-                + "dentro do ramo de criação do tenant em EnsureDefaultTenantAsync — se "
-                + "alguém os moveu para fora, este é o bug 4203a15 de volta.");
+                "The revoked grant came back after a restart. The seeders may only run "
+                + "inside the tenant-creation branch of EnsureDefaultTenantAsync — if "
+                + "someone moved them out, this is the re-seeding bug coming back.");
         }
 
         [Fact]
