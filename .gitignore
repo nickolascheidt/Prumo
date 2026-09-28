@@ -14,6 +14,7 @@
 *.sln.docstates
 *.md
 !README.md
+!README.pt-BR.md
 
 # Local working notes (plans, specs, backlog) and editor/agent settings
 /docs/

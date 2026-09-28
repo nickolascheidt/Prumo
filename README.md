@@ -1,22 +1,60 @@
-# Prumo ERP — Backend API
+# Prumo — Backend API
 
-ASP.NET Core 10 REST API for a multi-tenant SaaS platform with role-based permissions, resource-level access control, accounts payable, and a financial core (Chart of Accounts + General Ledger).
+[![ci](https://github.com/nickolascheidt/Prumo/actions/workflows/ci.yml/badge.svg)](https://github.com/nickolascheidt/Prumo/actions/workflows/ci.yml)
 
-## Tech Stack
+*[Leia em português](README.pt-BR.md)*
+
+A multi-tenant ERP backend built with ASP.NET Core 10 and PostgreSQL: HR (employees, work
+logs, payments, payment periods), accounts payable, and a small financial core (chart of
+accounts and general ledger), with per-tenant role-based access control.
+
+This is a portfolio project. It is not running in production anywhere; the point is the
+engineering around tenant isolation and access control, which is where a multi-tenant
+system usually goes wrong.
+
+Related repositories:
+[Prumo-Angular](https://github.com/nickolascheidt/Prumo-Angular) (the SPA) ·
+[Prumo-DevOps](https://github.com/nickolascheidt/Prumo-DevOps) (Terraform and deploy scripts for AWS)
+
+## What is worth looking at
+
+- **Tenant isolation that fails closed.** Every tenant-owned entity sits behind a global EF
+  Core query filter. With no tenant resolved, queries return *nothing*, not everything.
+  Entities without a `TenantId` column (work logs, payments, journal lines) are filtered
+  through their parent. Bypassing the filter with `IgnoreQueryFilters` needs a comment
+  explaining why the read is cross-tenant, and an architecture test fails the build without it.
+- **One gate for tenant routes.** Tenant data lives under `api/tenants/{tenantId}/…`, and
+  `[TenantModule("<resource>")]` proves the caller's membership against the tenant *in the
+  route*, rejects a token selected for another tenant, and only then checks the resource
+  permission. The required level is inferred from the HTTP verb. Another architecture test
+  fails the build if any action under `{tenantId}` is left ungated.
+- **Per-tenant RBAC with audited changes.** Access is `role × resource → None / Read / Write
+  / Full`. Tenants can create their own roles (same-named roles in different tenants are
+  allowed, enforced by a custom Identity role validator and a `NULLS NOT DISTINCT` index).
+  Every grant and revocation is written to an audit log, and master-admin support access
+  to a tenant is an audited membership, not a bypass.
+- **Least-privilege database access.** The API connects as `prumo_app`, which can only run
+  DML. Migrations run as a separate `prumo_migrator` role. On startup the API checks that
+  the schema matches its migrations and refuses to serve if it does not.
+- **Account lifecycle without enumeration.** Sign-up returns no session until the e-mail is
+  confirmed, and the forgot-password and resend-confirmation endpoints answer the same way
+  whether or not the address exists. Admins add members by invitation, so nobody's
+  password passes through them.
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
 | Runtime | .NET 10 / ASP.NET Core |
-| ORM | Entity Framework Core 10 (Code-First) |
-| Database | PostgreSQL |
-| Auth | JWT Bearer tokens |
-| Logging | Serilog (Console + PostgreSQL sink) |
-| Testing | xUnit + NSubstitute |
-| Validation | FluentValidation (auto-registered) |
+| Data | Entity Framework Core 10 (code-first) on PostgreSQL 17 |
+| Auth | ASP.NET Core Identity + JWT bearer tokens |
+| Validation | FluentValidation |
+| Logging | Serilog (console + PostgreSQL sink) |
+| Tests | xUnit, NSubstitute, EF Core InMemory |
 
 ## Architecture
 
-Clean/onion-style with one-way dependencies:
+Clean/onion layout with one-way references:
 
 ```
 Api → Application → Infrastructure → Domain
@@ -24,165 +62,121 @@ Api → Application → Infrastructure → Domain
 
 | Project | Responsibility |
 |---|---|
-| `Prumo.Domain` | Entities, enums, permission constants — no external dependencies |
+| `Prumo.Domain` | Entities, enums, canonical role names — no external dependencies |
 | `Prumo.Application` | Services, DTOs, FluentValidation validators |
-| `Prumo.Infrastructure` | EF Core DbContext, migrations, services |
-| `Prumo.Api` | Controllers, middleware, DI wiring, configuration extensions |
-| `Prumo.Tests` | Unit tests mirroring the production project structure |
+| `Prumo.Infrastructure` | `ApplicationDbContext`, EF configurations, migrations, seeders, tenant context |
+| `Prumo.Api` | Thin controllers, the `[TenantModule]` gate, middleware, configuration |
+| `Prumo.Tests` | Unit and architecture tests, mirroring the projects above |
 
-### Composition Root
+`Program.cs` is deliberately small: it calls one `Add…Configuration` extension per concern
+from `Prumo.Api/Configuration/` (database, authentication, rate limiting, CORS, logging and
+so on). Services inject `ApplicationDbContext` directly; there is no generic repository.
 
-`Program.cs` is intentionally minimal — it calls a chain of extension methods from `Api/Configuration/`:
+## Running it locally
 
-- `DatabaseConfiguration` — EF Core + PostgreSQL
-- `AuthenticationConfiguration` — JWT Bearer
-- `AuthorizationConfiguration` — permission policies
-- `DependencyInjectionConfiguration` — repositories, services, validator scanning
-- `HealthChecksConfiguration`, `RateLimitingConfiguration`, `CorsConfiguration`, `LoggingConfiguration`, `MiddlewareConfiguration`
-
-## Prerequisites
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- PostgreSQL (default: `localhost:5432`, database `SaaSBasePlatformDb`)
-
-## Getting Started
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) and Docker.
 
 ```bash
-# Postgres, with the version this project expects
+# PostgreSQL 17, with the two database roles created on a fresh volume
 docker compose up -d
 
-# Restore dependencies
-dotnet restore
+# Secrets for development (the JWT key must be at least 32 characters)
+dotnet user-secrets set "Jwt:Key" "<a random string of 32+ characters>" -p Prumo.Api
+dotnet user-secrets set "Seed:AdminPassword" "<a password for the seeded admin>" -p Prumo.Api
 
-# Apply database migrations (connects as the migrator role)
+# Apply the migrations (connects as prumo_migrator)
 dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api
 
-# Run the API (listens on http://localhost:5201)
+# Run the API on http://localhost:5201
 dotnet run --project Prumo.Api
 ```
 
-Migrations are a separate step on purpose. The API connects as `prumo_app`, a role with
-no DDL rights, so it cannot migrate itself — see [Database roles](#database-roles). On
-startup it only *checks* that the schema matches the migrations in the assembly, and
-refuses to serve when it does not, naming the command to run.
+On first start the API seeds the canonical roles, a `default` tenant and a master admin,
+`admin@SBP.com`, with the password you set above.
 
-`app.InitializeDatabaseAsync()` still seeds the canonical roles and the master admin,
-which is plain DML.
+There is no e-mail provider. Sign-up confirmation, password reset and invitation e-mails
+are written to the log instead, and in Development the log line carries the link data, so
+the flows can be followed end to end.
 
 ### Database roles
 
-`db/roles.sql` creates two Postgres roles and is idempotent:
+`db/roles.sql` creates the two Postgres roles and is idempotent:
 
 | Role | Rights | Used by |
 |---|---|---|
-| `prumo_migrator` | owns everything in `public`, can DDL | `dotnet ef`, the deploy's migration step |
-| `prumo_app` | `SELECT/INSERT/UPDATE/DELETE` only | the running API |
+| `prumo_migrator` | owns everything in `public`, can run DDL | `dotnet ef` |
+| `prumo_app` | `SELECT / INSERT / UPDATE / DELETE` only | the running API |
 
-`docker compose up -d` applies the script automatically to a **fresh** volume. A database
-that already exists takes it by hand:
+`docker compose up -d` applies it automatically to a fresh volume. An existing database
+takes it by hand:
 
 ```bash
 docker exec -i saasbase-postgres psql -U postgres -d SaaSBasePlatformDb < db/roles.sql
 ```
 
-Passwords come from `PRUMO_MIGRATOR_PASSWORD` and `PRUMO_APP_PASSWORD`, falling back to
-development values that match `appsettings.json`.
+### Configuration
 
-Environments that need the API to migrate itself — the `Demo` overlay, for instance — set
-`Database:MigrateOnStartup`. Even then the DDL runs over a separate connection built from
-`ConnectionStrings:MigratorConnection`, never over the application's own.
+`appsettings.json` is the base, with `appsettings.Development.json`,
+`appsettings.Production.json` and `appsettings.Demo.json` as overlays. No overlay commits a
+secret: the JWT key and the admin password come from user secrets in development and from
+environment variables (`Jwt__Key`, `Seed__AdminPassword`) elsewhere. In Production the
+connection string is a placeholder that breaks startup on purpose if
+`ConnectionStrings__DefaultConnection` is not set.
 
-## Configuration
-
-Base config is in `appsettings.json`, including `ConnectionStrings:DefaultConnection`. Environment overlays: `appsettings.Development.json`, `appsettings.Production.json`, `appsettings.Demo.json`. In Production the connection string must come from the environment (`ConnectionStrings__DefaultConnection`) — the file ships a placeholder on purpose, so a missing variable fails at startup instead of silently falling back.
-
-Key sections:
-
-```json
-{
-  "Jwt": {
-    "Issuer": "PrumoApi",
-    "Audience": "PrumoClient",
-    "ExpirationHours": 8
-  },
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=SaaSBasePlatformDb;..."
-  }
-}
-```
-
-## API Overview
-
-All endpoints require a `Bearer` token except `POST /api/auth/login` and `POST /api/auth/register`.
-
-| Controller | Base Route | Description |
-|---|---|---|
-| Auth | `/api/auth` | Login, register, current user, tenant selection |
-| Tenants | `/api/tenants` | Multi-tenant membership management |
-| Permissions | `/api/permissions` | Permission catalog and role assignment |
-| Resources | `/api/resources` | Resource-level access control |
-| Accounts Payable | `/api/tenants/{id}/accounts-payable` | AP entries, categories, reports |
-| Chart of Accounts | `/api/tenants/{id}/chart-of-accounts` | Account hierarchy (Owner/Admin only for writes) |
-| General Ledger | `/api/tenants/{id}/general-ledger` | Journal entries and account statements |
-
-### Rate Limits
-
-- `public` policy (login/register): 10 requests/min
-- `authenticated` policy: 100 requests/60 s
-
-## Authorization Model
-
-One mechanism gates requests: **`ResourcePermission`** (role x resource -> `None / Read / Write / Full`).
-
-The `[TenantModule("<resource code>")]` attribute on the module controllers enforces it. It
-proves the caller belongs to the tenant in the route, then infers the required level from the
-HTTP verb -- `GET` needs `Read`, `POST/PUT/PATCH` need `Write`, `DELETE` needs `Full`. An
-architecture test fails the build if an action under `{tenantId}` is left undeclared.
+## Authorization model
 
 Three role concepts, deliberately separate:
 
 | Concept | Where it lives | What it means |
 |---|---|---|
-| Administrative rank | `TenantUsers.Role` (`Owner / Admin / Member`) | Position within one tenant |
-| Feature roles | `TenantUserRoles` | Which modules open, per tenant |
-| Master admin | Identity role `Administrador` | Global, cross-tenant |
+| Administrative position | `TenantUsers.Role` (`Owner / Admin / Member`) | Your position within one tenant |
+| Feature roles (`HR`, `Finance`, `AccountsPayable`, …) | `TenantUserRoles` | Which modules you can open, per tenant |
+| Master admin | Identity role `Administrator` | Global, across tenants |
 
-Grants and revocations are audit-logged to `ResourcePermissionAuditLog`; master-admin support
-access to a tenant is logged to `SupportAccessLog`.
+A feature role opens modules through `ResourcePermission` rows. `Read` on a resource opens
+the screen and returns 403 on any write, which is how "can see but not edit" is expressed.
 
-> The earlier string-permission catalog (`employees.view`, `payments.*`) and its policy handler
-> were retired -- no endpoint ever consulted them.
+## API overview
 
-## Data Access
+Everything requires a bearer token except login, sign-up, e-mail confirmation and password
+reset.
 
-Application-layer services inject `ApplicationDbContext` directly -- the old
-`IRepository<T>` / `IUnitOfWork` pair was dead code and was removed.
+| Area | Route |
+|---|---|
+| Auth | `/api/auth` |
+| Tenants, members, invitations | `/api/tenants` |
+| Tenant roles | `/api/tenants/{tenantId}/roles` |
+| Resources and permissions | `/api/resources` |
+| Employees, work logs, payment periods | `/api/tenants/{tenantId}/employees` |
+| Payments | `/api/tenants/{tenantId}/payments` |
+| Accounts payable | `/api/tenants/{tenantId}/accounts-payable` |
+| Chart of accounts | `/api/tenants/{tenantId}/chart-of-accounts` |
+| General ledger | `/api/tenants/{tenantId}/general-ledger` |
 
-A global query filter scopes every `ITenantScoped` entity to the current tenant and **fails
-closed**: with no tenant resolved, queries return nothing rather than everything. Bypassing it
-with `IgnoreQueryFilters` requires a nearby comment explaining the cross-tenant reason, and
-`DataAccessHygieneTests` fails the build without one.
+Public endpoints are rate-limited to 10 requests per minute per IP; authenticated ones to
+100 per minute per user.
 
-`QueryableExtensions` provides paging helpers that return `PagedResult<T>`.
-
-## Adding a New Feature
-
-1. Add domain entities to `Domain/Entities/`
-2. Add service interface + implementation to `Application/Services/`
-3. Add DTOs and validators to `Application/DTOs/`
-4. Add EF configuration to `Infrastructure/Data/Configurations/`
-5. Create migration: `dotnet ef migrations add <Name> -p Prumo.Infrastructure -s Prumo.Api`
-6. Add a thin controller to `Api/Controllers/`
-7. Register permissions in `Domain/Authorization/Permissions.cs` and wire the policy in `AuthorizationConfiguration`
-
-## Running Tests
+## Tests
 
 ```bash
-dotnet test                                                        # all tests
-dotnet test --filter "FullyQualifiedName~MyServiceTests"           # single class
-dotnet test --filter "FullyQualifiedName~MyServiceTests.MyMethod"  # single test
+dotnet test                                                         # everything
+dotnet test --filter "FullyQualifiedName~TenantCoverageTests"       # one class
 ```
 
-## Related Repository
+Besides unit tests for the services, `Prumo.Tests/Architecture` holds the tests that keep
+the design honest: every tenant-routed action is gated, every `IgnoreQueryFilters` is
+justified, master-only endpoints stay master-only, and the production overlay carries no
+leftover placeholders.
 
-Frontend: [Prumo-Angular](https://github.com/nickolascheidt/Prumo-Angular) — Angular 18 SPA that consumes this API.
+## Adding a module
+
+1. Entities in `Prumo.Domain/Entities/` (implement `ITenantScoped` if they carry a `TenantId`).
+2. Service and DTOs in `Prumo.Application/`.
+3. EF configuration in `Prumo.Infrastructure/Data/Configurations/`, then
+   `dotnet ef migrations add <Name> -p Prumo.Infrastructure -s Prumo.Api`.
+4. Declare the resource in `TenantBootstrapSeeder`.
+5. A thin controller under `api/tenants/{tenantId:guid}/…` with `[TenantModule("<resource>")]`.
+
+## License
+
+[MIT](LICENSE)
