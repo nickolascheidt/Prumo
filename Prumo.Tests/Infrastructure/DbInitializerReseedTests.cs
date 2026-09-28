@@ -33,7 +33,7 @@ namespace Prumo.Tests.Infrastructure
             // O TenantBootstrapSeeder só concede ResourcePermissions para roles do
             // Identity que existam. Sem esta linha nada é semeado e o teste passaria
             // por vacuidade — foi exatamente o erro que o plano da fase 1 cometeu.
-            db.Roles.Add(new ApplicationRole { Name = "Administrador", NormalizedName = "ADMINISTRADOR" });
+            db.Roles.Add(new ApplicationRole { Name = "Administrator", NormalizedName = "ADMINISTRADOR" });
             var admin = new ApplicationUser
             {
                 Id = Guid.NewGuid(),
@@ -75,7 +75,7 @@ namespace Prumo.Tests.Infrastructure
             var ctx = new TenantContext();
             await using var db = NewDb(ctx, dbName);
 
-            db.Roles.Add(new ApplicationRole { Name = "Administrador", NormalizedName = "ADMINISTRADOR" });
+            db.Roles.Add(new ApplicationRole { Name = "Administrator", NormalizedName = "ADMINISTRADOR" });
             var admin = new ApplicationUser
             {
                 Id = Guid.NewGuid(),

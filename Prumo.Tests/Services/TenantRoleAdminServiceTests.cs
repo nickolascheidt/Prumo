@@ -108,12 +108,12 @@ namespace Prumo.Tests.Services
         public async Task As_roles_canonicas_continuam_visiveis_em_qualquer_tenant()
         {
             using var db = NewDb(TenantA, nameof(As_roles_canonicas_continuam_visiveis_em_qualquer_tenant));
-            SeedCanonicalRole(db, "RH");
+            SeedCanonicalRole(db, "HR");
             var service = ServiceOver(db);
 
             var visiveisEmB = await service.GetVisibleRolesAsync(TenantB);
 
-            Assert.Contains(visiveisEmB, r => r.Name == "RH" && r.IsCanonical);
+            Assert.Contains(visiveisEmB, r => r.Name == "HR" && r.IsCanonical);
         }
 
         [Fact]
@@ -131,9 +131,9 @@ namespace Prumo.Tests.Services
             Assert.DoesNotContain("Leitura", atribuiveisEmB);
 
             // As canônicas seguem atribuíveis nos dois, e o master continua fora.
-            Assert.Contains("RH", atribuiveisEmA);
-            Assert.Contains("RH", atribuiveisEmB);
-            Assert.DoesNotContain("Administrador", atribuiveisEmA);
+            Assert.Contains("HR", atribuiveisEmA);
+            Assert.Contains("HR", atribuiveisEmB);
+            Assert.DoesNotContain("Administrator", atribuiveisEmA);
         }
 
         /// <summary>
@@ -200,11 +200,11 @@ namespace Prumo.Tests.Services
         public async Task Nao_deixa_recriar_uma_role_do_sistema()
         {
             using var db = NewDb(TenantA, nameof(Nao_deixa_recriar_uma_role_do_sistema));
-            SeedCanonicalRole(db, "RH");
+            SeedCanonicalRole(db, "HR");
             var service = ServiceOver(db);
 
             var erro = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.CreateAsync(TenantA, new CreateTenantRoleDto("rh", null)));
+                () => service.CreateAsync(TenantA, new CreateTenantRoleDto("hr", null)));
 
             Assert.Contains("role do sistema", erro.Message);
         }

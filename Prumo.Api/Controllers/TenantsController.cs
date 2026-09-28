@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Prumo.Application.DTOs.Auth;
 using Prumo.Application.DTOs.Tenants;
 using Prumo.Application.Services;
+using Prumo.Domain.Authorization;
 using Prumo.Domain.Enums;
 using System.Security.Claims;
 
@@ -29,7 +30,7 @@ namespace Prumo.Api.Controllers
             Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         [HttpPost]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(TenantDto), StatusCodes.Status201Created)]
         public async Task<ActionResult<TenantDto>> Create([FromBody] CreateTenantRequestDto request, CancellationToken ct)
         {
@@ -44,7 +45,7 @@ namespace Prumo.Api.Controllers
         /// arquitetura não consegue ver. Aqui o acesso vira uma linha no banco, auditada.
         /// </summary>
         [HttpPost("{tenantId:guid}/support-access")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GrantSupportAccess(Guid tenantId, CancellationToken ct)
@@ -163,7 +164,7 @@ namespace Prumo.Api.Controllers
         /// de todo tenant, e o convite (item 8) é por e-mail e não precisa disto. Só o master.
         /// </summary>
         [HttpGet("users/lookup")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(UserLookupDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

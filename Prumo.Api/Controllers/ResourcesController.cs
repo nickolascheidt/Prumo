@@ -1,5 +1,6 @@
 using Prumo.Application.DTOs;
 using Prumo.Application.Services;
+using Prumo.Domain.Authorization;
 using Prumo.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -81,7 +82,7 @@ namespace Prumo.Api.Controllers
         /// Obtém permissões de um usuário específico (apenas admins)
         /// </summary>
         [HttpGet("user/{userId}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<UserPermissionsDto>> GetUserPermissions(Guid userId)
         {
@@ -101,7 +102,7 @@ namespace Prumo.Api.Controllers
         /// Lista todos os recursos disponíveis no sistema
         /// </summary>
         [HttpGet]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(List<ResourceDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<ResourceDto>>> GetAllResources()
         {
@@ -113,7 +114,7 @@ namespace Prumo.Api.Controllers
         /// Obtém um recurso específico
         /// </summary>
         [HttpGet("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(ResourceDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<ResourceDto>> GetResourceById(Guid id)
         {
@@ -131,7 +132,7 @@ namespace Prumo.Api.Controllers
         /// Cria um novo recurso
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(ResourceDto), StatusCodes.Status201Created)]
         public async Task<ActionResult<ResourceDto>> CreateResource([FromBody] CreateResourceDto dto)
         {
@@ -150,7 +151,7 @@ namespace Prumo.Api.Controllers
         /// Atualiza um recurso existente
         /// </summary>
         [HttpPut("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(ResourceDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<ResourceDto>> UpdateResource(Guid id, [FromBody] UpdateResourceDto dto)
         {
@@ -168,7 +169,7 @@ namespace Prumo.Api.Controllers
         /// Deleta um recurso (soft delete)
         /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> DeleteResource(Guid id)
         {
@@ -190,7 +191,7 @@ namespace Prumo.Api.Controllers
         /// Atribui ou atualiza permissão de uma role para um recurso
         /// </summary>
         [HttpPost("assign")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> AssignPermission([FromBody] AssignResourcePermissionDto dto)
         {
@@ -209,7 +210,7 @@ namespace Prumo.Api.Controllers
         /// Remove permissão de uma role para um recurso
         /// </summary>
         [HttpDelete("remove")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> RemovePermission([FromQuery] Guid roleId, [FromQuery] Guid resourceId)
         {
@@ -229,7 +230,7 @@ namespace Prumo.Api.Controllers
         /// Obtém todas as permissões de uma role
         /// </summary>
         [HttpGet("role/{roleId}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = Permissions.Roles.MasterAdmin)]
         [ProducesResponseType(typeof(List<ResourcePermissionDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<ResourcePermissionDto>>> GetRolePermissions(Guid roleId)
         {

@@ -13,6 +13,8 @@ namespace Prumo.Infrastructure.Data
 {
     public static class DbInitializer
     {
+        private const string AdminEmail = "admin@SBP.com";
+
         public static async Task InitializeAsync(IServiceProvider serviceProvider)
         {
             using var scope = serviceProvider.CreateScope();
@@ -22,11 +24,11 @@ namespace Prumo.Infrastructure.Data
             var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
             var configuration = services.GetRequiredService<IConfiguration>();
 
-            logger.LogInformation("=== Iniciando inicialização do banco de dados ===");
+            logger.LogInformation("=== Database initialization started ===");
 
-            // Fora do try de propósito. Um schema atrasado não é coisa que se registre no
-            // log e siga em frente: a aplicação subiria e falharia mais tarde, num lugar
-            // que não explica a causa.
+            // Outside the try on purpose. An outdated schema is not something to log and
+            // move past: the app would start and fail later, somewhere that does not
+            // explain the cause.
             await EnsureSchemaUpToDateAsync(context, configuration, logger);
 
             try
@@ -35,110 +37,64 @@ namespace Prumo.Infrastructure.Data
                 var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
                 var environment = services.GetRequiredService<IHostEnvironment>();
 
-                // One-time cleanup: remove legacy "User" role if it exists
-                var legacyUserRole = await roleManager.FindByNameAsync("User");
-                if (legacyUserRole != null)
-                {
-                    await roleManager.DeleteAsync(legacyUserRole);
-                    logger.LogInformation("✓ Role legada 'User' removida");
-                }
-
-                // Criar roles se não existirem
                 var rolesConfig = new Dictionary<string, string>
                 {
-                    { "Administrador", "Acesso total ao sistema" },
-                    { "Funcionario",   "Acesso para funcionários do sistema" },
-                    { "Cliente",       "Acesso para clientes" },
-                    { "RH",            "Acesso ao módulo de Recursos Humanos" },
-                    { "Financeiro",    "Acesso ao módulo Financeiro" },
-                    { "ContasAPagar",  "Acesso ao módulo de Contas a Pagar" }
+                    { Permissions.Roles.MasterAdmin,     "Full access to the system" },
+                    { Permissions.Roles.Employee,        "Access for employees" },
+                    { Permissions.Roles.Customer,        "Access for customers" },
+                    { Permissions.Roles.HR,              "Access to the Human Resources module" },
+                    { Permissions.Roles.Finance,         "Access to the Finance module" },
+                    { Permissions.Roles.AccountsPayable, "Access to the Accounts Payable module" }
                 };
 
                 foreach (var (roleName, description) in rolesConfig)
                 {
-                    var roleExists = await roleManager.RoleExistsAsync(roleName);
-                    if (!roleExists)
+                    if (await roleManager.RoleExistsAsync(roleName))
                     {
-                        var role = new ApplicationRole
-                        {
-                            Name = roleName,
-                            Description = description,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        var roleResult = await roleManager.CreateAsync(role);
-                        if (roleResult.Succeeded)
-                        {
-                            logger.LogInformation($"✓ Role '{roleName}' criada com sucesso!");
-                        }
-                        else
-                        {
-                            var roleErrors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
-                            logger.LogError($"✗ Erro ao criar role '{roleName}': {roleErrors}");
-                        }
+                        logger.LogDebug("Role '{Role}' already exists", roleName);
+                        continue;
+                    }
+
+                    var roleResult = await roleManager.CreateAsync(new ApplicationRole
+                    {
+                        Name = roleName,
+                        Description = description,
+                        CreatedAt = DateTime.UtcNow
+                    });
+
+                    if (roleResult.Succeeded)
+                    {
+                        logger.LogInformation("✓ Role '{Role}' created", roleName);
                     }
                     else
                     {
-                        logger.LogDebug($"✓ Role '{roleName}' já existe");
+                        var roleErrors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                        logger.LogError("✗ Failed to create role '{Role}': {Errors}", roleName, roleErrors);
                     }
                 }
 
-                // Tenant-scoped role permissions and resources are seeded per-tenant via
-                // TenantBootstrapSeeder when a tenant is created (see TenantService.CreateAsync).
-                // Reaplicar isso no startup ressuscitava grants revogados — ver
-                // SeederIdempotenceTests. Tenants antigos são cobertos pela migration de backfill.
+                // Tenant resources and permissions are seeded by TenantBootstrapSeeder when a
+                // tenant is created, never at startup: re-applying them on every boot brought
+                // revoked grants back (see SeederIdempotenceTests).
 
-                // Backfill: convert legacy global feature-role assignments to per-tenant rows.
-                var masterRoleId = (await roleManager.FindByNameAsync(Permissions.Roles.MasterAdmin))?.Id;
-                if (masterRoleId is null)
-                {
-                    logger.LogWarning("Master role '{Role}' not found; skipping per-tenant role backfill.", Permissions.Roles.MasterAdmin);
-                }
-                else
-                {
-                    var globalAssignments = await (
-                        from ur in context.UserRoles
-                        join r in context.Roles on ur.RoleId equals r.Id
-                        where r.Id != masterRoleId
-                        select new { ur.UserId, r.Id, r.Name }
-                    ).ToListAsync();
-
-                    if (globalAssignments.Count > 0)
-                    {
-                        await BackfillTenantUserRolesAsync(
-                            context,
-                            globalAssignments.Select(a => (a.UserId, a.Id, a.Name!)).ToList());
-
-                        var toRemove = await context.UserRoles
-                            .Where(ur => ur.RoleId != masterRoleId.Value)
-                            .ToListAsync();
-                        context.UserRoles.RemoveRange(toRemove);
-                        await context.SaveChangesAsync();
-                        logger.LogInformation("✓ Backfilled {Count} per-tenant role rows", globalAssignments.Count);
-                    }
-                }
-
-                // Verificar se já existe o admin
-                var adminUser = await userManager.FindByEmailAsync("admin@SBP.com");
+                var adminUser = await userManager.FindByEmailAsync(AdminEmail);
                 if (adminUser != null)
                 {
-                    logger.LogDebug("✓ Usuário admin já existe.");
+                    logger.LogDebug("Admin user already exists");
 
-                    // Verificar se tem a role
-                    var hasRole = await userManager.IsInRoleAsync(adminUser, "Administrador");
-                    if (!hasRole)
+                    if (!await userManager.IsInRoleAsync(adminUser, Permissions.Roles.MasterAdmin))
                     {
-                        await userManager.AddToRoleAsync(adminUser, "Administrador");
-                        logger.LogInformation("✓ Role Administrador adicionada ao usuário admin");
+                        await userManager.AddToRoleAsync(adminUser, Permissions.Roles.MasterAdmin);
+                        logger.LogInformation("✓ Role {Role} added to the admin user", Permissions.Roles.MasterAdmin);
                     }
 
                     await EnsureDefaultTenantAsync(context, adminUser, logger);
                     await SyncResourceCatalogAsync(context, logger);
 
-                    logger.LogInformation("=== Inicialização concluída ===");
+                    logger.LogInformation("=== Database initialization finished ===");
                     return;
                 }
 
-                // Criar usuário admin
                 var seedPassword = configuration["Seed:AdminPassword"];
                 var isDevelopment = environment.IsDevelopment() || environment.IsEnvironment("Demo");
 
@@ -147,24 +103,24 @@ namespace Prumo.Infrastructure.Data
                     if (isDevelopment)
                     {
                         logger.LogWarning(
-                            "Admin não criado: defina Seed:AdminPassword (user secrets) para semear o admin local.");
-                        logger.LogInformation("=== Inicialização concluída ===");
+                            "Admin not created: set Seed:AdminPassword (user secrets) to seed the local admin.");
+                        logger.LogInformation("=== Database initialization finished ===");
                         return;
                     }
 
                     throw new InvalidOperationException(
-                        "Seed:AdminPassword não configurada. Em Production o admin master nunca é criado "
-                        + "com senha padrão — forneça Seed__AdminPassword por variável de ambiente ou "
-                        + "remova o seeding de admin deste ambiente.");
+                        "Seed:AdminPassword is not set. Outside development the master admin is never "
+                        + "created with a default password — provide Seed__AdminPassword as an environment "
+                        + "variable or remove admin seeding from this environment.");
                 }
 
-                logger.LogInformation("Criando usuário administrador...");
+                logger.LogInformation("Creating the admin user...");
                 adminUser = new ApplicationUser
                 {
-                    UserName = "admin@SBP.com",
-                    Email = "admin@SBP.com",
+                    UserName = AdminEmail,
+                    Email = AdminEmail,
                     EmailConfirmed = true,
-                    FullName = "Administrador do Sistema",
+                    FullName = "System Administrator",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -173,44 +129,44 @@ namespace Prumo.Infrastructure.Data
 
                 if (result.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(adminUser, "Administrador");
+                    await userManager.AddToRoleAsync(adminUser, Permissions.Roles.MasterAdmin);
                     await EnsureDefaultTenantAsync(context, adminUser, logger);
-                    // A senha NUNCA vai para o log: o Serilog tem sink para tabela, e isso
-                    // depositaria a credencial do admin master no armazenamento de log.
-                    logger.LogInformation("✓ Usuário admin criado: {Email}", adminUser.Email);
+                    // The password NEVER goes to the log: Serilog has a database sink, and
+                    // this would store the master admin credential in the log table.
+                    logger.LogInformation("✓ Admin user created: {Email}", adminUser.Email);
                 }
                 else
                 {
                     var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    logger.LogError("✗ Erro ao criar usuário admin: {Errors}", errors);
+                    logger.LogError("✗ Failed to create the admin user: {Errors}", errors);
                 }
 
                 await SyncResourceCatalogAsync(context, logger);
 
-                logger.LogInformation("=== Inicialização concluída ===");
+                logger.LogInformation("=== Database initialization finished ===");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Erro ao inicializar o banco de dados.");
+                logger.LogError(ex, "Database initialization failed.");
             }
         }
 
         /// <summary>
-        /// Garante que o schema corresponde às migrations do assembly — sem que a conexão
-        /// da aplicação precise de DDL.
+        /// Checks that the schema matches the assembly's migrations — without the
+        /// application connection needing DDL.
         ///
-        /// A aplicação conecta como `prumo_app`, que só tem DML (ver `db/roles.sql`), então
-        /// migrar aqui é privilégio que ela não deve carregar. O padrão é **verificar** e
-        /// quebrar cedo; migrar no startup é escotilha, ligada por
-        /// `Database:MigrateOnStartup`, e mesmo assim por uma conexão separada, com a
-        /// credencial do migrator.
+        /// The app connects as `prumo_app`, which only has DML (see `db/roles.sql`), so
+        /// migrating here is a privilege it should not carry. The default is to **check**
+        /// and fail early; migrating at startup is an escape hatch, turned on by
+        /// `Database:MigrateOnStartup`, and even then over a separate connection with the
+        /// migrator credential.
         /// </summary>
         internal static async Task EnsureSchemaUpToDateAsync(
             ApplicationDbContext context,
             IConfiguration configuration,
             ILogger logger)
         {
-            // Provider em memória (testes) não tem migrations para comparar.
+            // The in-memory provider (tests) has no migrations to compare against.
             if (!context.Database.IsRelational())
             {
                 return;
@@ -220,7 +176,7 @@ namespace Prumo.Infrastructure.Data
             {
                 var connectionString = ApplicationDbContextFactory.ResolveMigrationConnectionString(configuration)
                     ?? throw new InvalidOperationException(
-                        "Database:MigrateOnStartup está ligado, mas não há connection string para migrar.");
+                        "Database:MigrateOnStartup is on, but there is no connection string to migrate with.");
 
                 var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                     .UseNpgsql(connectionString)
@@ -228,124 +184,68 @@ namespace Prumo.Infrastructure.Data
 
                 await using var migrationContext = new ApplicationDbContext(options);
                 await migrationContext.Database.MigrateAsync();
-                logger.LogInformation("Migrations aplicadas no startup (Database:MigrateOnStartup).");
+                logger.LogInformation("Migrations applied at startup (Database:MigrateOnStartup).");
                 return;
             }
 
             var pending = (await context.Database.GetPendingMigrationsAsync()).ToList();
             if (pending.Count == 0)
             {
-                logger.LogInformation("Schema em dia com as migrations do assembly.");
+                logger.LogInformation("Schema is up to date with the assembly migrations.");
                 return;
             }
 
             throw new InvalidOperationException(
-                $"O banco está {pending.Count} migration(s) atrás da aplicação: {string.Join(", ", pending)}. "
-                + "A aplicação não faz DDL — rode "
+                $"The database is {pending.Count} migration(s) behind the application: {string.Join(", ", pending)}. "
+                + "The application does not run DDL — run "
                 + "`dotnet ef database update -p Prumo.Infrastructure -s Prumo.Api` "
-                + "ou ligue Database:MigrateOnStartup neste ambiente.");
+                + "or turn on Database:MigrateOnStartup in this environment.");
         }
 
         /// <summary>
-        /// For each (userId, roleId) global feature-role assignment, create a
-        /// per-tenant TenantUserRole for every tenant the user belongs to.
-        /// Idempotent. Does not touch the master-admin role.
-        /// </summary>
-        public static async Task BackfillTenantUserRolesAsync(
-            ApplicationDbContext context,
-            IReadOnlyCollection<(Guid UserId, Guid RoleId, string RoleName)> globalAssignments,
-            CancellationToken cancellationToken = default)
-        {
-            foreach (var (userId, roleId, roleName) in globalAssignments)
-            {
-                if (roleName == Domain.Authorization.Permissions.Roles.MasterAdmin)
-                    continue;
-
-                // cross-tenant de propósito: o backfill precisa descobrir TODOS os tenants
-                // de que o usuário participa. TenantUser nem é ITenantScoped, então esta
-                // chamada também não contorna nada — some quando o backfill sair.
-                var tenantIds = await context.TenantUsers
-                    .IgnoreQueryFilters()
-                    .Where(tu => tu.UserId == userId)
-                    .Select(tu => tu.TenantId)
-                    .ToListAsync(cancellationToken);
-
-                foreach (var tenantId in tenantIds)
-                {
-                    // cross-tenant de propósito: o backfill percorre vários tenants numa
-                    // volta só, sem TenantContext. Sem o bypass a checagem não acharia a
-                    // linha existente e o backfill duplicaria as concessões.
-                    var exists = await context.TenantUserRoles
-                        .IgnoreQueryFilters()
-                        .AnyAsync(tur => tur.TenantId == tenantId
-                                      && tur.UserId == userId
-                                      && tur.RoleId == roleId, cancellationToken);
-                    if (!exists)
-                    {
-                        context.TenantUserRoles.Add(new TenantUserRole
-                        {
-                            TenantId = tenantId,
-                            UserId = userId,
-                            RoleId = roleId,
-                            GrantedAt = DateTime.UtcNow
-                        });
-                    }
-                }
-            }
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        /// <summary>
-        /// Garante o tenant 'default' e a associação do admin. Semeia SÓ no nascimento
-        /// do tenant — reaplicar os seeders a cada boot ressuscitava grants revogados
-        /// (bug 4203a15). `internal` para que DbInitializerReseedTests possa provar isso;
-        /// o `InitializeAsync` inteiro não é testável em memória porque chama
-        /// `MigrateAsync`, que exige provider relacional.
-        /// </summary>
-        /// <summary>
-        /// Completa o catálogo de recursos de todo tenant a cada boot.
+        /// Completes every tenant's resource catalog on each boot.
         /// </summary>
         /// <remarks>
-        /// Sem isto, um módulo novo só chega a tenants criados <b>depois</b> dele: o
-        /// <c>TenantBootstrapSeeder</c> roda uma vez, na criação do tenant, e até aqui a
-        /// solução tinha sido escrever uma migration de backfill por recurso novo
-        /// (ver <c>BackfillTenantResources</c>) — trabalho manual, fácil de esquecer, e
-        /// que deixa a tela nova invisível justamente nos tenants que já existem.
+        /// Without this, a new module only reaches tenants created <b>after</b> it: the
+        /// <c>TenantBootstrapSeeder</c> runs once, when the tenant is created.
         ///
-        /// Só acrescenta linhas de <c>Resource</c>. Nenhuma permissão é tocada, então
-        /// nada de revogado volta.
+        /// It only adds <c>Resource</c> rows. No permission is touched, so nothing that was
+        /// revoked comes back.
         /// </remarks>
         private static async Task SyncResourceCatalogAsync(
             ApplicationDbContext context, ILogger logger)
         {
             try
             {
-                // cross-tenant de propósito: contagem de todos os tenants, no startup,
-                // sem TenantContext resolvido — serve só para relatar quantos recursos
-                // foram acrescentados.
+                // Cross-tenant on purpose: a count over every tenant, at startup, with no
+                // TenantContext — only used to report how many resources were added.
                 var before = await context.Resources.IgnoreQueryFilters().CountAsync();
 
-                await Seeders.TenantBootstrapSeeder.SyncResourcesForAllTenantsAsync(context);
+                await TenantBootstrapSeeder.SyncResourcesForAllTenantsAsync(context);
 
-                // cross-tenant de propósito: mesma contagem, depois da sincronização.
+                // Cross-tenant on purpose: the same count, after the sync.
                 var after = await context.Resources.IgnoreQueryFilters().CountAsync();
 
                 if (after > before)
                 {
                     logger.LogInformation(
-                        "✓ Catálogo de recursos sincronizado: {Count} recurso(s) acrescentado(s) a tenants existentes",
+                        "✓ Resource catalog synced: {Count} resource(s) added to existing tenants",
                         after - before);
                 }
-
             }
             catch (Exception ex)
             {
-                // Não derruba o startup: sem os recursos novos a app sobe com as telas
-                // novas invisíveis, o que é ruim mas recuperável. Cair aqui não seria.
-                logger.LogError(ex, "✗ Falha ao sincronizar o catálogo de recursos");
+                // Does not bring startup down: without the new resources the app starts with
+                // the new screens hidden, which is bad but recoverable. Crashing here is not.
+                logger.LogError(ex, "✗ Failed to sync the resource catalog");
             }
         }
 
+        /// <summary>
+        /// Ensures the 'default' tenant and the admin's membership. Seeds ONLY when the
+        /// tenant is born — re-applying the seeders on every boot brought revoked grants
+        /// back. `internal` so DbInitializerReseedTests can prove it.
+        /// </summary>
         internal static async Task EnsureDefaultTenantAsync(
             ApplicationDbContext context,
             ApplicationUser owner,
@@ -353,8 +253,8 @@ namespace Prumo.Infrastructure.Data
         {
             const string defaultSlug = "default";
 
-            // cross-tenant de propósito: procurar o tenant "default" é o passo que decide
-            // se ele precisa ser criado — não existe tenant resolvido antes disso.
+            // Cross-tenant on purpose: looking up the "default" tenant is what decides
+            // whether it must be created — no tenant is resolved before this.
             var tenant = await context.Tenants
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(t => t.Slug == defaultSlug);
@@ -372,22 +272,21 @@ namespace Prumo.Infrastructure.Data
                 {
                     TenantId = tenant.Id,
                     UserId = owner.Id,
-                    Role = Domain.Enums.TenantRole.Owner
+                    Role = TenantRole.Owner
                 });
                 await context.SaveChangesAsync();
-                logger.LogInformation("✓ Tenant 'default' criado para o usuário admin");
+                logger.LogInformation("✓ Tenant 'default' created for the admin user");
 
-                // Semeia SÓ no nascimento do tenant. Reaplicar isso a cada startup
-                // ressuscitava grants revogados — ver SeederIdempotenceTests. Tenants
-                // que já existem são cobertos pela migration de backfill.
-                await Seeders.TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
-                await Seeders.ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
+                // Seeds ONLY when the tenant is born. Re-applying this on every startup
+                // brought revoked grants back — see SeederIdempotenceTests.
+                await TenantBootstrapSeeder.SeedAsync(context, tenant.Id);
+                await ChartOfAccountsSeeder.SeedAsync(context, tenant.Id);
             }
             else
             {
-                // cross-tenant de propósito: startup sem TenantContext. Sem o bypass a
-                // checagem daria falso e o seeder recriaria a associação do owner a cada
-                // boot — a mesma classe de bug do 4203a15.
+                // Cross-tenant on purpose: startup has no TenantContext. Without the bypass
+                // the check would be false and the owner's membership would be recreated on
+                // every boot.
                 var membershipExists = await context.TenantUsers
                     .IgnoreQueryFilters()
                     .AnyAsync(tu => tu.TenantId == tenant.Id && tu.UserId == owner.Id);
@@ -397,12 +296,11 @@ namespace Prumo.Infrastructure.Data
                     {
                         TenantId = tenant.Id,
                         UserId = owner.Id,
-                        Role = Domain.Enums.TenantRole.Owner
+                        Role = TenantRole.Owner
                     });
                     await context.SaveChangesAsync();
                 }
             }
         }
-
     }
 }

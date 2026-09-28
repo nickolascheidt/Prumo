@@ -77,13 +77,13 @@ namespace Prumo.Tests.Services
         {
             var tenantId = Guid.NewGuid();
             var f = MakeFixture(globalRoles: Array.Empty<string>(),
-                                tenantFeatureRoles: new[] { "RH" },
+                                tenantFeatureRoles: new[] { "HR" },
                                 tenantId: tenantId);
 
             var dto = await f.Service.GetUserByIdAsync(f.User.Id, tenantId);
 
             Assert.NotNull(dto);
-            Assert.Contains("RH", dto!.Roles);
+            Assert.Contains("HR", dto!.Roles);
         }
 
         [Fact]
@@ -94,28 +94,28 @@ namespace Prumo.Tests.Services
 
             // Fixture grants RH only for tenantA; tenantB resolves to no feature roles.
             var f = MakeFixture(globalRoles: Array.Empty<string>(),
-                                tenantFeatureRoles: new[] { "RH" },
+                                tenantFeatureRoles: new[] { "HR" },
                                 tenantId: tenantA);
 
             var dto = await f.Service.GetUserByIdAsync(f.User.Id, tenantB);
 
             Assert.NotNull(dto);
-            Assert.DoesNotContain("RH", dto!.Roles);
+            Assert.DoesNotContain("HR", dto!.Roles);
         }
 
         [Fact]
         public async Task GetUserByIdAsync_WithoutTenant_ReturnsGlobalRolesOnly()
         {
             var tenantId = Guid.NewGuid();
-            var f = MakeFixture(globalRoles: new[] { "Administrador" },
-                                tenantFeatureRoles: new[] { "RH" },
+            var f = MakeFixture(globalRoles: new[] { "Administrator" },
+                                tenantFeatureRoles: new[] { "HR" },
                                 tenantId: tenantId);
 
             var dto = await f.Service.GetUserByIdAsync(f.User.Id, tenantId: null);
 
             Assert.NotNull(dto);
-            Assert.Contains("Administrador", dto!.Roles);
-            Assert.DoesNotContain("RH", dto.Roles);
+            Assert.Contains("Administrator", dto!.Roles);
+            Assert.DoesNotContain("HR", dto.Roles);
         }
     }
 }

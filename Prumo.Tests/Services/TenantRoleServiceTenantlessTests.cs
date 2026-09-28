@@ -37,7 +37,7 @@ namespace Prumo.Tests.Services
             seedCtx.SetTenant(tenantId);
             await using (var seed = NewDb(seedCtx, dbName))
             {
-                seed.Roles.Add(new ApplicationRole { Id = roleId, Name = "RH", NormalizedName = "RH" });
+                seed.Roles.Add(new ApplicationRole { Id = roleId, Name = "HR", NormalizedName = "HR" });
                 seed.TenantUserRoles.Add(new TenantUserRole
                 {
                     TenantId = tenantId,
@@ -53,7 +53,7 @@ namespace Prumo.Tests.Services
 
             var roles = await service.GetTenantRoleNamesAsync(userId, tenantId);
 
-            Assert.Equal(new[] { "RH" }, roles);
+            Assert.Equal(new[] { "HR" }, roles);
         }
 
         private static ApplicationDbContext NewDb(ITenantContext ctx, string dbName) =>

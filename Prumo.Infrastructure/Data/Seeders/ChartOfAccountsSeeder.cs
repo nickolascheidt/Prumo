@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Prumo.Domain.Entities;
 using Prumo.Domain.Enums;
 
@@ -10,39 +10,40 @@ namespace Prumo.Infrastructure.Data.Seeders
 
         private static readonly AccountSeed[] DefaultAccounts =
         {
-            new("1",     "Ativo",                           AccountType.Asset,     false, null),
-            new("1.1",   "Ativo Circulante",                AccountType.Asset,     false, "1"),
-            new("1.1.1", "Caixa e Equivalentes",            AccountType.Asset,     true,  "1.1"),
-            new("1.1.2", "Contas a Receber",                AccountType.Asset,     true,  "1.1"),
-            new("1.2",   "Ativo Não Circulante",            AccountType.Asset,     false, "1"),
-            new("1.2.1", "Imobilizado",                     AccountType.Asset,     true,  "1.2"),
-            new("2",     "Passivo",                         AccountType.Liability, false, null),
-            new("2.1",   "Passivo Circulante",              AccountType.Liability, false, "2"),
-            new("2.1.1", "Fornecedores / Contas a Pagar",   AccountType.Liability, true,  "2.1"),
-            new("2.1.2", "Empréstimos e Financiamentos",    AccountType.Liability, true,  "2.1"),
-            new("3",     "Patrimônio Líquido",              AccountType.Equity,    false, null),
-            new("3.1",   "Capital Social",                  AccountType.Equity,    true,  "3"),
-            new("3.2",   "Lucros/Prejuízos Acumulados",     AccountType.Equity,    true,  "3"),
-            new("4",     "Receita",                         AccountType.Revenue,   false, null),
-            new("4.1",   "Receita Operacional",             AccountType.Revenue,   true,  "4"),
-            new("5",     "Despesas",                        AccountType.Expense,   false, null),
-            new("5.1",   "Despesas Operacionais",           AccountType.Expense,   true,  "5"),
-            new("5.2",   "Custo dos Produtos/Serviços",     AccountType.Expense,   true,  "5"),
-            new("2.1.3", "Salários a Pagar",          AccountType.Liability, true,  "2.1"),
-            new("2.1.4", "Encargos Sociais a Pagar",  AccountType.Liability, true,  "2.1"),
-            new("5.1.1", "Despesas com Pessoal",      AccountType.Expense,   true,  "5.1"),
-            new("5.1.2", "Despesas Administrativas",  AccountType.Expense,   true,  "5.1"),
-            new("5.1.3", "Despesas Operacionais",     AccountType.Expense,   true,  "5.1"),
-            new("5.1.4", "Despesas com Fornecedores", AccountType.Expense,   true,  "5.1"),
+            new("1",     "Assets",                          AccountType.Asset,     false, null),
+            new("1.1",   "Current Assets",                  AccountType.Asset,     false, "1"),
+            new("1.1.1", "Cash and Cash Equivalents",       AccountType.Asset,     true,  "1.1"),
+            new("1.1.2", "Accounts Receivable",             AccountType.Asset,     true,  "1.1"),
+            new("1.2",   "Non-current Assets",              AccountType.Asset,     false, "1"),
+            new("1.2.1", "Property, Plant and Equipment",   AccountType.Asset,     true,  "1.2"),
+            new("2",     "Liabilities",                     AccountType.Liability, false, null),
+            new("2.1",   "Current Liabilities",             AccountType.Liability, false, "2"),
+            new("2.1.1", "Suppliers / Accounts Payable",    AccountType.Liability, true,  "2.1"),
+            new("2.1.2", "Loans and Borrowings",            AccountType.Liability, true,  "2.1"),
+            new("3",     "Equity",                          AccountType.Equity,    false, null),
+            new("3.1",   "Share Capital",                   AccountType.Equity,    true,  "3"),
+            new("3.2",   "Retained Earnings",               AccountType.Equity,    true,  "3"),
+            new("4",     "Revenue",                         AccountType.Revenue,   false, null),
+            new("4.1",   "Operating Revenue",               AccountType.Revenue,   true,  "4"),
+            new("5",     "Expenses",                        AccountType.Expense,   false, null),
+            new("5.1",   "Operating Expenses",              AccountType.Expense,   true,  "5"),
+            new("5.2",   "Cost of Goods and Services",      AccountType.Expense,   true,  "5"),
+            new("2.1.3", "Salaries Payable",          AccountType.Liability, true,  "2.1"),
+            new("2.1.4", "Payroll Taxes Payable",     AccountType.Liability, true,  "2.1"),
+            new("5.1.1", "Personnel Expenses",        AccountType.Expense,   true,  "5.1"),
+            new("5.1.2", "Administrative Expenses",   AccountType.Expense,   true,  "5.1"),
+            new("5.1.3", "Other Operating Expenses",  AccountType.Expense,   true,  "5.1"),
+            new("5.1.4", "Supplier Expenses",         AccountType.Expense,   true,  "5.1"),
         };
 
         public static async Task SeedAsync(
             ApplicationDbContext db, Guid tenantId, CancellationToken ct = default)
         {
             var hasAccounts = await db.Accounts
-                // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
+                // Cross-tenant on purpose: the seeder runs at startup, with no TenantContext.
+                // The tenantId comes from the parameter and is filtered right below. Without
+                // the bypass the fail-closed filter would return nothing and seeding would
+                // silently break.
                 .IgnoreQueryFilters()
                 .AnyAsync(a => a.TenantId == tenantId, ct);
             if (hasAccounts) return;

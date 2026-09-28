@@ -111,7 +111,7 @@ namespace Prumo.Tests.Services
             var tenantRoleService = Substitute.For<ITenantRoleService>();
             // The tenant grants the RH feature role.
             tenantRoleService.GetTenantRoleNamesAsync(user.Id, tenantId, Arg.Any<CancellationToken>())
-                .Returns(new List<string> { "RH" });
+                .Returns(new List<string> { "HR" });
             // Effective roles = global (master) union per-tenant feature roles. Do the real union
             // so the test proves the wiring rather than feeding the answer in literally.
             tenantRoleService
@@ -146,7 +146,7 @@ namespace Prumo.Tests.Services
                 root.TryGetProperty(RoleClaimKey, out var roleEl),
                 $"Expected role claim under key '{RoleClaimKey}' in JWT payload.");
             var roleValues = StringValues(roleEl);
-            Assert.Contains("RH", roleValues);
+            Assert.Contains("HR", roleValues);
 
             // tenant_role claim = ITenantService.GetUserRoleAsync value (enum name).
             Assert.True(root.TryGetProperty("tenant_role", out var tenantRoleEl), "Expected 'tenant_role' claim");
@@ -191,7 +191,7 @@ namespace Prumo.Tests.Services
 
             var tenantRoleService = Substitute.For<ITenantRoleService>();
             tenantRoleService.GetTenantRoleNamesAsync(user.Id, tenantId, Arg.Any<CancellationToken>())
-                .Returns(new List<string> { "RH" });
+                .Returns(new List<string> { "HR" });
             tenantRoleService
                 .GetEffectiveRoleNamesAsync(user.Id, tenantId, Arg.Any<IReadOnlyCollection<string>>(),
                     Arg.Any<CancellationToken>())
@@ -210,8 +210,8 @@ namespace Prumo.Tests.Services
             var response = await sut.SelectTenantAsync(user.Id, tenantId);
 
             using var doc = DecodePayload(response.Token);
-            Assert.Contains("RH", StringValues(doc.RootElement.GetProperty(RoleClaimKey)));
-            Assert.Contains("RH", response.User.Roles);
+            Assert.Contains("HR", StringValues(doc.RootElement.GetProperty(RoleClaimKey)));
+            Assert.Contains("HR", response.User.Roles);
         }
 
         [Fact]
@@ -232,7 +232,7 @@ namespace Prumo.Tests.Services
 
             var userManager = MakeUserManager();
             userManager.FindByEmailAsync(user.Email).Returns(user);
-            userManager.GetRolesAsync(user).Returns(new List<string> { "Administrador" });
+            userManager.GetRolesAsync(user).Returns(new List<string> { "Administrator" });
 
             var signInManager = MakeSignInManager(userManager);
             signInManager
@@ -261,7 +261,7 @@ namespace Prumo.Tests.Services
             Assert.True(
                 root.TryGetProperty(RoleClaimKey, out var roleEl),
                 $"Expected role claim under key '{RoleClaimKey}' in JWT payload.");
-            Assert.Contains("Administrador", StringValues(roleEl));
+            Assert.Contains("Administrator", StringValues(roleEl));
 
             // No-tenant branch: none of the tenant-scoped claims are emitted.
             Assert.False(root.TryGetProperty("tenant_id", out _), "Expected no 'tenant_id' claim");

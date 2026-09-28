@@ -26,7 +26,7 @@ namespace Prumo.Tests.Infrastructure
 
             // O seeder só concede ResourcePermissions para roles do Identity que existam.
             // Sem esta linha nada é semeado e o teste passaria por vacuidade.
-            db.Roles.Add(new ApplicationRole { Name = "Administrador", NormalizedName = "ADMINISTRADOR" });
+            db.Roles.Add(new ApplicationRole { Name = "Administrator", NormalizedName = "ADMINISTRADOR" });
             await db.SaveChangesAsync();
 
             await TenantBootstrapSeeder.SeedAsync(db, tenantId);

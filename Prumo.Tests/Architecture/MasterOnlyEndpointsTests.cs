@@ -18,7 +18,7 @@ namespace Prumo.Tests.Architecture
         {
             var authorize = controller.GetMethod(action)!.GetCustomAttribute<AuthorizeAttribute>();
 
-            Assert.Equal("Administrador", authorize?.Roles);
+            Assert.Equal("Administrator", authorize?.Roles);
         }
     }
 }

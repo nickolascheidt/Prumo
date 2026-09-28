@@ -41,7 +41,7 @@ public class AuthServiceRoleGuardTests
         var sut = MakeSut(userManager);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.AssignRoleToUserAsync(Guid.NewGuid(), "RH"));
+            sut.AssignRoleToUserAsync(Guid.NewGuid(), "HR"));
     }
 
     [Fact]
@@ -53,6 +53,6 @@ public class AuthServiceRoleGuardTests
 
         // Master role passes the guard and proceeds to FindByIdAsync, which returns null.
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            sut.AssignRoleToUserAsync(Guid.NewGuid(), "Administrador"));
+            sut.AssignRoleToUserAsync(Guid.NewGuid(), "Administrator"));
     }
 }

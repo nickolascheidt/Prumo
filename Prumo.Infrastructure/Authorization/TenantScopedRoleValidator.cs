@@ -44,7 +44,7 @@ namespace Prumo.Infrastructure.Authorization
             var normalized = manager.NormalizeKey(name);
 
             // Uma canônica com este nome bloqueia todo mundo — inclusive um tenant que
-            // tentasse criar a sua própria "RH".
+            // tentasse criar a sua própria "HR".
             var clashesWithCanonical = await _db.Roles
                 .AnyAsync(r => r.NormalizedName == normalized
                             && r.TenantId == null

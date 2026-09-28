@@ -45,7 +45,7 @@ namespace Prumo.Tests.Services
             using var db = NewDb(ctx);
 
             var user = Guid.NewGuid();
-            db.Resources.Add(new Resource { Id = Guid.NewGuid(), TenantId = tenant, Code = "HR.Employees", Name = "x", Module = "RH", IsActive = true });
+            db.Resources.Add(new Resource { Id = Guid.NewGuid(), TenantId = tenant, Code = "HR.Employees", Name = "x", Module = "HR", IsActive = true });
             db.TenantUsers.Add(new TenantUser { TenantId = tenant, UserId = user, Role = TenantRole.Owner });
             await db.SaveChangesAsync();
 
@@ -70,9 +70,9 @@ namespace Prumo.Tests.Services
 
             using var dbA = NewDb(ctxA, dbName);
 
-            // Role "RH" scoped to tenantA
+            // Role "HR" scoped to tenantA
             var rhRoleId = Guid.NewGuid();
-            dbA.Roles.Add(new ApplicationRole { Id = rhRoleId, Name = "RH", NormalizedName = "RH" });
+            dbA.Roles.Add(new ApplicationRole { Id = rhRoleId, Name = "HR", NormalizedName = "HR" });
 
             // Resource scoped to tenantA
             var resourceId = Guid.NewGuid();
@@ -82,7 +82,7 @@ namespace Prumo.Tests.Services
                 TenantId = tenantA,
                 Code = "HR.Employees",
                 Name = "Employees",
-                Module = "RH",
+                Module = "HR",
                 IsActive = true
             });
 
@@ -145,7 +145,7 @@ namespace Prumo.Tests.Services
                 TenantId = tenantId,
                 Code = "HR.Employees",
                 Name = "Employees",
-                Module = "RH",
+                Module = "HR",
                 IsActive = true
             });
 
@@ -206,7 +206,7 @@ namespace Prumo.Tests.Services
                     TenantId = tenant,
                     Code = "HR.Employees",
                     Name = "Funcionários",
-                    Module = "RH",
+                    Module = "HR",
                     IsActive = true
                 });
             }

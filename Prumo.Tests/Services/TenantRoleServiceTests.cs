@@ -20,7 +20,7 @@ namespace Prumo.Tests.Services
             var user = Guid.NewGuid();
             var tenantA = Guid.NewGuid();
             var tenantB = Guid.NewGuid();
-            var rh = new ApplicationRole { Id = Guid.NewGuid(), Name = "RH", NormalizedName = "RH" };
+            var rh = new ApplicationRole { Id = Guid.NewGuid(), Name = "HR", NormalizedName = "HR" };
             db.Roles.Add(rh);
             db.TenantUserRoles.Add(new TenantUserRole { TenantId = tenantA, UserId = user, RoleId = rh.Id });
             await db.SaveChangesAsync();
@@ -30,8 +30,8 @@ namespace Prumo.Tests.Services
             var inA = await sut.GetEffectiveRoleNamesAsync(user, tenantA, globalRoleNames: Array.Empty<string>());
             var inB = await sut.GetEffectiveRoleNamesAsync(user, tenantB, globalRoleNames: Array.Empty<string>());
 
-            Assert.Contains("RH", inA);
-            Assert.DoesNotContain("RH", inB);
+            Assert.Contains("HR", inA);
+            Assert.DoesNotContain("HR", inB);
         }
 
         [Fact]
@@ -43,9 +43,9 @@ namespace Prumo.Tests.Services
             var sut = new TenantRoleService(db);
 
             var roles = await sut.GetEffectiveRoleNamesAsync(
-                user, tenant, globalRoleNames: new[] { "Administrador" });
+                user, tenant, globalRoleNames: new[] { "Administrator" });
 
-            Assert.Contains("Administrador", roles);
+            Assert.Contains("Administrator", roles);
         }
 
         [Fact]
@@ -54,7 +54,7 @@ namespace Prumo.Tests.Services
             using var db = NewDb();
             var sut = new TenantRoleService(db);
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                sut.AssignFeatureRoleAsync(Guid.NewGuid(), Guid.NewGuid(), "Administrador"));
+                sut.AssignFeatureRoleAsync(Guid.NewGuid(), Guid.NewGuid(), "Administrator"));
         }
     }
 }

@@ -26,7 +26,7 @@ namespace Prumo.Domain.Entities
         public string? Description { get; set; }
 
         /// <summary>
-        /// Módulo/Área a que pertence (ex: "RH", "Financeiro", "Administrativo")
+        /// Módulo/Área a que pertence (ex: "HR", "Finance", "Administration")
         /// </summary>
         public string? Module { get; set; }
 

@@ -158,7 +158,7 @@ public class TenantServiceMembershipGuardTests
         var (db, ctx, tenantId) = MakeDbWithTenant();
         var roleId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        db.Roles.Add(new ApplicationRole { Id = roleId, Name = "RH", NormalizedName = "RH" });
+        db.Roles.Add(new ApplicationRole { Id = roleId, Name = "HR", NormalizedName = "HR" });
         db.Users.Add(new ApplicationUser { Id = userId, Email = "m@exemplo.com", UserName = "m@exemplo.com" });
         db.TenantUsers.Add(new TenantUser { TenantId = tenantId, UserId = userId, Role = TenantRole.Member });
         db.TenantUserRoles.Add(new TenantUserRole { TenantId = tenantId, UserId = userId, RoleId = roleId });
@@ -170,6 +170,6 @@ public class TenantServiceMembershipGuardTests
         var members = await sut.GetMembersAsync(tenantId);
 
         var member = Assert.Single(members);
-        Assert.Equal(new[] { "RH" }, member.Roles);
+        Assert.Equal(new[] { "HR" }, member.Roles);
     }
 }

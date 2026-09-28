@@ -81,7 +81,7 @@ namespace Prumo.Application.Services
 
             var normalized = _roleManager.NormalizeKey(name);
 
-            // Nomes canônicos são reservados: deixar um tenant criar a própria "RH"
+            // Nomes canônicos são reservados: deixar um tenant criar a própria "HR"
             // tornaria o nome ambíguo em toda tela, todo claim e todo log.
             if (await _db.Roles.AnyAsync(r => r.NormalizedName == normalized && r.TenantId == null, ct))
             {

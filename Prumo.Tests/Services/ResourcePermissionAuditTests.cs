@@ -49,7 +49,7 @@ namespace Prumo.Tests.Services
                 TenantId = TenantId,
                 Code = "HR.Employees",
                 Name = "Funcionários",
-                Module = "RH"
+                Module = "HR"
             };
 
             db.Roles.Add(role);

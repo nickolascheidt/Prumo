@@ -17,11 +17,11 @@ namespace Prumo.Tests.Domain
                 new[]
                 {
                     Permissions.Roles.MasterAdmin,
-                    Permissions.Roles.Funcionario,
-                    Permissions.Roles.Cliente,
-                    Permissions.Roles.RH,
-                    Permissions.Roles.Financeiro,
-                    Permissions.Roles.ContasAPagar
+                    Permissions.Roles.Employee,
+                    Permissions.Roles.Customer,
+                    Permissions.Roles.HR,
+                    Permissions.Roles.Finance,
+                    Permissions.Roles.AccountsPayable
                 },
                 Permissions.Roles.All);
         }

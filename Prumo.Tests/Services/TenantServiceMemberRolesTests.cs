@@ -79,13 +79,13 @@ namespace Prumo.Tests.Services
             await using var db = NewDb(tenantId, dbName);
             db.Tenants.Add(new Tenant { Id = tenantId, Name = "T", Slug = "t", OwnerUserId = Guid.NewGuid() });
             AddMember(db, tenantId, userId, "maria@example.com");
-            GrantFeatureRole(db, tenantId, userId, rhRoleId, "RH");
+            GrantFeatureRole(db, tenantId, userId, rhRoleId, "HR");
             await db.SaveChangesAsync();
 
             var members = await new TenantService(db, MockUserManager(), Substitute.For<INotificationPublisher>(), Substitute.For<IConfiguration>()).GetMembersAsync(tenantId);
 
             var maria = Assert.Single(members);
-            Assert.Equal(new[] { "RH" }, maria.Roles);
+            Assert.Equal(new[] { "HR" }, maria.Roles);
         }
 
         [Fact]
@@ -116,7 +116,7 @@ namespace Prumo.Tests.Services
             await using (var seed = NewDb(tenantB, dbName))
             {
                 seed.Tenants.Add(new Tenant { Id = tenantB, Name = "B", Slug = "b", OwnerUserId = Guid.NewGuid() });
-                GrantFeatureRole(seed, tenantB, userId, rhRoleId, "RH");
+                GrantFeatureRole(seed, tenantB, userId, rhRoleId, "HR");
                 await seed.SaveChangesAsync();
             }
 

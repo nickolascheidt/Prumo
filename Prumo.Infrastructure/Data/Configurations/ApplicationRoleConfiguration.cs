@@ -31,7 +31,7 @@ namespace Prumo.Infrastructure.Data.Configurations
                    .HasDatabaseName("RoleNameIndex")
                    .IsUnique()
                    // OBRIGATÓRIO. No Postgres NULL não é igual a NULL, então sem isto
-                   // duas roles canônicas "RH" (ambas com TenantId null) passariam pelo
+                   // duas roles canônicas "HR" (ambas com TenantId null) passariam pelo
                    // índice. Verificado em PG 17.9: sem a flag insere as duas; com ela,
                    // a segunda viola a constraint. Requer PG 15+.
                    .AreNullsDistinct(false);

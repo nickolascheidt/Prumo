@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Prumo.Domain.Authorization;
 using Prumo.Domain.Entities;
 using Prumo.Domain.Enums;
@@ -6,9 +6,8 @@ using Prumo.Domain.Enums;
 namespace Prumo.Infrastructure.Data.Seeders
 {
     /// <summary>
-    /// Seeds tenant-scoped defaults (Resources, RolePermissions, ResourcePermissions)
-    /// the first time a tenant is created. Runs against the global Identity roles
-    /// and the global Permission catalog.
+    /// Seeds tenant-scoped defaults (Resources and ResourcePermissions) the first time a
+    /// tenant is created, against the canonical Identity roles.
     /// </summary>
     public static class TenantBootstrapSeeder
     {
@@ -17,19 +16,19 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "User.Management",
-                Name = "Gestão de Usuários",
-                Description = "Cadastro e gerenciamento de usuários",
-                Module = "Administrativo",
-                FrontendRoute = "/admin/usuarios",
+                Name = "User Management",
+                Description = "Create and manage users",
+                Module = "Administration",
+                FrontendRoute = "/admin/members",
                 Icon = "manage_accounts",
                 DisplayOrder = 20
             },
             new()
             {
                 Code = "Role.Management",
-                Name = "Gestão de Roles",
-                Description = "Cadastro e gerenciamento de roles",
-                Module = "Administrativo",
+                Name = "Role Management",
+                Description = "Create and manage roles",
+                Module = "Administration",
                 FrontendRoute = "/admin/roles",
                 Icon = "admin_panel_settings",
                 DisplayOrder = 21
@@ -37,43 +36,42 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "Permission.Management",
-                Name = "Gestão de Permissões",
-                Description = "Configuração de permissões e acessos",
-                Module = "Administrativo",
-                FrontendRoute = "/admin/permissoes",
+                Name = "Permission Management",
+                Description = "Configure permissions and access",
+                Module = "Administration",
+                FrontendRoute = "/admin/permissions",
                 Icon = "security",
                 DisplayOrder = 22
             },
             new()
             {
                 Code = "System.Configuration",
-                Name = "Configurações do Sistema",
-                Description = "Configurações gerais da aplicação",
-                Module = "Administrativo",
-                FrontendRoute = "/admin/configuracoes",
+                Name = "System Settings",
+                Description = "General application settings",
+                Module = "Administration",
+                FrontendRoute = "/admin/settings",
                 Icon = "settings",
                 DisplayOrder = 23
             },
             new()
             {
                 Code = "Dashboard.Main",
-                Name = "Dashboard Principal",
-                Description = "Dashboard com visão geral",
+                Name = "Main Dashboard",
+                Description = "Overview dashboard",
                 Module = "Dashboard",
                 FrontendRoute = "/dashboard",
                 Icon = "dashboard",
                 DisplayOrder = 0
             },
-            // As abas do dashboard têm recurso próprio para poderem ser concedidas
-            // separadamente da tela do módulo. Antes cada uma emprestava o recurso do
-            // módulo correspondente (a aba RH gateava por HR.Employees), o que grudava
-            // os dois acessos: não dava para mostrar o painel de RH a quem não pode
-            // abrir a tela de funcionários, nem o contrário.
+            // Each dashboard tab has its own resource so it can be granted separately
+            // from the module's screen. Borrowing the module's resource (the HR tab gated
+            // by HR.Employees) glued the two together: there was no way to show the HR
+            // dashboard to someone who cannot open the employees screen, or vice versa.
             new()
             {
                 Code = "Dashboard.Accounting",
-                Name = "Dashboard Contábil",
-                Description = "Painel com os indicadores da contabilidade",
+                Name = "Accounting Dashboard",
+                Description = "Accounting indicators",
                 Module = "Dashboard",
                 FrontendRoute = "/dashboard/accounting",
                 Icon = "account_balance",
@@ -82,8 +80,8 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "Dashboard.Finance",
-                Name = "Dashboard Financeiro",
-                Description = "Painel com os indicadores do financeiro",
+                Name = "Finance Dashboard",
+                Description = "Finance indicators",
                 Module = "Dashboard",
                 FrontendRoute = "/dashboard/finance",
                 Icon = "payments",
@@ -92,8 +90,8 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "Dashboard.HR",
-                Name = "Dashboard de RH",
-                Description = "Painel com os indicadores de recursos humanos",
+                Name = "HR Dashboard",
+                Description = "Human resources indicators",
                 Module = "Dashboard",
                 FrontendRoute = "/dashboard/hr",
                 Icon = "groups",
@@ -102,8 +100,8 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "Dashboard.Admin",
-                Name = "Dashboard Administrativo",
-                Description = "Painel com os indicadores de administração",
+                Name = "Admin Dashboard",
+                Description = "Administration indicators",
                 Module = "Dashboard",
                 FrontendRoute = "/dashboard/admin",
                 Icon = "admin_panel_settings",
@@ -112,9 +110,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "ChartOfAccounts.Management",
-                Name = "Plano de Contas",
-                Description = "Cadastro e gerenciamento do plano de contas",
-                Module = "Financeiro",
+                Name = "Chart of Accounts",
+                Description = "Create and manage the chart of accounts",
+                Module = "Finance",
                 FrontendRoute = "/finance/chart-of-accounts",
                 Icon = "account_tree",
                 DisplayOrder = 29
@@ -122,9 +120,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "GeneralLedger.Management",
-                Name = "Razao Geral",
-                Description = "Consulta e gerenciamento de lancamentos contabeis do razao geral",
-                Module = "Financeiro",
+                Name = "General Ledger",
+                Description = "View and manage general ledger journal entries",
+                Module = "Finance",
                 FrontendRoute = "/finance/general-ledger",
                 Icon = "menu_book",
                 DisplayOrder = 30
@@ -132,9 +130,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "HR.Employees",
-                Name = "Funcionários",
-                Description = "Gestão de funcionários",
-                Module = "RH",
+                Name = "Employees",
+                Description = "Employee management",
+                Module = "HR",
                 FrontendRoute = "/hr/employees",
                 Icon = "badge",
                 DisplayOrder = 40
@@ -142,9 +140,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "HR.WorkLogs",
-                Name = "Horas Trabalhadas",
-                Description = "Registro de horas",
-                Module = "RH",
+                Name = "Work Logs",
+                Description = "Hours worked",
+                Module = "HR",
                 FrontendRoute = "/hr/worklogs",
                 Icon = "schedule",
                 DisplayOrder = 41
@@ -152,9 +150,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "HR.Payments",
-                Name = "Pagamentos RH",
-                Description = "Pagamentos de funcionários",
-                Module = "RH",
+                Name = "HR Payments",
+                Description = "Employee payments",
+                Module = "HR",
                 FrontendRoute = "/hr/payments",
                 Icon = "payments",
                 DisplayOrder = 42
@@ -162,19 +160,19 @@ namespace Prumo.Infrastructure.Data.Seeders
             new()
             {
                 Code = "HR.PaymentPeriods",
-                Name = "Períodos de Pagamento",
-                Description = "Períodos gerados para pagamento",
-                Module = "RH",
-                FrontendRoute = "/hr/periodos",
+                Name = "Payment Periods",
+                Description = "Periods generated for payment",
+                Module = "HR",
+                FrontendRoute = "/hr/payment-periods",
                 Icon = "event_note",
                 DisplayOrder = 43
             },
             new()
             {
                 Code = "AccountsPayable.Entries",
-                Name = "Contas a Pagar",
-                Description = "Lançamentos de contas a pagar",
-                Module = "ContasAPagar",
+                Name = "Accounts Payable",
+                Description = "Accounts payable entries",
+                Module = "AccountsPayable",
                 FrontendRoute = "/accounts-payable",
                 Icon = "request_quote",
                 DisplayOrder = 50
@@ -182,28 +180,27 @@ namespace Prumo.Infrastructure.Data.Seeders
         };
 
         /// <summary>
-        /// Códigos do catálogo padrão. Existe para o teste de arquitetura poder provar
-        /// que todo [TenantModule] declara um recurso que realmente existe.
+        /// Codes of the default catalog. Exists so the architecture test can prove that
+        /// every [TenantModule] names a resource that actually exists.
         /// </summary>
         public static IReadOnlyList<string> DefaultResourceCodes =>
             DefaultResources.Select(r => r.Code).ToList();
 
         /// <summary>
-        /// Garante que <b>todo</b> tenant tenha todos os recursos do catálogo, incluindo
-        /// os que foram acrescentados depois de o tenant existir.
+        /// Ensures <b>every</b> tenant has every resource in the catalog, including the
+        /// ones added after the tenant was created.
         /// </summary>
         /// <remarks>
-        /// Existe separado do <see cref="SeedAsync"/> de propósito, para poder rodar a
-        /// cada boot: o seeder completo também escreve <c>RolePermission</c>, e reaplicá-lo
-        /// faria um grant revogado voltar — foi exatamente o bug 4203a15. Aqui só entram
-        /// linhas de <c>Resource</c> que faltam; nada de permissão é tocado, então nenhuma
-        /// revogação é desfeita.
+        /// Separate from <see cref="SeedAsync"/> on purpose, so it can run on every boot:
+        /// the full seeder also writes permissions, and re-applying it would bring a revoked
+        /// grant back. Only missing <c>Resource</c> rows go in here; no permission is
+        /// touched, so no revocation is undone.
         /// </remarks>
         public static async Task SyncResourcesForAllTenantsAsync(
             ApplicationDbContext db, CancellationToken cancellationToken = default)
         {
-            // cross-tenant de propósito: roda no startup, sem TenantContext, e precisa
-            // enxergar todos os tenants para completar o catálogo de cada um.
+            // Cross-tenant on purpose: runs at startup, with no TenantContext, and must
+            // see every tenant to complete each one's catalog.
             var tenantIds = await db.Tenants
                 .IgnoreQueryFilters()
                 .Select(t => t.Id)
@@ -215,13 +212,13 @@ namespace Prumo.Infrastructure.Data.Seeders
             }
         }
 
-        /// <summary>Acrescenta a um tenant os recursos do catálogo que ainda faltam.</summary>
+        /// <summary>Adds to a tenant the catalog resources it is still missing.</summary>
         private static async Task SyncResourcesAsync(
             ApplicationDbContext db, Guid tenantId, CancellationToken cancellationToken)
         {
             var existingCodes = await db.Resources
-                // cross-tenant de propósito: roda no startup, sem TenantContext. O
-                // tenantId vem do parâmetro e é filtrado logo abaixo.
+                // Cross-tenant on purpose: runs at startup, with no TenantContext. The
+                // tenantId comes from the parameter and is filtered right below.
                 .IgnoreQueryFilters()
                 .Where(r => r.TenantId == tenantId)
                 .Select(r => r.Code)
@@ -253,9 +250,10 @@ namespace Prumo.Infrastructure.Data.Seeders
         {
             // Resources
             var existingCodes = await db.Resources
-                // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
+                // Cross-tenant on purpose: the seeder runs at startup, with no TenantContext.
+                // The tenantId comes from the parameter and is filtered right below. Without
+                // the bypass the fail-closed filter would return nothing and seeding would
+                // silently break.
                 .IgnoreQueryFilters()
                 .Where(r => r.TenantId == tenantId)
                 .Select(r => r.Code)
@@ -282,20 +280,21 @@ namespace Prumo.Infrastructure.Data.Seeders
                 await db.SaveChangesAsync(cancellationToken);
             }
 
-            // Só as canônicas (TenantId nulo). Sem o filtro, dois tenants com uma role
-            // homônima fariam o ToDictionary estourar com chave duplicada e derrubar o
-            // startup — e este bloco só configura roles canônicas de qualquer forma.
+            // Canonical roles only (null TenantId). Without the filter, two tenants with
+            // same-named roles would make ToDictionary throw on a duplicate key and bring
+            // startup down — and this block only configures canonical roles anyway.
             var rolesByName = await db.Roles
                 .Where(r => r.TenantId == null)
                 .ToDictionaryAsync(r => r.Name!, r => r.Id, cancellationToken);
 
             // Resource permissions: Admin gets Full access to every default resource
-            if (rolesByName.TryGetValue("Administrador", out var adminRoleId))
+            if (rolesByName.TryGetValue(Permissions.Roles.MasterAdmin, out var adminRoleId))
             {
                 var tenantResources = await db.Resources
-                    // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                    // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                    // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
+                    // Cross-tenant on purpose: the seeder runs at startup, with no TenantContext.
+                    // The tenantId comes from the parameter and is filtered right below. Without
+                    // the bypass the fail-closed filter would return nothing and seeding would
+                    // silently break.
                     .IgnoreQueryFilters()
                     .Where(r => r.TenantId == tenantId)
                     .Select(r => r.Id)
@@ -304,9 +303,10 @@ namespace Prumo.Infrastructure.Data.Seeders
                 foreach (var resourceId in tenantResources)
                 {
                     var exists = await db.ResourcePermissions
-                        // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                        // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                        // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
+                        // Cross-tenant on purpose: the seeder runs at startup, with no TenantContext.
+                        // The tenantId comes from the parameter and is filtered right below. Without
+                        // the bypass the fail-closed filter would return nothing and seeding would
+                        // silently break.
                         .IgnoreQueryFilters()
                         .AnyAsync(rp =>
                             rp.TenantId == tenantId &&
@@ -331,9 +331,9 @@ namespace Prumo.Infrastructure.Data.Seeders
             // Module roles: each gets Full access only to their own module's resources
             var moduleRoleResourceMap = new Dictionary<string, string>
             {
-                { "RH",           "RH" },
-                { "Financeiro",   "Financeiro" },
-                { "ContasAPagar", "ContasAPagar" }
+                { Permissions.Roles.HR,              "HR" },
+                { Permissions.Roles.Finance,         "Finance" },
+                { Permissions.Roles.AccountsPayable, "AccountsPayable" }
             };
 
             foreach (var (roleName, moduleName) in moduleRoleResourceMap)
@@ -341,9 +341,10 @@ namespace Prumo.Infrastructure.Data.Seeders
                 if (!rolesByName.TryGetValue(roleName, out var moduleRoleId)) continue;
 
                 var moduleResources = await db.Resources
-                    // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                    // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                    // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
+                    // Cross-tenant on purpose: the seeder runs at startup, with no TenantContext.
+                    // The tenantId comes from the parameter and is filtered right below. Without
+                    // the bypass the fail-closed filter would return nothing and seeding would
+                    // silently break.
                     .IgnoreQueryFilters()
                     .Where(r => r.TenantId == tenantId && r.Module == moduleName)
                     .Select(r => r.Id)
@@ -352,9 +353,10 @@ namespace Prumo.Infrastructure.Data.Seeders
                 foreach (var resourceId in moduleResources)
                 {
                     var exists = await db.ResourcePermissions
-                        // cross-tenant de propósito: o seeder roda no startup, sem TenantContext.
-                        // O tenantId vem do parâmetro e é filtrado logo abaixo. Sem o bypass o
-                        // filtro fail-closed devolveria zero e o seeding quebraria em silêncio.
+                        // Cross-tenant on purpose: the seeder runs at startup, with no TenantContext.
+                        // The tenantId comes from the parameter and is filtered right below. Without
+                        // the bypass the fail-closed filter would return nothing and seeding would
+                        // silently break.
                         .IgnoreQueryFilters()
                         .AnyAsync(rp =>
                             rp.TenantId == tenantId &&

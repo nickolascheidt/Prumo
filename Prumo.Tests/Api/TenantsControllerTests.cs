@@ -52,13 +52,13 @@ namespace Prumo.Tests.Api
             tenants.IsMemberAsync(tenantId, userId, Arg.Any<CancellationToken>()).Returns(true);
             var roleAdmin = Substitute.For<ITenantRoleAdminService>();
             roleAdmin.GetAssignableRoleNamesAsync(tenantId, Arg.Any<CancellationToken>())
-                .Returns(new[] { "RH" });
+                .Returns(new[] { "HR" });
 
             var result = await MakeController(userId, tenants)
                 .GetAssignableRoles(tenantId, roleAdmin, CancellationToken.None);
 
             var ok = Assert.IsType<OkObjectResult>(result.Result);
-            Assert.Equal(new[] { "RH" }, Assert.IsAssignableFrom<IReadOnlyList<string>>(ok.Value));
+            Assert.Equal(new[] { "HR" }, Assert.IsAssignableFrom<IReadOnlyList<string>>(ok.Value));
         }
     }
 }
