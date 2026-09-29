@@ -149,8 +149,8 @@ reset.
 |---|---|
 | Auth | `/api/auth` |
 | Tenants, members, invitations | `/api/tenants` |
-| Tenant roles | `/api/tenants/{tenantId}/roles` |
-| Resources and permissions | `/api/resources` |
+| Tenant roles and their level on each resource | `/api/tenants/{tenantId}/roles` |
+| The current user's permissions, resource catalog (master) | `/api/resources` |
 | Employees, work logs, payment periods | `/api/tenants/{tenantId}/employees` |
 | Payments | `/api/tenants/{tenantId}/payments` |
 | Accounts payable | `/api/tenants/{tenantId}/accounts-payable` |
