@@ -16,6 +16,10 @@ Repositórios relacionados:
 [Prumo-Angular](https://github.com/nickolascheidt/Prumo-Angular) (o SPA) ·
 [Prumo-DevOps](https://github.com/nickolascheidt/Prumo-DevOps) (Terraform e scripts de deploy para a AWS)
 
+![Dashboard do Prumo](https://raw.githubusercontent.com/nickolascheidt/Prumo-Angular/main/screenshots/dashboard.png)
+
+Mais telas no [README do frontend](https://github.com/nickolascheidt/Prumo-Angular#readme).
+
 ## O que vale olhar
 
 - **Isolamento de tenant que falha fechado.** Toda entidade de tenant passa por um filtro

@@ -16,6 +16,10 @@ Related repositories:
 [Prumo-Angular](https://github.com/nickolascheidt/Prumo-Angular) (the SPA) ·
 [Prumo-DevOps](https://github.com/nickolascheidt/Prumo-DevOps) (Terraform and deploy scripts for AWS)
 
+![Prumo dashboard](https://raw.githubusercontent.com/nickolascheidt/Prumo-Angular/main/screenshots/dashboard.png)
+
+More screens in the [frontend README](https://github.com/nickolascheidt/Prumo-Angular#readme).
+
 ## What is worth looking at
 
 - **Tenant isolation that fails closed.** Every tenant-owned entity sits behind a global EF
