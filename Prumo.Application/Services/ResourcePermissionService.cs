@@ -26,6 +26,14 @@ namespace Prumo.Application.Services
             Guid roleId, Guid resourceId, string? removedByEmail = null, Guid? performedByUserId = null);
         Task<List<ResourcePermissionDto>> GetRolePermissionsAsync(Guid roleId);
 
+        // Tenant-scoped grid (the Roles screen). Every method checks the role is visible
+        // in the tenant — canonical or created by it — and the resource belongs to it.
+        Task<List<ResourceDto>> GetTenantResourcesAsync(Guid tenantId);
+        Task<List<ResourcePermissionDto>?> GetTenantRolePermissionsAsync(Guid tenantId, Guid roleId);
+        Task<bool> SetTenantRolePermissionAsync(
+            Guid tenantId, Guid roleId, Guid resourceId, PermissionLevel level,
+            string? performedByEmail = null, Guid? performedByUserId = null);
+
         // Current user's permissions
         Task<UserPermissionsDto?> GetUserPermissionsAsync(Guid userId);
         Task<UserPermissionsDto?> GetUserPermissionsByEmailAsync(string email);
@@ -269,7 +277,7 @@ namespace Prumo.Application.Services
                 PreviousLevel = previousLevel,
                 NewLevel = newLevel,
                 PerformedByUserId = performedByUserId ?? Guid.Empty,
-                PerformedByUserEmail = performedByEmail ?? "desconhecido",
+                PerformedByUserEmail = performedByEmail ?? "unknown",
                 PerformedAt = DateTime.UtcNow
             });
         }
@@ -291,6 +299,82 @@ namespace Prumo.Application.Services
                 })
                 .ToListAsync();
         }
+
+        public async Task<List<ResourceDto>> GetTenantResourcesAsync(Guid tenantId)
+        {
+            return await _context.Resources
+                .Where(r => r.TenantId == tenantId && r.IsActive)
+                .OrderBy(r => r.DisplayOrder)
+                .ThenBy(r => r.Name)
+                .Select(r => new ResourceDto
+                {
+                    Id = r.Id,
+                    Code = r.Code,
+                    Name = r.Name,
+                    Description = r.Description,
+                    Module = r.Module,
+                    FrontendRoute = r.FrontendRoute,
+                    Icon = r.Icon,
+                    DisplayOrder = r.DisplayOrder,
+                    UserPermissionLevel = PermissionLevel.None
+                })
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// The role's levels in this tenant, or null when the role is not visible here —
+        /// the caller answers 404 rather than confirming that it exists elsewhere.
+        /// </summary>
+        public async Task<List<ResourcePermissionDto>?> GetTenantRolePermissionsAsync(
+            Guid tenantId, Guid roleId)
+        {
+            if (!await RoleIsVisibleAsync(tenantId, roleId)) return null;
+
+            return await _context.ResourcePermissions
+                .Where(rp => rp.TenantId == tenantId && rp.RoleId == roleId)
+                .Select(rp => new ResourcePermissionDto
+                {
+                    RoleId = rp.RoleId,
+                    RoleName = rp.Role.Name ?? "",
+                    ResourceId = rp.ResourceId,
+                    ResourceCode = rp.Resource.Code,
+                    ResourceName = rp.Resource.Name,
+                    Level = rp.Level
+                })
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Sets the role's level on one resource of this tenant. <c>None</c> revokes, so
+        /// granting and revoking need the same level on the Roles screen. Returns false
+        /// when the role is not visible in the tenant or the resource is not the tenant's.
+        /// </summary>
+        public async Task<bool> SetTenantRolePermissionAsync(
+            Guid tenantId, Guid roleId, Guid resourceId, PermissionLevel level,
+            string? performedByEmail = null, Guid? performedByUserId = null)
+        {
+            if (!await RoleIsVisibleAsync(tenantId, roleId)) return false;
+
+            var resourceInTenant = await _context.Resources
+                .AnyAsync(r => r.Id == resourceId && r.TenantId == tenantId);
+            if (!resourceInTenant) return false;
+
+            if (level == PermissionLevel.None)
+            {
+                // Revoking a level that was never granted is already the desired state.
+                await RemovePermissionAsync(roleId, resourceId, performedByEmail, performedByUserId);
+                return true;
+            }
+
+            return await AssignPermissionAsync(
+                new AssignResourcePermissionDto { RoleId = roleId, ResourceId = resourceId, Level = level },
+                performedByEmail,
+                performedByUserId);
+        }
+
+        /// <summary>Canonical (no tenant) or created by this tenant.</summary>
+        private Task<bool> RoleIsVisibleAsync(Guid tenantId, Guid roleId) =>
+            _context.Roles.AnyAsync(r => r.Id == roleId && (r.TenantId == null || r.TenantId == tenantId));
 
         #endregion
 

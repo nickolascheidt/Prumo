@@ -44,7 +44,7 @@ namespace Prumo.Tests.Infrastructure
             db.Users.Add(admin);
             await db.SaveChangesAsync();
 
-            // Primeiro boot: cria o tenant 'default' e semeia recursos + grants.
+            // First boot: creates the 'default' tenant and seeds resources and grants.
             await DbInitializer.EnsureDefaultTenantAsync(db, admin, NullLogger.Instance);
 
             var granted = await db.ResourcePermissions.IgnoreQueryFilters().ToListAsync();
